@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "150ab1e81abc9df6c26b12833eafd23f",
+    "content-hash": "aecab71d7cf3fb9b7f6c2a00c16a98b2",
     "packages": [
         {
             "name": "guzzlehttp/psr7",
@@ -4163,29 +4163,30 @@
             "time": "2020-07-12T23:59:07+00:00"
         },
         {
-            "name": "totumonline/totum-front",
-            "version": "dev-dev",
+            "name": "totumonline/totum-pro-front",
+            "version": "dev-master",
             "source": {
                 "type": "git",
-                "url": "https://github.com/totumonline/totum-front.git",
-                "reference": "5e7b5610219f4c4473e5a7dfa80c87172e659f25"
+                "url": "git@github.com:totumonline/totum-pro-front.git",
+                "reference": "25e4a4a456b3941d17cc9b220c839d2593673a39"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/totumonline/totum-front/zipball/5e7b5610219f4c4473e5a7dfa80c87172e659f25",
-                "reference": "5e7b5610219f4c4473e5a7dfa80c87172e659f25",
+                "url": "https://api.github.com/repos/totumonline/totum-pro-front/zipball/25e4a4a456b3941d17cc9b220c839d2593673a39",
+                "reference": "25e4a4a456b3941d17cc9b220c839d2593673a39",
                 "shasum": ""
             },
+            "default-branch": true,
             "type": "package",
             "license": [
                 "MIT"
             ],
-            "description": "totum frontend",
+            "description": "totum pro frontend",
             "support": {
-                "source": "https://github.com/totumonline/totum-front/tree/dev",
-                "issues": "https://github.com/totumonline/totum-front/issues"
+                "source": "https://github.com/totumonline/totum-pro-front/tree/dev",
+                "issues": "https://github.com/totumonline/totum-pro-front/issues"
             },
-            "time": "2020-11-18T10:02:57+00:00"
+            "time": "2021-04-16T10:34:09+00:00"
         },
         {
             "name": "webmozart/assert",
@@ -4244,7 +4245,7 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "totumonline/totum-front": 20
+        "totumonline/totum-pro-front": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,
