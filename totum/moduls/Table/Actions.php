@@ -50,7 +50,7 @@ class Actions
         $this->Request = $Request;
         $this->post = $Request->getParsedBody();
 
-        if(!empty($this->post['restoreView'])){
+        if (!empty($this->post['restoreView'])) {
             $this->Table->setRestoreView(true);
         }
 
@@ -77,6 +77,70 @@ class Actions
     {
         $Calc = new CalculateAction('=: linkToDataTable(table: \'ttm__manage_notifications\'; title: "Нотификации"; width: 800; height: "80vh"; refresh: false; header: true; footer: true)');
         $Calc->execAction('KOD', [], [], [], [], $this->Totum->getTable('tables'), 'exec');
+    }
+
+    public function searchClick(){
+        if($this->post['pk'] ?? ''){
+            $data=explode('-', $this->post['pk']);
+            if(count($data)===2){
+                if(key_exists($data[0], $this->User->getTables())){
+                    $TableSearch = $this->Totum->getTable('ttm__search_settings');
+                    if($code=$TableSearch->getByParams(['where'=>[
+                        ['field'=>'table_id', 'operator'=>'=', 'value'=>$data[0]]
+                    ], 'field'=>'code'], 'field')){
+
+                        $Table=$this->Totum->getTable($data[0]);
+                        if($Table->loadFilteredRows('web', [$data[1]])){
+                            $Calc = new CalculateAction($code);
+                            $Calc->execAction('KOD',
+                                $Table->getTbl()['rows'][$data[1]],
+                                $Table->getTbl()['rows'][$data[1]],
+                                $Table->getTbl(),
+                                $Table->getTbl(),
+                                $Table,
+                                'exec',
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        return ['ok'=>1];
+    }
+    public function getSearchResults()
+    {
+        $Table = $this->Totum->getTable('ttm__search_settings');
+        $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
+        $res = $Calc->execAction('KOD',
+            $Table->getTbl()['params'],
+            $Table->getTbl()['params'],
+            $Table->getTbl(),
+            $Table->getTbl(),
+            $Table,
+            'exec',
+            [
+                'posts' => json_encode(
+                    [
+                        "q" => $this->post['q'] ?? '',
+                        "matches" => true
+                    ],
+                    JSON_UNESCAPED_UNICODE)
+            ]);
+
+        $res = json_decode($res, true);
+        foreach ($res['hits'] as &$_h) {
+            foreach ($_h['_matchesInfo'] as $field => &$matches) {
+                $val = $_h[$field];
+                foreach ($matches as &$match) {
+                    $match['start'] = mb_strlen(substr($val, 0, $match['start']));
+                    $match['length'] = mb_strlen(substr($val, $match['start'], $match['length']));
+                    unset($match);
+                }
+                unset($matches);
+            }
+        }
+        unset($_h);
+        return $res;
     }
 
     public function loadUserButtons()
@@ -278,15 +342,15 @@ class Actions
             if ($actived) {
                 $result['deactivated'] = [];
                 if ($ids = ($model->getColumn(
-                    'id',
-                    ['id' => $actived, 'user_id' => $this->User->getId(), 'active' => 'false']
-                ) ?? [])) {
+                        'id',
+                        ['id' => $actived, 'user_id' => $this->User->getId(), 'active' => 'false']
+                    ) ?? [])) {
                     $result['deactivated'] = array_merge($result['deactivated'], $ids);
                 }
                 if ($ids = ($model->getColumn(
-                    'id',
-                    ['id' => $actived, 'user_id' => $this->User->getId(), 'active' => 'true', '>active_dt_from' => date('Y-m-d H:i')]
-                ) ?? [])) {
+                        'id',
+                        ['id' => $actived, 'user_id' => $this->User->getId(), 'active' => 'true', '>active_dt_from' => date('Y-m-d H:i')]
+                    ) ?? [])) {
                     $result['deactivated'] = array_merge($result['deactivated'], $ids);
                 }
                 if (empty($result['deactivated'])) {
@@ -318,12 +382,12 @@ class Actions
             $result = $getNotification();
         }
         echo json_encode($result + ['notifications' => array_map(
-            function ($n) {
+                function ($n) {
                     $n[0] = 'notification';
                     return $n;
                 },
-            $this->Totum->getInterfaceDatas()
-        )]);
+                $this->Totum->getInterfaceDatas()
+            )]);
         die;
     }
 }

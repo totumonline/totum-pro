@@ -40,6 +40,8 @@ if (is_null($isCreatorView ?? null)) {
                     <span class="btn btn-default btn-sm" style="margin-top: -3px;" id="bell-notifications"
                           data-periodicity="<?= $notification_period ?? 0 ?>"><i
                                 class="fa fa-bell"></i></span>
+                    <span class="btn btn-default btn-sm" style="margin-top: -3px;" id="search-button"><i
+                                class="fa fa-search"></i></span>
                 </li>
 
                 <li class="navbar-text"
