@@ -79,18 +79,20 @@ class Actions
         $Calc->execAction('KOD', [], [], [], [], $this->Totum->getTable('tables'), 'exec');
     }
 
-    public function searchClick(){
-        if($this->post['pk'] ?? ''){
-            $data=explode('-', $this->post['pk']);
-            if(count($data)===2){
-                if(key_exists($data[0], $this->User->getTables())){
+    public function searchClick()
+    {
+        if ($this->post['pk'] ?? '') {
+            $data = explode('-', $this->post['pk']);
+            if (count($data) === 2) {
+                if (key_exists($data[0], $this->User->getTables())) {
                     $TableSearch = $this->Totum->getTable('ttm__search_settings');
-                    if($code=$TableSearch->getByParams(['where'=>[
-                        ['field'=>'table_id', 'operator'=>'=', 'value'=>$data[0]]
-                    ], 'field'=>'code'], 'field')){
+                    if ($code = $TableSearch->getByParams(['where' => [
+                        ['field' => 'table_id', 'operator' => '=', 'value' => $data[0]]
+                    ], 'field' => 'code'],
+                        'field')) {
 
-                        $Table=$this->Totum->getTable($data[0]);
-                        if($Table->loadFilteredRows('web', [$data[1]])){
+                        $Table = $this->Totum->getTable($data[0]);
+                        if ($Table->loadFilteredRows('web', [$data[1]])) {
                             $Calc = new CalculateAction($code);
                             $Calc->execAction('KOD',
                                 $Table->getTbl()['rows'][$data[1]],
@@ -105,42 +107,102 @@ class Actions
                 }
             }
         }
-        return ['ok'=>1];
+        return ['ok' => 1];
     }
+
     public function getSearchResults()
     {
-        $Table = $this->Totum->getTable('ttm__search_settings');
-        $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
-        $res = $Calc->execAction('KOD',
-            $Table->getTbl()['params'],
-            $Table->getTbl()['params'],
-            $Table->getTbl(),
-            $Table->getTbl(),
-            $Table,
-            'exec',
-            [
-                'posts' => json_encode(
-                    [
-                        "q" => $this->post['q'] ?? '',
-                        "matches" => true
-                    ],
-                    JSON_UNESCAPED_UNICODE)
-            ]);
 
-        $res = json_decode($res, true);
-        foreach ($res['hits'] as &$_h) {
-            foreach ($_h['_matchesInfo'] as $field => &$matches) {
-                $val = $_h[$field];
-                foreach ($matches as &$match) {
-                    $match['start'] = mb_strlen(substr($val, 0, $match['start']));
-                    $match['length'] = mb_strlen(substr($val, $match['start'], $match['length']));
-                    unset($match);
-                }
-                unset($matches);
+
+        $Table = $this->Totum->getTable('ttm__search_settings');
+
+
+        $facetFilters = [];
+
+        $tables = $Table->getByParams(['field' => 'table_id'], 'list');
+        $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
+        if ($tables_cleared != $tables) {
+            foreach ($tables_cleared as $table) {
+                $facetFilters[] = 'table:' . $table;
+            }
+            if (empty($facetFilters)) {
+                return ['hits' => []];
             }
         }
-        unset($_h);
-        return $res;
+
+        $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
+        $posts = [
+            "q" => $this->post['q'] ?? '',
+            "matches" => true,
+        ];
+        if ($facetFilters) {
+            $posts["facetFilters"] = $facetFilters;
+        }
+
+
+        $tables = [];
+        $getTable = function ($tableId) use (&$tables) {
+            if (!key_exists($tableId, $tables)) {
+                $tables[$tableId] = $this->Totum->getTable($tableId);
+                $tables[$tableId]->reCalculateFilters('web');
+                $params = $tables[$tableId]->filtersParamsForLoadRows('web', [], [], true);
+                if (empty($params)) {
+                    $tables[$tableId] = false;
+                }
+            }
+            return $tables[$tableId];
+        };
+
+
+        $i = -1;
+        $limit = 3;
+        $hits = [];
+        do {
+            $i++;
+            $removed = false;
+            $posts['offset'] = $i * $limit;
+            $posts['limit'] = $limit-count($hits);
+            $res = $Calc->execAction('KOD',
+                $Table->getTbl()['params'],
+                $Table->getTbl()['params'],
+                $Table->getTbl(),
+                $Table->getTbl(),
+                $Table,
+                'exec',
+                [
+                    'posts' => json_encode(
+                        $posts,
+                        JSON_UNESCAPED_UNICODE)
+                ]);
+
+            $res = json_decode($res, true);
+
+            foreach ($res['hits'] as $k => $_h) {
+                list($tableId, $rowId) = explode('-', $_h['pk']);
+                if ($_Table = $getTable($tableId)) {
+                    try {
+                        $_Table->checkIsUserCanViewIds('web', [$rowId]);
+                    } catch (\Exception $exception) {
+                        $removed = true;
+                        continue;
+                    }
+                }
+
+                foreach ($_h['_matchesInfo'] as $field => &$matches) {
+                    $val = $_h[$field];
+                    foreach ($matches as &$match) {
+                        $match['start'] = mb_strlen(substr($val, 0, $match['start']));
+                        $match['length'] = mb_strlen(substr($val, $match['start'], $match['length']));
+                        unset($match);
+                    }
+                    unset($matches);
+                }
+                $hits[] = $_h;
+            }
+            unset($_h);
+        } while ($removed);
+
+        return ['hits' => array_values($hits)];
     }
 
     public function loadUserButtons()

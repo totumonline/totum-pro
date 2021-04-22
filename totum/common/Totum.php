@@ -2,6 +2,7 @@
 
 namespace totum\common;
 
+use totum\common\calculates\CalculateAction;
 use totum\common\configs\TablesModelsTrait;
 use totum\common\logs\ActionsLog;
 use totum\common\logs\CalculateLog;
@@ -164,6 +165,11 @@ class Totum
     public function tableChanged(string $tableName)
     {
         $this->changedTables[$tableName] = true;
+        if (count($this->changedTables) === 1) {
+            $this->Config->getSql()->addOnCommit(function () {
+                $this->searchIndexUpdate();
+            });
+        }
     }
 
     /**
@@ -172,6 +178,87 @@ class Totum
     public function isAnyChages()
     {
         return !!$this->changedTables;
+    }
+
+    protected function searchIndexUpdate()
+    {
+        $updates = [];
+        $deletes = [];
+
+        $searchTables = null;
+
+
+        foreach ($this->changedTables as $name => $_) {
+            $TableRow = $this->getTableRow($name);
+            if ($TableRow['type'] != 'tmp' && $TableRow['type'] != 'calcs') {
+                $Table = $this->getTable($TableRow);
+                if (key_exists('ttm_search', $Table->getFields())) {
+                    $searchTables = $searchTables ?? $this->getTable('ttm__search_settings')->getByParams(
+                            ['field' => 'table_id'],
+                            'list'
+                        );
+                    $tableId = $TableRow['id'];
+                    if (in_array($tableId, $searchTables)) {
+
+                        $pkCreate = function ($id) use ($tableId) {
+                            return $tableId . '-' . $id;
+                        };
+
+                        $changedIds = $Table->getChangeIds();
+                        foreach (['restored',
+                                     'added',
+                                     'changed'] as $operation) {
+                            foreach (array_keys($changedIds[$operation]) as $id) {
+                                if (empty($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
+                                    $deletes[] = $pkCreate($id);
+                                } else {
+                                    $updates[] = array_merge(
+                                        $Table->getTbl()['rows'][$id]['ttm_search']['v'],
+                                        ['pk' => $pkCreate($id), 'table' => (string)$tableId]
+                                    );
+                                }
+                            }
+                        }
+
+                        foreach (array_keys($changedIds['deleted']) as $id) {
+                            $deletes[] = $pkCreate($id);
+                        }
+                    }
+                }
+            }
+        }
+        if ($updates || $deletes) {
+            $SearchTable = $this->getTable('ttm__search_settings');
+            $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/"+$#path`)');
+            if ($updates) {
+                $SearchTable = $this->getTable('ttm__search_settings');
+                $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/documents"`)');
+                $Calc->execAction('KOD',
+                    $SearchTable->getTbl()['params'],
+                    $SearchTable->getTbl()['params'],
+                    $SearchTable->getTbl(),
+                    $SearchTable->getTbl(),
+                    $SearchTable,
+                    'exec',
+                    [
+                        'posts' => json_encode($updates, JSON_UNESCAPED_UNICODE),
+                        'path' => 'documents'
+                    ]);
+            }
+            if ($deletes) {
+                $Calc->execAction('KOD',
+                    $SearchTable->getTbl()['params'],
+                    $SearchTable->getTbl()['params'],
+                    $SearchTable->getTbl(),
+                    $SearchTable->getTbl(),
+                    $SearchTable,
+                    'exec',
+                    [
+                        'posts' => json_encode($deletes, JSON_UNESCAPED_UNICODE),
+                        'path' => 'documents/delete-batch'
+                    ]);
+            }
+        }
     }
 
 
