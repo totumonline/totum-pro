@@ -155,12 +155,13 @@ class Actions
 
 
         $i = -1;
-        $limit = 3;
+        $limit = $Table->getTbl()['params']['h_search_limit']['v'];
+        $offset=0;
         $hits = [];
         do {
             $i++;
             $removed = false;
-            $posts['offset'] = $i * $limit;
+            $posts['offset'] = $offset;
             $posts['limit'] = $limit-count($hits);
             $res = $Calc->execAction('KOD',
                 $Table->getTbl()['params'],
@@ -178,6 +179,7 @@ class Actions
             $res = json_decode($res, true);
 
             foreach ($res['hits'] as $k => $_h) {
+                $offset++;
                 list($tableId, $rowId) = explode('-', $_h['pk']);
                 if ($_Table = $getTable($tableId)) {
                     try {
