@@ -79,6 +79,14 @@ class Actions
         $Calc->execAction('KOD', [], [], [], [], $this->Totum->getTable('tables'), 'exec');
     }
 
+    public function searchCatalog()
+    {
+        $TableSearch = $this->Totum->getTable('ttm__search_catalog');
+        $catalog = $TableSearch->getByParams(['field' => ['id', 'title'], 'order' => [['field' => 'n', 'ad' => 'asc']]],
+            'rows');
+        return ['catalog' => $catalog];
+    }
+
     public function searchClick()
     {
         if ($this->post['pk'] ?? '') {
@@ -130,6 +138,18 @@ class Actions
             }
         }
 
+        if (!empty($this->post['cats'])) {
+            $catsFilters = [];
+            foreach ($this->post['cats'] as $id) {
+                $catsFilters[] = 'catalog:' . $id;
+            }
+            if ($facetFilters) {
+                $facetFilters = [$facetFilters, $catsFilters];
+            }else{
+                $facetFilters=$catsFilters;
+            }
+        }
+
         $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
         $posts = [
             "q" => $this->post['q'] ?? '',
@@ -156,13 +176,13 @@ class Actions
 
         $i = -1;
         $limit = $Table->getTbl()['params']['h_search_limit']['v'];
-        $offset=0;
+        $offset = 0;
         $hits = [];
         do {
             $i++;
             $removed = false;
             $posts['offset'] = $offset;
-            $posts['limit'] = $limit-count($hits);
+            $posts['limit'] = $limit - count($hits);
             $res = $Calc->execAction('KOD',
                 $Table->getTbl()['params'],
                 $Table->getTbl()['params'],
