@@ -145,9 +145,11 @@ class Actions
             }
             if ($facetFilters) {
                 $facetFilters = [$facetFilters, $catsFilters];
-            }else{
-                $facetFilters=$catsFilters;
+            } else {
+                $facetFilters = [$catsFilters];
             }
+        } elseif ($facetFilters) {
+            $facetFilters = [$facetFilters];
         }
 
         $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
