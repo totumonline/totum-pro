@@ -524,6 +524,10 @@ class Select extends Field
 
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
+        if ($valArray['v'] === '') {
+            $valArray['v'] = null;
+        }
+
         parent::addViewValues($viewType, $valArray, $row, $tbl);
 
         $list = $this->calculateSelectViewList($valArray, $row, $tbl);
@@ -548,8 +552,8 @@ class Select extends Field
                         if (!is_array($v)) {
                             if ($v_ = $list[$v] ?? null) {
                                 $v_ = $v_;
-                            } elseif (is_null($v) && ($this->data['withEmptyVal'] ?? false)) {
-                                $v_ = [$this->data['withEmptyVal'], 0];
+                            } elseif (is_null($v)) {
+                                $v_ = [$this->data['withEmptyVal'] ?? '', 0];
                             } else {
                                 $v_ = [$v, 1];
                             }
