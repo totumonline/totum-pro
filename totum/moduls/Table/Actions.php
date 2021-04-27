@@ -94,13 +94,27 @@ class Actions
             if (count($data) === 2) {
                 if (key_exists($data[0], $this->User->getTables())) {
                     $TableSearch = $this->Totum->getTable('ttm__search_settings');
-                    if ($code = $TableSearch->getByParams(['where' => [
+                    if ($codesRow = $TableSearch->getByParams(['where' => [
                         ['field' => 'table_id', 'operator' => '=', 'value' => $data[0]]
-                    ], 'field' => 'code'],
-                        'field')) {
+                    ], 'field' => ['buttons','code']],
+                        'row')) {
 
                         $Table = $this->Totum->getTable($data[0]);
                         if ($Table->loadFilteredRows('web', [$data[1]])) {
+                            if($this->post['button']??false){
+                                foreach ($codesRow['buttons'] as $btn){
+                                    if($btn['name']===$this->post['button']){
+                                        $code=$btn['code'];
+                                        break;
+                                    }
+                                }
+                                if(empty($code)){
+                                    throw new errorException('Код указанной кнопки не наден. Попробуйте еще раз');
+                                }
+                            }else{
+                                $code = $codesRow['code'];
+                            }
+
                             $Calc = new CalculateAction($code);
                             $Calc->execAction('KOD',
                                 $Table->getTbl()['rows'][$data[1]],
@@ -127,7 +141,19 @@ class Actions
 
         $facetFilters = [];
 
-        $tables = $Table->getByParams(['field' => 'table_id'], 'list');
+        $settings = $Table->getByParams(['field' => ['table_id', 'buttons']], 'rows');
+        $tables_buttons = [];
+        $tables = [];
+        $column_delete = function (&$list) {
+            unset($list['code']);
+        };
+        array_walk($settings,
+            function ($row) use (&$tables_buttons, &$tables, $column_delete) {
+                $tables_buttons[$row['table_id']] = $row['buttons'] && array_walk($row['buttons'],
+                    $column_delete) ? $row['buttons'] : [];
+                $tables[] = $row['table_id'];
+            });
+
         $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
         if ($tables_cleared != $tables) {
             foreach ($tables_cleared as $table) {
@@ -220,6 +246,10 @@ class Actions
                         unset($match);
                     }
                     unset($matches);
+                }
+
+                if (key_exists($tableId, $tables_buttons)) {
+                    $_h['buttons'] = $tables_buttons[$tableId];
                 }
                 $hits[] = $_h;
             }
