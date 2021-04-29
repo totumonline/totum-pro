@@ -197,6 +197,15 @@ abstract class ConfParent
         return $this->execSSHOn;
     }
 
+    public function getSecureFilesDir(): string
+    {
+        $dir=$this->baseDir . 'secureFiles/';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        return $dir;
+    }
+
 
     /********************* MAIL SECTION **************/
 

@@ -16,6 +16,7 @@ use totum\common\sql\SqlException;
 use totum\common\tableSaveException;
 use totum\common\Totum;
 use totum\config\Conf;
+use totum\fieldTypes\File;
 use totum\models\Table;
 use totum\models\Tree;
 use totum\tableTypes\aTable;
@@ -60,11 +61,11 @@ class TableController extends interfaceController
     {
         $tmpTables = $this->Totum->getTable('roles')->getByParams(
             [
-            'field' => 'tmp_for_favorites', 'where' => [
+                'field' => 'tmp_for_favorites', 'where' => [
                 ['field' => 'id', 'operator' => '=', 'value' => $this->Totum->getUser()->getRoles()],
                 ['field' => 'tmp_for_favorites', 'operator' => '!=', 'value' => []]
             ]
-        ],
+            ],
             'list'
         );
         $tmp = [];
@@ -73,13 +74,13 @@ class TableController extends interfaceController
         }
 
         if ($tmp) {
-            $tmp_tables=$this->Totum->getTable('tables')->getByParams(
+            $tmp_tables = $this->Totum->getTable('tables')->getByParams(
                 [
-                'field'=>['id', 'title'],
-                'where'=>[
-                    ['field'=>'id', 'operator'=>'=', 'value'=>$tmp]
-                ]
-            ],
+                    'field' => ['id', 'title'],
+                    'where' => [
+                        ['field' => 'id', 'operator' => '=', 'value' => $tmp]
+                    ]
+                ],
                 'rows'
             );
 
@@ -191,7 +192,7 @@ class TableController extends interfaceController
                     ]
                 ]
                 + (
-                    $t['icon'] ? ['icon' => 'fa fa-' . $t['icon']] : []
+                $t['icon'] ? ['icon' => 'fa fa-' . $t['icon']] : []
                 );
             if ($t['type'] !== "link") {
                 $branchIds[] = $t['id'];
@@ -380,9 +381,9 @@ class TableController extends interfaceController
             }
             $branch['href'] = $href;
             if (is_a(
-                $this,
-                TableController::class
-            ) && !empty($this->branchId) && $branch['id'] === (int)$this->branchId) {
+                    $this,
+                    TableController::class
+                ) && !empty($this->branchId) && $branch['id'] === (int)$this->branchId) {
                 $branch['active'] = true;
             }
         }
@@ -437,9 +438,9 @@ class TableController extends interfaceController
             }
             $message = $e->getMessage();
             if ($this->User && $this->User->isCreator() && key_exists(
-                WithPathMessTrait::class,
-                class_uses(get_class($e))
-            )) {
+                    WithPathMessTrait::class,
+                    class_uses(get_class($e))
+                )) {
                 $message .= "<br/>" . $e->getPathMess();
             }
             $this->__addAnswerVar('error', $message);
@@ -461,6 +462,8 @@ class TableController extends interfaceController
     public function actionTable(ServerRequestInterface $request)
     {
         $this->checkTableByUri($request);
+
+        $this->checkIsSecureFileRequest($request);
 
         if (!$this->Table) {
             return;
@@ -591,9 +594,9 @@ class TableController extends interfaceController
 
 
         if (!empty($request->getParsedBody()['method']) && in_array(
-            $request->getParsedBody()['method'],
-            ['getValue']
-        )) {
+                $request->getParsedBody()['method'],
+                ['getValue']
+            )) {
             if (!empty($request->getParsedBody()['table_id'])) {
                 $checkTreeTable((int)$request->getParsedBody()['table_id']);
                 return;
@@ -602,10 +605,10 @@ class TableController extends interfaceController
 
 
         if ($tableUri && (preg_match(
-            '/^(\d+)\/(\d+)\/(\d+)/',
-            $tableUri,
-            $tableMatches
-        ) || preg_match('/^(\d+)\/(\d+)/', $tableUri, $tableMatches))) {
+                    '/^(\d+)\/(\d+)\/(\d+)/',
+                    $tableUri,
+                    $tableMatches
+                ) || preg_match('/^(\d+)\/(\d+)/', $tableUri, $tableMatches))) {
             if (empty($tableMatches[3])) {
                 $tableRow = $this->Config->getTableRow($tableMatches[2]);
                 if ($tableRow['type'] !== 'calcs') {
@@ -648,14 +651,14 @@ class TableController extends interfaceController
                 //Проверка доступа к циклу
 
                 if (!$this->User->isCreator() && !empty($this->Cycle->getCyclesTable()->getFields()['creator_id']) && in_array(
-                    $this->Cycle->getCyclesTable()->getTableRow()['cycles_access_type'],
-                    [1, 2, 3]
-                )) {
+                        $this->Cycle->getCyclesTable()->getTableRow()['cycles_access_type'],
+                        [1, 2, 3]
+                    )) {
                     //Если не связанный пользователь
                     if (count(array_intersect(
-                        $this->Cycle->getRow()['creator_id']['v'],
-                        $this->User->getConnectedUsers()
-                    )) === 0) {
+                            $this->Cycle->getRow()['creator_id']['v'],
+                            $this->User->getConnectedUsers()
+                        )) === 0) {
                         if ($this->Cycle->getCyclesTable()->getTableRow()['cycles_access_type'] === '3') {
                             $this->onlyRead = true;
                         } else {
@@ -744,5 +747,53 @@ class TableController extends interfaceController
         $this->Config = $this->Config->getClearConf();
         $this->Totum = new Totum($this->Config, $this->User);
         $this->checkTableByUri($request);
+    }
+
+    protected function checkIsSecureFileRequest(ServerRequestInterface $request)
+    {
+        if (!empty($filename = $request->getQueryParams()['file'] ?? null)) {
+            session_write_close();
+            if (!$this->Table) {
+                $error = 'Таблица файла не найдена';
+            } else {
+                preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)/', $filename, $matches);
+                if ($field = $this->Table->getFields()[$matches['field']]) {
+                    if (empty($field['secureFile'])) {
+                        $error = 'Файл не защищенный';
+                    } elseif (!$this->Table->isField('visible', 'web', $field)) {
+                        $error = 'Доступ к полю файла запрещен';
+                    } else {
+                        if ($field['category'] === 'column') {
+                            $rowId = $this->Table->getTableRow()['type'] === 'calcs' ? (int)$matches[3] : (int)$matches[2];
+                            if ($this->Table->loadFilteredRows('web', [$rowId])) {
+                                $filepath = File::getFilePath($filename, $this->Config, $field);
+                            } else {
+                                $error = 'Доступ к строке файла запрещен или строка не существует';
+                            }
+                        } else {
+                            $filepath = File::getFilePath($filename, $this->Config, $field);
+                        }
+                    }
+                } else {
+                    $error = 'Поле файла не найдено';
+                }
+            }
+            if (!empty($filepath)) {
+                if (!is_file($filepath)) {
+                    $error = 'Файл не существует на диске';
+                } else {
+                    readfile($filepath);
+                    die;
+                }
+            }else if(empty($error)){
+                $error = 'Ошибка парсинга имени файла';
+            }
+
+            if ($error) {
+                http_response_code(404);
+                echo $error;
+            }
+            die;
+        }
     }
 }

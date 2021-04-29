@@ -153,7 +153,7 @@ abstract class RealTables extends aTable
             }
         }
 
-        if ($this->tableRow['deleting']==='none' && !$isInnerChannel) {
+        if ($this->tableRow['deleting'] === 'none' && !$isInnerChannel) {
             throw new errorException('В таблице [[' . $this->tableRow['title'] . ']] запрещено удаление');
         } else {
             switch ($this->tableRow['deleting']) {
@@ -920,9 +920,11 @@ abstract class RealTables extends aTable
 
                 $this->changeIds['deleted'][$row['id']] = null;
                 foreach ($this->sortedFields['column'] as $field) {
-                    if ($field['type'] === 'file' && $this->tableRow['deleting']!=='hide') {
+                    if ($field['type'] === 'file' && $this->tableRow['deleting'] !== 'hide') {
                         $this->loadRowsByIds([$row['id']]);
-                        File::deleteFilesOnCommit($this->tbl['rows'][$row['id']][$field['name']]['v'], $this->getTotum()->getConfig());
+                        File::deleteFilesOnCommit($this->tbl['rows'][$row['id']][$field['name']]['v'],
+                            $this->getTotum()->getConfig(),
+                            $field);
                     }
                 }
                 unset($this->tbl['rows'][$row['id']]);

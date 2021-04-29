@@ -13,6 +13,14 @@ trait MultiTrait
         }
         return $dir;
     }
+    public function getSecureFilesDir(): string
+    {
+        $dir = $this->baseDir . 'secureFiles/' . ($this->getHostForDir($this->getFullHostName())) . '/';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        return $dir;
+    }
 
     protected function getHostForDir($host)
     {
