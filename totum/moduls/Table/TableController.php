@@ -757,7 +757,12 @@ class TableController extends interfaceController
                 $error = 'Таблица файла не найдена';
             } else {
                 preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)/', $filename, $matches);
-                if ($field = $this->Table->getFields()[$matches['field']]) {
+                /*Проверка не скормили ли неверный путь*/
+                if($matches['table']!==(string)$this->Table->getTableRow()['id']
+                    || ($this->Table->getTableRow()['type']==='calcs' && $matches[2]!==(string)$this->Table->getCycle()->getId())){
+                    $error = 'Путь к файлу неверно сформирован';
+                }
+                else if ($field = $this->Table->getFields()[$matches['field']]) {
                     if (empty($field['secureFile'])) {
                         $error = 'Файл не защищенный';
                     } elseif (!$this->Table->isField('visible', 'web', $field)) {
