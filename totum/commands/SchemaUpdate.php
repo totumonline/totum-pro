@@ -40,19 +40,18 @@ class SchemaUpdate extends Command
         if (!class_exists(Conf::class)) {
             $output->writeln('ERROR: config class not found');
         }
-        $Conf = new Conf('dev');
+        $Conf = new Conf();
         if (is_callable([$Conf, 'setHostSchema'])) {
             if ($schema = $input->getOption('schema')) {
                 $Conf->setHostSchema(null, $schema);
+            }else{
+                $output->writeln('Set option -s for identify the schema or use schemas-update for update all ones');
+                return;
             }
         }
         $sourceName = $input->getArgument('matches');
 
         $file = $input->getArgument('file');
-
-        if ($file === 'sys_update') {
-            $file = dirname(__FILE__) . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'moduls' . DIRECTORY_SEPARATOR . 'install' . DIRECTORY_SEPARATOR . 'start_' . $Conf->getLang() . '.json.gz.ttm';
-        }
 
         $TotumInstall = new TotumInstall(
             $Conf,
@@ -60,17 +59,13 @@ class SchemaUpdate extends Command
             $output
         );
 
-        if (!is_file($file)) {
-            throw new errorException('File not found');
-        }
-        if (!($cont = file_get_contents($file))) {
-            throw new errorException('File is empty');
-        }
-        if (!($cont = gzdecode($cont))) {
-            throw new errorException('File is not gzip');
-        }
-        if (!($cont = json_decode($cont, true))) {
-            throw new errorException('File is not json');
+        if ($file === 'sys_update') {
+            $path = dirname(__FILE__) . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'moduls' . DIRECTORY_SEPARATOR . 'install' . DIRECTORY_SEPARATOR;
+            $file = $path. 'start.json.gz.ttm';
+            $cont = $TotumInstall->getDataFromFile($file);
+            $cont = $TotumInstall->schemaTranslate($cont, $path.$Conf->getLang() . '.json', $Conf->getLang() !== 'en' ? $path.'en.json' : null);
+        }else{
+            $cont = $TotumInstall->getDataFromFile($file);
         }
 
         if (($matches = json_decode($sourceName, true)) && is_array($matches) && key_exists(
@@ -82,7 +77,7 @@ class SchemaUpdate extends Command
         } else {
             $matches = $TotumInstall->getTotum()->getTable('ttm__updates')->getTbl()['params']['h_matches']['v'][$sourceName] ?? [];
         }
-        $cont = TotumInstall::applyMatches($cont, $matches);
+        $cont = $TotumInstall->applyMatches($cont, $matches);
 
         $TotumInstall->updateSchema($cont, true, $sourceName);
     }

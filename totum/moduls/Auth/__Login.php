@@ -7,7 +7,7 @@ use totum\config\Conf;
 
 <div id="auth_form"
      class="center-block"
-     style="width: 350px; margin-top: 10vh; display: none;">
+     style="display: none;">
     <style>
         #top_line, .Tree {
             display: none;
@@ -20,24 +20,27 @@ use totum\config\Conf;
         input.error {
             border-color: red;
         }
+        body{
+            background: url(/imgs/mailttm.png) no-repeat center center fixed;
+            background-size: cover;
+        }
     </style>
 
     <div style="text-align: center; font-size: 30px; padding-bottom: 2vh;padding-top: 2vh;"
          class="login-brand"><?= $schema_name ?> </div>
-    <div class="center-block"
-         style="width: 300px; ">
+    <div class="center-block">
         <form method="post"
               id='form'>
-            <div class="form-group"><label>Логин/Email:</label><input type="text"
+            <div class="form-group"><label><?=$this->translate('Login/Email')?>:</label><input type="text"
                                                                       name="login"
                                                                       value=""
                                                                       class="form-control"
                 /></div>
-            <div class="form-group"><label>Пароль:</label><input type="password"
+            <div class="form-group"><label><?=$this->translate('Password')?>:</label><input type="password"
                                                                  name="pass"
                                                                  class="form-control"/></div>
             <div class="form-group"><input type="submit"
-                                           value="Вход"
+                                           value="<?=$this->translate('Log in')?>"
                                            style="width: 79px;margin-top:4px;"
                                            id="login"
                                            class="form-control"/>
@@ -49,7 +52,7 @@ use totum\config\Conf;
             <button
                     style=";margin-top:4px;"
                     id="recover"
-                    class="form-control btn btn-default">Отправить новый пароль на email
+                    class="form-control btn btn-default"><?=$this->translate('Send new password to email')?>
             </button>
             <?php
         } ?>
@@ -64,7 +67,7 @@ use totum\config\Conf;
         } catch (e) {
             $('body').html('<div style="width: 600px; margin: auto; padding-top: 50px; font-size: 16px; text-align: center;" id="comeinBlock">' +
                 '<img src="/imgs/start.png" alt="">' +
-                '<div style="padding-bottom: 10px;">Сервис оптимизирован под десктопные броузеры Chrome, Safari, Yandex последних версий. Похоже, ваша версия броузера не поддерживается. Ошибка - для разработчиков: ' + e.toString() + '</div>' +
+                '<div style="padding-bottom: 10px;"><?=$this->translate('Service is optimized for desktop browsers Chrome, Safari, Yandex latest versions. It seems that your version of the browser is not supported. Error - for developers: ')?>' + e.toString() + '</div>' +
                 '</div>');
         }
     })

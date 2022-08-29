@@ -5,36 +5,46 @@ namespace totum\moduls\Table;
 
 use totum\common\calculates\CalculateAction;
 use totum\common\errorException;
+use totum\common\FormatParamsForSelectFromTable;
+use totum\common\Lang\RU;
 use totum\fieldTypes\File;
+use totum\models\TmpTables;
 use totum\tableTypes\tmpTable;
 
 class WriteTableActions extends ReadTableActions
 {
     public function checkUnic()
     {
-        return $this->Table->checkUnic($this->post['fieldName'] ?? '', $this->post['fieldVal'] ?? '');
+        if($this->Table->isField('visible', 'web', $fieldName = ($this->post['fieldName'] ?? '')) && $this->Table->getFields()[$fieldName]['type']==='unic'){
+            return $this->Table->checkUnic($fieldName, $this->post['fieldVal'] ?? '');
+        }
+        throw new errorException($fieldName.' is not field of type unique');
     }
 
     public function add()
     {
         if ($this->User->isOneCycleTable($this->Table->getTableRow())) {
-            return 'Добавление запрещено';
+            return $this->translate('You are not allowed to add to this table');
         }
         if (!$this->Table->isUserCanAction('insert')) {
-            throw new errorException('Добавление в эту таблицу вам запрещено');
+            throw new errorException($this->translate('You are not allowed to add to this table'));
         }
+
         $this->Table->setWebIdInterval(json_decode($this->post['ids'], true));
 
-        $add = json_decode($this->post['data'], true) ?? [];
         if ($this->Table->getTableRow()['name'] === 'tables_fields' && key_exists(
-            'afterField',
-            $this->post['tableData']
-        )) {
+                'afterField',
+                $this->post['tableData']
+            )) {
             $this->Totum->getModel('tables_fields')->setAfterField($this->post['tableData']['afterField']);
         }
 
+        $data = null;
+        if (!empty($this->post['data'])) {
+            $data = json_decode($this->post['data'], true);
+        }
 
-        return $this->modify(['add' => [$add], 'addAfter' => $this->post['insertAfter'] ?? null]);
+        return $this->modify(['add' => $data ?? $this->post['hash'] ?? 'new cycle', 'addAfter' => $this->post['insertAfter'] ?? null]);
     }
 
     public function tmpFileUpload()
@@ -45,62 +55,44 @@ class WriteTableActions extends ReadTableActions
     public function saveOrder()
     {
         if (!$this->Table->isUserCanAction('reorder')) {
-            throw new errorException('Сортировка в этой таблице вам запрещена');
+            throw new errorException($this->translate('You are not allowed to sort in this table'));
         }
 
         if (!empty($this->post['ids']) && ($orderedIds = json_decode(
-            $this->post['orderedIds'],
-            true
-        ))) {
+                $this->post['orderedIds'],
+                true
+            ))) {
             return $this->modify(['reorder' => $orderedIds ?? []]);
         } else {
-            throw new errorException('Таблица пуста');
+            throw new errorException($this->translate('Table is empty'));
         }
     }
 
     public function checkInsertRow()
     {
-        $this->Table->reCalculateFilters(
-            'web',
-            false,
-            false,
-            ["params" => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
-        );
-
-        $visibleFields = $this->Table->getVisibleFields('web', true);
-        $editedFields = json_decode($this->post['editedFields'] ?? '[]', true);
-        $addData = json_decode($this->post['data'], true) ?? [];
-
-        $columnFilter = [];
-        foreach ($this->Table->getSortedFields()['filter'] as $k => $f) {
-            if (($f['showInWeb'] ?? false) && $f['column'] ?? false) {
-                $columnFilter[$f['column']] = $k;
-            }
+        if (empty($this->post['hash'])) {
+            do {
+                $hash = 'i-' . md5(microtime(true) . rand());
+            } while (!TmpTables::init($this->Totum->getConfig())->saveByHash(
+                TmpTables::SERVICE_TABLES['insert_row'],
+                $this->User,
+                $hash,
+                [],
+                true
+            ));
+        } else {
+            $hash = $this->post['hash'];
         }
-        foreach ($visibleFields['column'] as $v) {
-            $filtered = null;
-            if (key_exists($v['name'], $columnFilter)) {
-                $val = $this->Table->getTbl()['params'][$columnFilter[$v['name']]]['v'];
 
-                if (isset($columnFilter[$v['name']])
-                    && $val !== '*ALL*'
-                    && $val !== ['*ALL*']
-                    && $val !== '*NONE*'
-                    && $val !== ['*NONE*']
-                ) {
-                    $filtered = $val ?? null;
-                }
-                if (is_null($addData[$v['name']] ?? null) && !empty($filtered)) {
-                    $addData[$v['name']] = $filtered;
-                }
-            }
-            if (!in_array($v['name'], $editedFields) && !empty($v['code'])) {
-                unset($addData[$v['name']]);
-            }
-        }
-        $data = ['rows' => [$this->Table->checkInsertRow($this->post['tableData'] ?? [], $addData)]];
-        $data = $this->Table->getValuesAndFormatsForClient($data, 'edit');
-        return ['row' => $data['rows'][0]];
+        $data = ['rows' => [$this->getInsertRow($hash,
+            json_decode($this->post['data'], true),
+            $this->post['tableData'] ?? [],
+            $this->post['clearField'] ?? null)]];
+
+        $data = $this->Table->getValuesAndFormatsForClient($data, 'edit', []);
+        $res = ['row' => $data['rows'][0], 'hash' => $hash];
+        $this->addLoadedSelects($res);
+        return $res;
     }
 
     public function checkEditRow()
@@ -122,8 +114,10 @@ class WriteTableActions extends ReadTableActions
         }
 
         $row = $this->Table->checkEditRow($data, $dataSetToDefault, $this->post['tableData'] ?? []);
-        $res['row'] = $this->Table->getValuesAndFormatsForClient(['rows' => [$row]], 'edit')['rows'][0];
-        $res['f'] = $this->getTableFormat();
+        $res['row'] = $this->Table->getValuesAndFormatsForClient(['rows' => [$row]], 'edit', [])['rows'][0];
+        $res['f'] = $this->getTableFormat([]);
+        $this->addLoadedSelects($res);
+
         return $res;
     }
 
@@ -144,12 +138,12 @@ class WriteTableActions extends ReadTableActions
                 $this->post['type']
             );
 
-            if(is_array($r) && ($r['ok']??false)){
-                $this->Totum->addToInterfaceLink($this->Request->getServerParams()['REQUEST_URI'], 'self', 'reload');
+            if (is_array($r) && ($r['ok'] ?? false)) {
+                return ['ok' => 1];
             }
             return $r;
         } else {
-            throw new errorException('У вас нет доступа для csv-изменений');
+            throw new errorException($this->translate('You do not have access to csv-import in this table'));
         }
     }
 
@@ -162,10 +156,12 @@ class WriteTableActions extends ReadTableActions
     public function duplicate()
     {
         if (!$this->Table->isUserCanAction('duplicate')) {
-            throw new errorException('Дублирование в этой таблице вам запрещено');
+            throw new errorException($this->translate('You are not allowed to duplicate in this table'));
         }
         $ids = !empty($this->post['duplicate_ids']) ? json_decode($this->post['duplicate_ids'], true) : [];
         if ($ids) {
+            $this->Table->checkIsUserCanViewIds('web', $ids);
+
             if (preg_match('/^\s*(a\d+)?=\s*:\s*[^\s]/', $this->Table->getTableRow()['on_duplicate'])) {
                 try {
                     $Calc = new CalculateAction($this->Table->getTableRow()['on_duplicate']);
@@ -180,14 +176,14 @@ class WriteTableActions extends ReadTableActions
                         ['ids' => $ids]
                     );
                 } catch (errorException $e) {
-                    $e->addPath('Таблица [[' . $this->Table->getTableRow()['name'] . ']]; КОД ПРИ ДУБЛИРОВАНИИ');
+                    $e->addPath($this->translate('Table %s. DUPLICATION CODE', $this->Table->getTableRow()['name']));
                     throw $e;
                 }
             } else {
                 $this->modify(['channel' => 'inner', 'duplicate' => ['ids' => $ids, 'replaces' => json_decode(
-                    $this->post['data'],
-                    true
-                ) ?? []], 'addAfter' => ($this->post['insertAfter'] ?? null)]);
+                        $this->post['data'],
+                        true
+                    ) ?? []], 'addAfter' => ($this->post['insertAfter'] ?? null)]);
             }
 
             return $this->getTableClientChangedData([]);/*$this->getTableClientData($this->post['offset'] ?? null,
@@ -198,15 +194,16 @@ class WriteTableActions extends ReadTableActions
     public function delete()
     {
         if (!$this->Table->isUserCanAction('delete')) {
-            throw new errorException('Удаление из этой таблицы вам запрещено');
+            throw new errorException($this->translate('You are not allowed to delete from this table'));
         }
         $ids = (array)(!empty($this->post['delete_ids']) ? json_decode($this->post['delete_ids'], true) : []);
         return $this->modify(['remove' => $ids]);
     }
+
     public function restore()
     {
         if (!$this->Table->isUserCanAction('restore')) {
-            throw new errorException('Восстановление в этой таблице вам запрещено');
+            throw new errorException($this->translate('You are not allowed to restore in this table'));
         }
         $ids = (array)(!empty($this->post['restore_ids']) ? json_decode($this->post['restore_ids'], true) : []);
 
@@ -215,9 +212,30 @@ class WriteTableActions extends ReadTableActions
 
     public function selectSourceTableAction()
     {
-        return $this->Table->selectSourceTableAction(
+        $this->Table->selectSourceTableAction(
             $this->post['field_name'],
             json_decode($this->post['data'], true) ?? []
         );
+        return ['ok' => true];
     }
+
+    protected function addLoadedSelects(array &$res)
+    {
+        if (!empty($this->post['loadSelects'])) {
+            $selects = [];
+            foreach ($this->Table->getSortedFields()['column'] as $field) {
+                if ($field['type'] === 'select' && $this->Table->isField('editable', 'web', $field)) {
+                    if (($res['row'][$field['name']]['f']['block'] ?? false) != true) {
+                        if ($this->post['loadSelects'] === 'all' || ($field['codeSelectIndividual'] ?? false)) {
+                            $item = $res['row'];
+                            $item = array_map(fn($x) => is_array($x) && key_exists('v', $x) ? $x['v'] : $x, $item);
+                            $selects[$field['name']] = $this->getEditSelect(['field' => $field['name'], 'item' => $item]);
+                        }
+                    }
+                }
+            }
+            $res['selects'] = $selects;
+        }
+    }
+
 }

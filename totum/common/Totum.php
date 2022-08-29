@@ -4,6 +4,7 @@ namespace totum\common;
 
 use totum\common\calculates\CalculateAction;
 use totum\common\configs\TablesModelsTrait;
+use totum\common\Lang\RU;
 use totum\common\logs\ActionsLog;
 use totum\common\logs\CalculateLog;
 use totum\common\logs\OutersLog;
@@ -27,10 +28,10 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '1.1.29.1';
+    public const VERSION = '3.7.46.1';
 
 
-    public const TABLE_CODE_PARAMS = ['row_format', 'table_format'];
+    public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
     public const FIELD_ROLES_PARAMS = ['addRoles', 'logRoles', 'webRoles', 'xmlRoles', 'editRoles', 'xmlEditRoles'];
     public const FIELD_CODE_PARAMS = ['code', 'codeSelect', 'codeAction', 'format'];
     public const TABLE_ROLES_PARAMS = [
@@ -43,15 +44,13 @@ class Totum
         'order_roles',
         'read_roles',
         'tree_off_roles'];
-    const LANGUAGES = ["ru"];
 
     protected $interfaceData = [];
-
-
     /**
      * @var Conf
      */
     private $Config;
+    private TotumMessenger $Messenger;
     /**
      * @var User
      */
@@ -78,6 +77,7 @@ class Totum
      */
     protected $CalculateLog;
     protected $fieldObjectsCachesVar;
+    protected array $orderFieldCodeErrors = [];
 
 
     /**
@@ -101,6 +101,25 @@ class Totum
     public static function isRealTable($tableRow)
     {
         return is_subclass_of(static::getTableClass($tableRow), RealTables::class);
+    }
+
+    public function addOrderFieldCodeError(aTable $Table, string $nameVar)
+    {
+        $this->orderFieldCodeErrors[$Table->getTableRow()['name']][$nameVar] = 1;
+    }
+
+
+    public function getMessenger()
+    {
+        return $this->Messenger = $this->Messenger ?? new TotumMessenger();
+    }
+
+    /**
+     * @return array
+     */
+    public function getOrderFieldCodeErrors(): array
+    {
+        return $this->orderFieldCodeErrors;
     }
 
     public function getInterfaceDatas()
@@ -147,6 +166,9 @@ class Totum
      */
     public function getTableRow($where, $force = false)
     {
+        if (is_array($where) && key_exists('name', $where) && key_exists('id', $where)) {
+            return $where;
+        }
         return $this->Config->getTableRow($where, $force);
     }
 
@@ -263,13 +285,13 @@ class Totum
 
 
     /**
-     * @param int|string|array $table
+     * @param array|int|string $table
      * @param null $extraData
-     * @param bool $light - используется в isTableChanged.php
+     * @param bool $light - возможно, не используется
      * @return aTable
      * @throws errorException
      */
-    public function getTable($table, $extraData = null, $light = false, $forceNew = false): aTable
+    public function getTable(array|int|string $table, $extraData = null, $light = false, $forceNew = false): aTable
     {
         if (is_array($table)) {
             $tableRow = $table;
@@ -277,12 +299,11 @@ class Totum
             $tableRow = $this->Config->getTableRow($table);
         }
 
-
         if (empty($tableRow)) {
-            throw new errorException('Таблица [[' . $table . ']] не найдена');
+            throw new errorException($this->translate('Table [[%s]] is not found.', $table));
         } elseif (empty($tableRow['type'])) {
             debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-            throw new errorException('Внутренняя ошибка: не указан тип таблицы');
+            throw new errorException($this->translate('Table type is not defined.'));
         }
         if (is_array($tableRow['type'])) {
             debug_print_backtrace();
@@ -327,8 +348,8 @@ class Totum
                     $this->tablesInstances[$cacheString] = cyclesTable::init($this, $tableRow, $extraData, $light);
                     break;
                 default:
-                    errorException::criticalException(
-                        "Таблица типа {$tableRow['type']} не подключена в системе",
+                    errorException::criticalException($this->translate('The [[%s]] table type is not connected to the system.',
+                        $tableRow['type']),
                         $this
                     );
             }
@@ -365,12 +386,12 @@ class Totum
         unset($this->cacheCycles[$hashKey]);
     }
 
-    public function getNamedModel($className, $isService = false)
+    public function getNamedModel(string $className, $isService = false): Model
     {
         return $this->getModel(TablesModelsTrait::getTableNameByModel($className), $isService);
     }
 
-    public function getModel($tableName, $isService = false): Model
+    public function getModel(string $tableName, $isService = false): Model
     {
         $m = $this->Config->getModel($tableName, null, $isService);
 
@@ -406,7 +427,7 @@ class Totum
         $this->CalculateLog->setLogTypes($types);
     }
 
-    public function addToInterfaceLink($uri, $target, $title = "", $postData = null, $width = null, $refresh = false, $elseData = [])
+    public function addToInterfaceLink($uri, $target, $title = '', $postData = null, $width = null, $refresh = false, $elseData = [])
     {
         $this->interfaceLinks[] = ['uri' => $uri, 'target' => $target, 'title' => $title, 'postData' => $postData, 'width' => $width, 'refresh' => $refresh, 'elseData' => $elseData];
     }
@@ -435,7 +456,7 @@ class Totum
     public function getUser(): User
     {
         if (!$this->User) {
-            errorException::criticalException('Потеряна авторизация');
+            errorException::criticalException($this->translate('Authorization lost.'), $this);
         }
         return $this->User;
     }
@@ -444,7 +465,7 @@ class Totum
     {
         if (!$this->totumLogger) {
             if (!$this->User) {
-                errorException::criticalException('Нельзя проводить изменения с логированием без авторизации', $this);
+                errorException::criticalException($this->translate('Authorization lost.'), $this);
             }
             $this->totumLogger = new ActionsLog($this);
         }
@@ -493,5 +514,15 @@ class Totum
     public function getSpecialInterface()
     {
         return null;
+    }
+
+    public function getLangObj(): Lang\LangInterface
+    {
+        return $this->Config->getLangObj();
+    }
+
+    protected function translate(string $str, mixed $vars = []): string
+    {
+        return $this->getLangObj()->translate($str, $vars);
     }
 }

@@ -3,11 +3,11 @@
     <script>App = {}</script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/libs.css?v=ed08235">
-    <script src="/js/libs.js?v=d510c11"></script>
+          href="/css/libs.css?v=005a92c">
+    <script src="/js/libs.js?v=f52b4ad"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=26c42d3">
+          href="/css/main.css?v=87d2e74">
 
     <?php
     if ($isCreatorView ?? null) { ?>
@@ -18,7 +18,9 @@
         <?php
     } ?>
 
-    <script src="/js/main.js?v=e07f025"></script>
+    <script src="/js/main.js?v=047e0a8"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?24"></script>
+    <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
 
     <link rel="shortcut icon" type="image/png" href="/fls/6_favicon.png"/>
@@ -33,7 +35,7 @@
 <body id="pk"
       class="lock">
 <noscript>
-    Для работы с системой необходимо включить JavaScript в настройках броузера
+    <?= $this->translate('To work with the system you need to enable JavaScript in your browser settings') ?>
 </noscript>
 <div id="big_loading" style="display: none;"><i class="fa fa-cog fa-spin fa-3x"></i></div>
 <script>

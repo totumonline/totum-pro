@@ -7,9 +7,11 @@ use JsonStreamingParser\Exception\ParsingException;
 use JsonStreamingParser\Listener\ListenerInterface;
 use JsonStreamingParser\Listener\ParserAwareInterface;
 use JsonStreamingParser\Listener\PositionAwareInterface;
+use JsonStreamingParser\Parser;
 use JsonStreamingParser\ParserHelper;
+use totum\common\errorException;
 
-class TotumJsonParcer
+class TotumJsonParcer extends Parser
 {
     const STATE_START_DOCUMENT = 0;
     const STATE_END_DOCUMENT = 14;
@@ -634,6 +636,7 @@ class TotumJsonParcer
      */
     protected function throwParseError(string $message): void
     {
-        throw new ParsingException($this->lineNumber, $this->charNumber, $message);
+        $message=sprintf('Json parsing error in [%d:%d]. %s', $this->lineNumber, $this->charNumber, $message);
+        throw new errorException($message);
     }
 }

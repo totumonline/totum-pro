@@ -1,27 +1,54 @@
 <!DOCTYPE html>
 <head lang="ru">
     <script>App = {}</script>
-    <link rel="shortcut icon" type="image/png" href="/fls/297_favicon.png"/>
+    <link rel="shortcut icon" type="image/png" href="/fls/6_favicon.png"/>
     <title><?= !empty($title) ? $title . ' — ' : '' ?>Totum</title>
     <?php
     $host = 'http' . (!empty($_SERVER['HTTPS']) ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . '/';
     ?>
-    <meta name="viewport" content="width=900, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible"
+          content="ie=edge">
     <meta property="og:image" content="<?= $host ?>imgs/hand.png"/>
     <meta property="og:url" content="<?= $host ?>"/>
-    <meta property="og:title" content="TOTUM — платформа для любой автоматизации в малом бизнесе"/>
-    <meta property="og:description"
-          content="TOTUM — платформа для любой автоматизации в малом бизнесе. На ней можно собирать заточенные под клиента базы данных с готовым интерфейсом и настраиваемым доступом, узкоспециальные CRM, склады, расчеты и все, что придет в голову"/>
+    <meta property="og:title" content=""/>
+    <meta property="og:description" content=""/>
+
+    <style>
+        body{
+            background: url(/imgs/mailttm.png?1) no-repeat center center fixed;
+            background-size: cover;
+        }
+        #form.ttm-form {
+            width: 100%;
+            min-height: 200px;
+            max-width: 620px;
+            margin: auto;
+            padding-top: 20px;
+            padding-bottom: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 5px 10px rgb(0, 0, 0 , 20%);
+            backdrop-filter: blur(10px);
+            background: rgb(255 255 255 / 90%);
+        }
+    </style>
+
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1">
+
 </head>
 <body id="pk"
       class="lock">
 <noscript>
-    Для работы с системой необходимо включить JavaScript в настройках броузера
+    <?=$this->translate('To work with the system you need to enable JavaScript in your browser settings')?>
 </noscript>
 <div id="big_loading" style="display: none;"><i class="fa fa-cog fa-spin fa-3x"></i></div>
-<div class="page_content">
+<div id="form">
     <script>
-        let num = "78";
+        window.MAIN_HOST_FORM = true;
+        let num = "86";
         (function (src, cssSrc, address, post, get, input) {
             let div = document.currentScript.parentNode;
             let path = "<?=$path?>";
@@ -31,7 +58,7 @@
 
             newScript.onerror = (event) => {
                 console.log(event)
-                div.innerHTML = '<div>Не загрузилось :(</div>';
+                div.innerHTML = '<div><?=$this->translate('It did not load :(')?>></div>';
             };
             newScript.onload = (event) => {
                 address = src.match(/^(.*?\/)[^\/]*$/)[1] + address;

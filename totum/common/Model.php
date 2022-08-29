@@ -4,6 +4,7 @@ namespace totum\common;
 
 use PDO;
 use PDOStatement;
+use totum\common\Lang\LangInterface;
 use totum\common\sql\Sql;
 use totum\common\sql\SqlException;
 use totum\config\Conf;
@@ -17,7 +18,7 @@ class Model
 
     protected $table;
     protected $idFieldName = 'id';
-    protected $isServiceTable = false;
+    protected bool $isServiceTable = false;
     /**
      * @var Sql
      */
@@ -32,7 +33,7 @@ class Model
         return in_array($fName, static::serviceFields);
     }
 
-    public function __construct(Sql $Sql, $table, $idField = null, $isService = null)
+    public function __construct(Sql $Sql, $table, protected LangInterface $Lang, $idField = null, $isService = null)
     {
         $this->table = $table;
         $this->Sql = $Sql;
@@ -45,7 +46,11 @@ class Model
         }
     }
 
-    /*TODO delete method if will not use */
+    protected function translate(string $str, mixed $vars = []): string
+    {
+        return $this->Lang->translate($str, $vars);
+    }
+
     public static function getClearValuesWithExtract($row)
     {
         if ($row) {
@@ -126,7 +131,9 @@ class Model
     public function addColumn($fieldName)
     {
         $this->preparedCache = [];
-        $this->Sql->exec('ALTER TABLE ' . $this->table . ' ADD COLUMN ' . $fieldName . ' JSONB NOT NULL DEFAULT \'{"v":null}\' ', [], true);
+        $this->Sql->exec('ALTER TABLE ' . $this->table . ' ADD COLUMN ' . $fieldName . ' JSONB NOT NULL DEFAULT \'{"v":null}\' ',
+            [],
+            true);
     }
 
     public static function init(Conf $Config, $isService = false)
@@ -190,10 +197,10 @@ class Model
 
     protected function getPreprendSelectFields($fields)
     {
-        if (!$this->isServiceTable && $fields !== '*') {
+        if (!$this->isServiceTable && $fields[0] !== '*') {
             $fields = explode(',', $fields);
             foreach ($fields as &$f) {
-                if (!strpos($f, ' as ')) {
+                if (!strpos($f, ' as ') && !str_contains($f, '*')) {
                     $f = preg_replace('/[^a-z0-9_]/', '', $f);
                     if (!in_array($f, static::serviceFields) && !strpos($f, ' as ')) {
                         $f = $f . '->>\'v\' as ' . $f;
@@ -328,7 +335,7 @@ class Model
         }
         foreach ($train as $k => &$val) {
             if (is_bool($val)) {
-                $val = $val ? 'TRUE' : 'FALSE';
+                $val = $val ? 'true' : 'false';
             } elseif (is_null($val) && !$nullMeans) {
                 unset($train[$k]);
             }
@@ -409,7 +416,7 @@ class Model
                 $whereStr .= '(';
                 if (preg_match('/^\d+$/', $k)) {
                     debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-                    errorException::criticalException('Ошибка формирования запроса для prepared');
+                    errorException::criticalException('Forming query error for prepared.', $this->Sql);
                 } else {
                     if ($matches[1]) {
                         switch ($matches[1]) {
@@ -417,14 +424,14 @@ class Model
                                 $arrayOperator = ' NOT IN ';
                                 $arrayEmpty = ' TRUE ';
                                 if (is_null($v)) {
-                                    $operator = " IS NOT NULL";
+                                    $operator = ' IS NOT NULL';
                                 } else {
-                                    $operator = " != ?";
+                                    $operator = ' != ?';
                                 }
                                 break;
                             default:
                                 if (is_array($v)) {
-                                    throw new SqlException('Сравнение больше/меньше неприменимо к массивам');
+                                    throw new SqlException('The greater/lower comparison does not apply to arrays.');
                                 }
                                 $operator = " {$matches[1]} ?";
                         }
@@ -433,9 +440,9 @@ class Model
                         $arrayOperator = ' IN ';
                         $arrayEmpty = ' FALSE ';
                         if (is_null($v)) {
-                            $operator = " IS NULL";
+                            $operator = ' IS NULL';
                         } else {
-                            $operator = " = ?";
+                            $operator = ' = ?';
                         }
                     }
                     $f = self::quoteWhereField($k, $matches[2] ?? 'S');
@@ -490,14 +497,6 @@ class Model
         }
         return $field_val;
     }
-
-    /*function __get($name)
-    {
-        if ($name == 'table') return $this->table;
-        if ($name == 'idFieldName') return $this->idFieldName;
-
-        throw new \Exception('Model not contents property '.$name);
-    }*/
 
     public function getAllIndexedByField($where, $fields, $field, $order_by = null)
     {
@@ -573,15 +572,6 @@ class Model
         )->rowCount();
     }
 
-    /*
-     * DELETE
-     *
-     * function insert($vars, $returning = 'idFieldName', $ignore = false)
-    {
-        if ($returning == 'idFieldName') $returning = $this->idFieldName;
-        return $this->Sql->insert($this->table, $vars, $returning, $ignore);
-    }*/
-
     public function insertPrepared($vars, $returning = 'idFieldName', $ignore = false, $cacheIt = true)
     {
         if ($returning === 'idFieldName') {
@@ -625,7 +615,7 @@ class Model
     public function delete($where, $ignore = 0)
     {
         if (empty($where)) {
-            throw new \Exception('Данные не верны');
+            throw new \Exception('Fill where parameter.');
         }
         if ($where = $this->getWhere($where)) {
             $query_string = 'delete ' . ($ignore ? 'ignore' : '') . ' from ' . $this->table . ' where ' . $where;
@@ -649,6 +639,12 @@ class Model
     {
         $stmt = $this->executePrepared(true, $where, $fields, $order_by, '0,1');
         return $stmt->fetch() ?? [];
+    }
+
+    public function getAllPrepared($where = [], string $fields = '*', $order_by = null)
+    {
+        $stmt = $this->executePrepared(true, $where, $fields, $order_by);
+        return $stmt->fetchAll() ?? [];
     }
 
     public function get($where = [], string $fields = "*", $order_by = null)

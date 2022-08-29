@@ -8,6 +8,8 @@
 
 namespace totum\common\calculates;
 
+use totum\common\errorException;
+
 class CalculateSelectViewValue extends CalculateSelect
 {
     protected function funcSelectListAssoc($params)
@@ -27,6 +29,26 @@ class CalculateSelectViewValue extends CalculateSelect
 
         unset($params['section']);
         unset($params['preview']);
+        unset($params['previewscode']);
+
+
+        if ($this->columnVals) {
+            $val = ($this->columnVals)();
+        } elseif (!empty($this->newVal['c'])) {
+            $val = array_merge((array)$this->newVal['v'], (array)$this->newVal['c']);
+        } else {
+            $val = $this->newVal['v'];
+        }
+
+        $bField = $params['bfield'] ?? 'id';
+
+
+        $params['where'][] = [
+            'field' => $bField,
+            'operator' => '=',
+            'value' => $val
+        ];
+
 
         return parent::funcSelectListAssoc($params);
     }
@@ -49,6 +71,11 @@ class CalculateSelectViewValue extends CalculateSelect
             }
         } else {
             foreach ($rows as $row) {
+                if(is_array($row['value'])){
+                    throw new errorException($this->translate('The [[%s]] parameter must be plain row/list without nested row/list.', 'value'));
+                }elseif(is_array($row['title'])){
+                    throw new errorException($this->translate('The [[%s]] parameter must be plain row/list without nested row/list.', 'title'));
+                }
                 $selectList[$row['value']] = [$row['title']];                   //0
                 $selectList[$row['value']][] = !empty($row['is_del']) ? 1 : 0;  //1
             }

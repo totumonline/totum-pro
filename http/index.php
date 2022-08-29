@@ -27,6 +27,10 @@ if (empty($module)) {
 }
 $controllerClass = 'totum\\moduls\\' . $module . '\\' . $module . 'Controller';
 if (class_exists($controllerClass)) {
+    if($Config && !empty($Config->getHiddenHosts()[$Config->getFullHostName()]) && empty($Config->getHiddenHosts()[$Config->getFullHostName()][$module])){
+        die($Config->getLangObj()->translate('The module is not available for this host.'));
+    }
+
     /*
      * @var Controller $Controller
      * */
@@ -38,8 +42,13 @@ if (class_exists($controllerClass)) {
 
     //$Config->getSql()->transactionRollBack();
 
-
-    die;
-} else die('Не найдено ' . htmlspecialchars($controllerClass));
-
+} else {
+    if ($Config) {
+        $Lang=$Config->getLangObj();
+    }else{
+        $Lang=(new \totum\common\Lang\EN());
+    }
+    echo $Lang->translate('Not found: %s', [htmlspecialchars($controllerClass)]);
+}
+die;
 ?>

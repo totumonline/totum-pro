@@ -1,4 +1,6 @@
 <?php
+/** @noinspection PhpMissingReturnTypeInspection */
+
 /**
  * Created by PhpStorm.
  * User: tatiana
@@ -9,10 +11,12 @@
 namespace totum\common\configs;
 
 use totum\common\calculates\CalculateAction;
-use totum\common\criticalErrorException;
 use totum\common\errorException;
+use totum\common\Lang\LangInterface;
+use totum\common\Lang\RU;
 use totum\common\logs\Log;
 use totum\common\sql\Sql;
+use totum\common\sql\SqlException;
 use totum\common\Totum;
 use totum\fieldTypes\File;
 
@@ -23,17 +27,20 @@ abstract class ConfParent
 
     /* Переменные настройки */
 
+
+    protected $ajaxTimeout = 50;
     public static $CalcLogs;
     protected $tmpDirPath = 'totumTmpfiles/tmpLoadedFiles/';
     protected $tmpTableChangesDirPath = 'totumTmpfiles/tmpTableChangesDirPath/';
     protected $logsDir = 'myLogs/';
 
-    public static $MaxFileSizeMb = 10;
+    public static $MaxFileSizeMb = 40000;
     public static $timeLimit = 30;
+
 
     protected $execSSHOn = false;
 
-    const LANG = "";
+    const LANG = '';
 
     /* Переменные работы конфига */
     protected static $handlersRegistered = false;
@@ -48,7 +55,7 @@ abstract class ConfParent
      * @var string production|development
      */
     protected $env;
-    public const ENV_LEVELS = ["production" => "production", "development" => "development"];
+    public const ENV_LEVELS = ['production' => 'production', 'development' => 'development'];
 
 
     protected $dbConnectData;
@@ -71,14 +78,17 @@ abstract class ConfParent
      * @var string
      */
     protected $baseDir;
+    protected $procVars = [];
+    protected $Lang;
 
 
-    public function __construct($env = self::ENV_LEVELS["production"])
+    /** @noinspection PhpNewClassMissingParameterListInspection */
+    public function __construct($env = self::ENV_LEVELS['production'])
     {
         $this->mktimeStart = microtime(true);
         set_time_limit(static::$timeLimit);
         $this->logLevels =
-            $env === self::ENV_LEVELS["production"] ? ['critical', 'emergency']
+            $env === self::ENV_LEVELS['production'] ? ['critical', 'emergency']
                 : ['error', 'debug', 'alert', 'critical', 'emergency', 'info', 'notice', 'warning'];
 
         $this->baseDir = $this->getBaseDir();
@@ -86,11 +96,20 @@ abstract class ConfParent
         $this->tmpTableChangesDirPath = $this->baseDir . $this->tmpTableChangesDirPath;
         $this->logsDir = $this->baseDir . $this->logsDir;
         $this->env = $env;
+
+        if (empty(static::LANG)) {
+            throw new \Exception('Language is not defined in constant LANG in Conf.php');
+        }
+        if (!class_exists('totum\\common\\Lang\\' . strtoupper(static::LANG))) {
+            throw new \Exception('Specified ' . static::LANG . ' language is not supported');
+        }
+        $this->Lang = new ('totum\\common\\Lang\\' . strtoupper(static::LANG))();
+
     }
 
     public function getDefaultSender()
     {
-        return "no-reply@" . $this->getFullHostName();
+        return $this->getSettings('default_email') ?? 'no-reply@' . $this->getFullHostName();
     }
 
     public function setSessionCookieParams()
@@ -98,7 +117,7 @@ abstract class ConfParent
         session_set_cookie_params([
             'path' => '/',
             'httponly' => true,
-            'samesite' => 'Strict'
+            'samesite' => 'Lax'
         ]);
     }
 
@@ -120,10 +139,14 @@ abstract class ConfParent
 
     public function cronErrorActions($cronRow, $User, $exception)
     {
+        $errTitle = $this->translate('Cron error');
+
         try {
             $Totum = new Totum($this, $User);
             $Table = $Totum->getTable('settings');
-            $Cacl = new CalculateAction('=: insert(table: "notifications"; field: \'user_id\'=1; field: \'active\'=true; field: \'title\'="Ошибка крона"; field: \'code\'="admin_text"; field: "vars"=$#vars)');
+
+
+            $Cacl = new CalculateAction('=: insert(table: "notifications"; field: \'user_id\'=1; field: \'active\'=true; field: \'title\'="' . $errTitle . '"; field: \'code\'="admin_text"; field: "vars"=$#vars)');
             $Cacl->execAction(
                 'kod',
                 $cronRow,
@@ -132,14 +155,14 @@ abstract class ConfParent
                 $Table->getTbl(),
                 $Table,
                 'exec',
-                ['vars' => ['text' => 'Ошибка крона <b>' . ($cronRow['descr'] ?? $cronRow['id']) . '</b>:<br>' . $exception->getMessage()]]
+                ['vars' => ['text' => $errTitle . ': <b>' . ($cronRow['descr'] ?? $cronRow['id']) . '</b>:<br>' . $exception->getMessage()]]
             );
-        } catch (\Exception $e) {
+        } catch (\Exception) {
         }
 
         $this->sendMail(
             static::adminEmail,
-            'Ошибка крона ' . $this->getSchema() . ' ' . ($cronRow['descr'] ?? $cronRow['id']),
+            $errTitle . ' ' . $this->getSchema() . ' ' . ($cronRow['descr'] ?? $cronRow['id']),
             $exception->getMessage()
         );
     }
@@ -168,7 +191,7 @@ abstract class ConfParent
     public function getSchema($force = true)
     {
         if ($force && empty($this->schemaName)) {
-            errorException::criticalException('Схема не подключена', $this);
+            errorException::criticalException($this->translate('The schema is not connected.'), $this);
         }
         return $this->schemaName;
     }
@@ -192,9 +215,13 @@ abstract class ConfParent
     /**
      * @return bool
      */
-    public function isExecSSHOn(): bool
+    public function isExecSSHOn(bool|string $type): bool
     {
-        return $this->execSSHOn;
+        return match ($type) {
+            true => $this->execSSHOn === true,
+            'inner' => $this->execSSHOn === true || $this->execSSHOn === 'inner',
+            default => false
+        };
     }
 
     public function getSecureFilesDir(): string
@@ -229,6 +256,7 @@ abstract class ConfParent
                     $attachments[$md5] = $file;
                     return 'src="cid:' . $md5 . '"';
                 }
+                return null;
             },
             $body
         );
@@ -249,21 +277,27 @@ abstract class ConfParent
      */
     public function sendMail($to, $title, $body, $attachments = [], $from = null)
     {
-        throw new errorException('Настройки для отправки почты не заданы');
+        throw new errorException($this->translate('Settings for sending mail are not set.'));
     }
 
     /********************* ANONYM SECTION **************/
 
-    protected const ANONYM_ALIAS = "An";
+    protected const ANONYM_ALIAS = 'An';
 
-    public function getAnonymHost()
+    public function getAnonymHost($type)
     {
+        if ($hiddenHosts = $this->getHiddenHosts()) {
+            foreach (static::getSchemas() as $host => $schema) {
+                if (key_exists($host,
+                        $hiddenHosts) && ($this->getSchema() === $schema) && ($hiddenHosts[$host][$type] ?? false)) {
+                    return $host;
+                }
+            }
+        }
         return $this->getFullHostName();
     }
 
     /**
-     * TODO connect method to index.php
-     *
      * @return string
      */
     public function getAnonymModul()
@@ -296,27 +330,23 @@ abstract class ConfParent
         $error = error_get_last();
 
         if ($error !== null) {
-            $errno = $error["type"];
-            $errfile = $error["file"];
-            $errline = $error["line"];
-            $errstr = $error["message"];
+            $errno = $error['type'];
+            $errfile = $error['file'];
+            $errline = $error['line'];
+            $errstr = $error['message'];
 
 
+            $errorStr = $errstr;
             if ($errno === E_ERROR) {
-                $errorStr = $errstr;
                 if (empty($_POST['ajax'])) {
                     echo $errorStr;
                 }
 
                 static::errorHandler($errno, $errorStr, $errfile, $errline);
-                if (static::$logPhp) {
-                    static::$logPhp->error($errfile . ':' . $errline . ' ' . $errstr);
-                }
+                static::$logPhp?->error($errfile . ':' . $errline . ' ' . $errstr);
                 if (static::$CalcLogs) {
                     $this->getLogger('sql')->error(static::$CalcLogs);
                 }
-            } else {
-                $errorStr = $errstr;
             }
 
             if (!empty($_POST['ajax'])) {
@@ -338,9 +368,9 @@ abstract class ConfParent
             $split[1] = $uri;
         }
         if ($split[0] === $this->getAnonymModul()) {
-            $split[0] = "An";
+            $split[0] = 'An';
         } elseif ($split[0] === 'An') {
-            die('Ошибка доступа к модулю анонимных таблиц');
+            die($this->translate('Error accessing the anonymous tables module.'));
         }
 
         return [$split[0], $split[1] ?? ''];
@@ -381,6 +411,7 @@ abstract class ConfParent
         }
         $this->Loggers[$type] = new Log(
             $fileName ?? $dir . $type . '_' . $this->getSchema(false) . '.log',
+            $this->getLangObj(),
             $levels,
             $templateCallback
         );
@@ -392,9 +423,8 @@ abstract class ConfParent
     public function getCalculateExtensionFunction($funcName)
     {
         $this->getObjectWithExtFunctions();
-        if (!property_exists($this->CalculateExtensions,
-                $funcName) || !is_callable($this->CalculateExtensions->$funcName)) {
-            throw new errorException('Функция [[' . $funcName . ']] не найдена');
+        if (!method_exists($this->CalculateExtensions, $funcName)) {
+            throw new errorException($this->translate('Function [[%s]] is not found.', $funcName));
         }
         return $this->CalculateExtensions->$funcName;
     }
@@ -443,13 +473,13 @@ abstract class ConfParent
     {
         $db = $this->getDb(false);
         if (empty($db[$type])) {
-            errorException::criticalException('Не задан путь к ssh скрипту ' . $type, $this);
+            errorException::criticalException($this->translate('The path to ssh script %s is not set.', $type), $this);
         }
         $pathPsql = $db[$type];
         $dbConnect = sprintf(
-            "postgresql://%s:%s@%s/%s",
+            'postgresql://%s:%s@%s/%s',
             $db['username'],
-            $db['password'],
+            urlencode($db['password']),
             $db['host'],
             $db['dbname']
         );
@@ -474,7 +504,12 @@ abstract class ConfParent
     public function getSql($mainInstance = true, $withSchema = true, $Logger = null)
     {
         $getSql = function () use ($withSchema, $Logger) {
-            return new Sql($this->getDb($withSchema), $Logger ?? $this->getLogger('sql'), $withSchema);
+            return new Sql($this->getDb($withSchema),
+                $Logger ?? $this->getLogger('sql'),
+                $withSchema,
+                $this->getLangObj(),
+                (static::$timeLimit + 5) * 1000
+            );
         };
         if ($mainInstance) {
             return $this->Sql ?? $this->Sql = $getSql();
@@ -517,6 +552,164 @@ abstract class ConfParent
         return $this->settingsCache;
     }
 
+    public function globVar($name, $params = [])
+    {
+        static $sql = null;
+        static $prepareInsertOrUpdate = null;
+        static $prepareSelect = null;
+        static $prepareSelectDefault = null;
+        static $prepareSelectBlockFalse = null;
+
+        if (empty($sql)) {
+            $sql = $this->getSql(false);
+        }
+
+        $getPrepareSelect = function () use (&$prepareSelect, $sql) {
+            if (!$prepareSelect) {
+                $prepareSelect = $sql->getPrepared('select value, dt from _globvars where name = ?');
+            }
+            return $prepareSelect;
+        };
+        $getPrepareSelectBlocked = function ($interval) use ($sql): \PDOStatement {
+            return $sql->getPrepared('WITH time AS(
+    select now() + interval \'' . $interval . '\' as times
+)
+UPDATE _globvars SET blocked=
+    CASE
+        WHEN (blocked is null OR blocked<=now()) THEN (SELECT times FROM time)
+        ELSE blocked
+        END
+WHERE name = :name
+RETURNING value, dt, blocked, blocked=(SELECT times FROM time) as was_blocked');
+        };
+        $getPrepareSelectDefault = function () use (&$prepareSelectDefault, $sql) {
+            if (!$prepareSelectDefault) {
+                $prepareSelectDefault = $sql->getPrepared('INSERT INTO _globvars (name, value) 
+VALUES (?,?)
+ON CONFLICT (name) DO UPDATE 
+  SET name = excluded.name RETURNING value, dt');
+            }
+            return $prepareSelectDefault;
+        };
+        $getPrepareSelectBlockedFalse = function () use (&$prepareSelectBlockFalse, $sql) {
+            if (!$prepareSelectBlockFalse) {
+                $prepareSelectBlockFalse = $sql->getPrepared('INSERT INTO _globvars (name) 
+VALUES (?)
+ON CONFLICT (name) DO UPDATE 
+  SET blocked = NULL RETURNING value, dt');
+            }
+            return $prepareSelectBlockFalse;
+        };
+        $getPrepareInsertOrUpdate = function () use ($sql, &$prepareInsertOrUpdate) {
+            if (!$prepareInsertOrUpdate) {
+                $prepareInsertOrUpdate = $sql->getPrepared('INSERT INTO _globvars (name, value) 
+VALUES (?,?)
+ON CONFLICT (name) DO UPDATE 
+  SET value = excluded.value, 
+      blocked = null,
+      dt = (\'now\'::text)::timestamp without time zone RETURNING value, dt');
+            }
+            return $prepareInsertOrUpdate;
+        };
+
+
+        $returnData = function ($prepare) {
+            if ($data = $prepare->fetch()) {
+                if ($params['date'] ?? false) {
+                    return ['date' => $data['dt'], 'value' => json_decode($data['value'], true)['v']];
+                } else {
+                    return json_decode($data['value'], true)['v'];
+                }
+            } else {
+                return null;
+            }
+        };
+
+        try {
+
+            if (key_exists('value', $params)) {
+                $getPrepareInsertOrUpdate()->execute([$name, json_encode(
+                    ['v' => $params['value']],
+                    JSON_UNESCAPED_UNICODE
+                )]);
+                return $returnData($prepareInsertOrUpdate);
+            } elseif (key_exists('default', $params)) {
+                $getPrepareSelectDefault()->execute([$name, json_encode(
+                    ['v' => $params['default']],
+                    JSON_UNESCAPED_UNICODE
+                )]);
+
+                return $returnData($prepareSelectDefault);
+
+            } elseif (key_exists('block', $params)) {
+                if (!$params['block']) {
+                    $getPrepareSelectBlockedFalse()->execute([$name]);
+                    return $returnData($prepareSelectBlockFalse);
+                } else {
+                    while (true) {
+                        $prepareSelectBlocked = $getPrepareSelectBlocked((float)$params['block'] . ' second');
+                        $prepareSelectBlocked->execute(['name' => $name]);
+
+                        if ($data = $prepareSelectBlocked->fetch()) {
+                            if ($data['was_blocked']) {
+                                if ($params['date'] ?? false) {
+                                    return ['date' => $data['dt'], 'value' => json_decode($data['value'], true)['v']];
+                                } else {
+                                    return json_decode($data['value'], true)['v'];
+                                }
+                            }
+                        } else {
+                            return null;
+                        }
+                    }
+                }
+            } else {
+                $getPrepareSelect()->execute([$name]);
+
+                return $returnData($prepareSelect);
+            }
+        } catch (\PDOException $exception) {
+            if ($exception->getCode() === '42P01') {
+                $sql->exec(
+                    <<<SQL
+create table "_globvars"
+(
+    name     text                                                      not null,
+    value     jsonb,
+    blocked     timestamp,
+    dt        timestamp default ('now'::text)::timestamp without time zone not null
+)
+SQL
+                );
+                $sql->exec('create UNIQUE INDEX _globvars_name_index on _globvars (name)');
+                return $this->globVar($name, $params);
+            } else {
+                throw new SqlException($exception->getMessage());
+            }
+        }
+    }
+
+    public function procVar($name = null, $params = [])
+    {
+        if (empty($name)) {
+            return array_keys($this->procVars ?? []);
+        }
+
+        if (key_exists('value', $params)) {
+            $this->procVars[$name] = $params['value'];
+        } elseif (key_exists('default', $params)) {
+            if (!key_exists($name, $this->procVars)) {
+                $this->procVars[$name] = $params['default'];
+            }
+        }
+
+        return $this->procVars[$name] ?? null;
+    }
+
+    public function getLangObj(): LangInterface
+    {
+        return $this->Lang;
+    }
 
     public function getTotumFooter()
     {
@@ -531,10 +724,20 @@ abstract class ConfParent
         $SchemaName = $this->getSchema();
         $version = Totum::VERSION;
 
-        return <<<FOOTER
-    Время обработки страницы: $genTime сек.<br/>
-    Оперативная память: {$mb}M. из $memory_limit.<br/>
-    Sql схема: $SchemaName, V $version<br/>
-FOOTER;
+        return $this->translate('Page processing time: %s sec.<br/>
+    RAM: %sM. of %s.<br/>
+    Sql Schema: %s, V %s<br/>',
+            [$genTime, $mb, $memory_limit, $SchemaName, $version]);
     }
+
+    protected function translate(string $str, mixed $vars = []): string
+    {
+        return $this->getLangObj()->translate($str, $vars);
+    }
+
+    public function getHiddenHosts(): array
+    {
+        return [];
+    }
+
 }
