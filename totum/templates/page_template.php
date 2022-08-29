@@ -3,22 +3,22 @@
     <script>App = {}</script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/libs.css?v=005a92c">
-    <script src="/js/libs.js?v=f52b4ad"></script>
+          href="/css/libs.css?v=c197331">
+    <script src="/js/libs.js?v=ca957dc"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=87d2e74">
+          href="/css/main.css?v=054aae8">
 
     <?php
     if ($isCreatorView ?? null) { ?>
-        <script src="/js/functions.js?v=6fb7b5d"></script>
+        <script src="/js/functions.js?v=0b0d061"></script>
         <?php
            echo '<script>App.functions=App.functions.concat(' . $this->Config->getExtFunctionsTemplates() . ')</script>';
         ?>
         <?php
     } ?>
 
-    <script src="/js/main.js?v=047e0a8"></script>
+    <script src="/js/main.js?v=1ccb0f5"></script>
     <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?24"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
