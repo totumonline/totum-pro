@@ -9,21 +9,30 @@
 namespace totum\fieldTypes;
 
 use totum\common\Auth;
+use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Field;
+use totum\common\Lang\RU;
 use totum\common\sql\Sql;
 use totum\config\Conf;
+use totum\models\CalcsTableCycleVersion;
 
 class File extends Field
 {
     protected static $transactionCommits = [];
+    protected static $secureFields = [];
 
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
         parent::addViewValues($viewType, $valArray, $row, $tbl);
         switch ($viewType) {
+            case 'web':
+                if (!empty($valArray['e'])) {
+                    $valArray['v'] = [];
+                }
+                break;
             case 'csv':
-                throw new errorException('Поле типа файл нельзя использовать в csv-экспорт');
+                throw new errorException($this->translate('Export via csv is not available for [[%s]] field.', 'file'));
             case 'print':
                 $func = function ($array) use (&$func) {
                     if (!$array) {
@@ -44,30 +53,61 @@ class File extends Field
 
     public function getValueFromCsv($val)
     {
-        throw new errorException('Поле типа файл нельзя использовать в csv-импорт');
+        throw new errorException($this->translate('Import from csv is not available for [[%s]] field.', 'file'));
 
         //return $val = json_decode(base64_decode($val), true);
     }
 
-    public static function deleteFile($fileName, Conf $Config)
+
+    public static function deleteFilesOnCommit($deleteFiles, Conf $Config, $fileData = false)
     {
-        $file = File::getDir($Config) . $fileName;
-        if (is_file($file)) {
-            unlink($file);
+        if ($deleteFiles) {
+            $Config->getSql()->addOnCommit(function () use ($deleteFiles, $Config, $fileData) {
+                foreach ($deleteFiles as $file) {
+                    if ($file = ($file['file'] ?? null)) {
+                        static::deleteFile(static::getFilePath($file, $Config, $fileData));
+                    }
+                }
+            });
         }
-        if (is_file($preview = $file . '_thumb.jpg')) {
+    }
+
+    protected static function deleteFile($fullFileName)
+    {
+        if (is_file($fullFileName)) {
+            unlink($fullFileName);
+        }
+        if (is_file($preview = $fullFileName . '_thumb.jpg')) {
             unlink($preview);
         }
     }
 
-    public static function getDir(Conf $Config)
+    public static function getFilePath($file_name, Conf $Config, $fileData = null): string
     {
-        return $Config->getFilesDir();
-    }
+        if (is_null($fileData)) {
+            preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)/', $file_name, $matches);
 
-    public static function getFilePath($file_name, Conf $Config)
-    {
-        return static::getDir($Config) . $file_name;
+            $version = null;
+
+            if ($matches[2]) {
+                $TableRow = $Config->getTableRow($matches['table']);
+                if ($TableRow['type'] == 'calcs') {
+                    $version = CalcsTableCycleVersion::init($Config)->getField('version',
+                        ['table_name' => $TableRow['name'], 'cycle' => (int)$matches[2]]);
+                }
+            }
+            $key = $matches['table'] . '/' . $matches['field'] . '/' . $version;
+            if (!key_exists($key, static::$secureFields)) {
+                $fileData = json_decode($Config->getModel('tables_fields')->getPrepared(['table_id' => $matches['table'], 'version' => $version, 'name' => $matches['field']],
+                        "data")['data'] ?? '[]', true);
+                static::$secureFields[$key] = $fileData;
+            }
+            $fileData = static::$secureFields[$key];
+        }
+        if ($fileData['secureFile'] ?? false) {
+            return $Config->getSecureFilesDir() . $file_name;
+        }
+        return $Config->getFilesDir() . $file_name;
     }
 
     public function addXmlExport(\SimpleXMLElement $simpleXMLElement, $fVar)
@@ -81,55 +121,74 @@ class File extends Field
         }
     }
 
-    public static function checkAndCreateThumb($tmpFileName, $name)
+    public static function isImage($name): bool|string
     {
         if (in_array(
             $ext = preg_replace('/^.*\.([a-z0-9]{2,5})$/', '$1', strtolower($name)),
             ['jpg', 'jpeg', 'png']
         )) {
-            $thumbName = $tmpFileName . '_thumb.jpg';
-            if ($ext === 'png') {
-                $source = imagecreatefrompng($tmpFileName);
+            return $ext;
+        }
+        return false;
+    }
+
+    protected static function getThumb($tmpFileName, $ext): \GdImage|bool
+    {
+        if ($ext === 'png') {
+            $source = imagecreatefrompng($tmpFileName);
+        } else {
+            $source = imagecreatefromjpeg($tmpFileName);
+        }
+        // получение нового размера
+        list($width, $height) = getimagesize($tmpFileName);
+
+        $newwidth = 290;
+        $newheight = $height * $newwidth / $width;
+
+
+        $thumb = imagecreatetruecolor($newwidth, $newheight);
+        imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255));
+
+        if ($newwidth > $width && $newheight > $height) {
+            if ($height < 100) {
+                $newheight = 100;
             } else {
-                $source = imagecreatefromjpeg($tmpFileName);
+                $newheight = $height + 10;
             }
-            // получение нового размера
-            list($width, $height) = getimagesize($tmpFileName);
-
-            $newwidth = 290;
-            $newheight = $height * $newwidth / $width;
-
 
             $thumb = imagecreatetruecolor($newwidth, $newheight);
             imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255));
 
-            if ($newwidth > $width && $newheight > $height) {
-                if ($height < 100) {
-                    $newheight = 100;
-                } else {
-                    $newheight = $height + 10;
-                }
+            imagecopyresampled(
+                $thumb,
+                $source,
+                round(($newwidth - $width) / 2),
+                round(($newheight - $height) / 2),
+                0,
+                0,
+                $width,
+                $height,
+                $width,
+                $height
+            );
+        } else {
+            imagecopyresampled($thumb, $source, 0, 0, 0, 0, $newwidth, $newheight, $width, $height);
+        }
+        return $thumb;
+    }
 
-                $thumb = imagecreatetruecolor($newwidth, $newheight);
-                imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255));
-
-                imagecopyresampled(
-                    $thumb,
-                    $source,
-                    round(($newwidth - $width) / 2),
-                    round(($newheight - $height) / 2),
-                    0,
-                    0,
-                    $width,
-                    $height,
-                    $width,
-                    $height
-                );
-            } else {
-                imagecopyresampled($thumb, $source, 0, 0, 0, 0, $newwidth, $newheight, $width, $height);
-            }
+    protected static function checkAndCreateThumb($tmpFileName, $name)
+    {
+        if ($ext = static::isImage($name)) {
+            $thumbName = static::getTmpThumbName($tmpFileName);
+            $thumb = static::getThumb($tmpFileName, $ext);
             imagejpeg($thumb, $thumbName, 100);
         }
+    }
+
+    public static function getTmpThumbName($tmpFileName)
+    {
+        return $tmpFileName . '_thumb.jpg';
     }
 
     /*TODO переделать на использование входящего контекста*/
@@ -138,7 +197,7 @@ class File extends Field
         $tmpFileName = tempnam($Config->getTmpDir(), $Config->getSchema() . '.' . $userId . '.');
         if ($_FILES['file']) {
             if (filesize($_FILES['file']['tmp_name']) > Conf::$MaxFileSizeMb * 1024 * 1024) {
-                return ['error' => 'Файл больше ' . Conf::$MaxFileSizeMb . ' Mb'];
+                return ['error' => $Config->getLangObj()->translate('File > ') . Conf::$MaxFileSizeMb . ' Mb'];
             }
 
             if (copy($_FILES['file']['tmp_name'], $tmpFileName)) {
@@ -146,7 +205,7 @@ class File extends Field
                 return ['fname' => preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName)];
             }
         }
-        return ['error' => 'Файл не получен. Возможно, слишком большой'];
+        return ['error' => $Config->getLangObj()->translate('File not received. May be too big.')];
     }
 
     public function getLogValue($val, $row, $tbl = [])
@@ -162,7 +221,7 @@ class File extends Field
         return $files;
     }
 
-    protected function _getFprefix($rowId = null)
+    protected function _getFprefix($rowId = null): string
     {
         return $this->table->getTableRow()['id'] . '_' //Таблица
             . ($this->table->getTableRow()['type'] === 'calcs' ? $this->table->getCycle()->getId() . '_' : '') //цикл
@@ -173,34 +232,47 @@ class File extends Field
 
     protected function modifyValue($modifyVal, $oldVal, $isCheck, $row)
     {
-        if (is_object($modifyVal)) {
-            $modifyVal = $modifyVal->val;
+        if (is_object($modifyVal) && empty($this->data['multiple'])) {
+            throw new errorException($this->translate('Operation [[%s]] over not mupliple select is not supported.',
+                $modifyVal->sign));
         }
+
+
         if (!$isCheck) {
             $deletedFiles = [];
-            if (!empty($oldVal) && is_array($oldVal)) {
+            if (is_object($modifyVal)) {
+                if (empty($oldVal) || !is_array($oldVal)) {
+                    $oldVal = array();
+                }
+                $modifyVal = match ($modifyVal->sign) {
+                    '+' => array_merge($oldVal, [$modifyVal->val]),
+                    default => throw new errorException($this->translate('Operation [[%s]] over files is not supported.',
+                        $modifyVal->sign)),
+                };
+            } elseif (!empty($oldVal) && is_array($oldVal)) {
                 foreach ($oldVal as $fOld) {
                     foreach ($modifyVal as $file) {
-                        if ($fOld['file'] === ($file['file'] ?? null)) {
+                        if (is_array($fOld) && $fOld['file'] === ($file['file'] ?? null)) {
                             continue 2;
                         }
                     }
-                    if (strpos($fOld['file'], $this->_getFprefix($row['id'] ?? null)) === 0) {
-                        $deletedFiles[] = $fOld['file'];
+                    if (is_array($fOld) && str_starts_with($fOld['file'] ?? '',
+                            $this->_getFprefix($row['id'] ?? null))) {
+                        $deletedFiles[] = $fOld;
                     }
                 }
             }
 
+
             if ($deletedFiles) {
-                $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($deletedFiles) {
-                    foreach ($deletedFiles as $file) {
-                        static::deleteFile($file, $this->table->getTotum()->getConfig());
-                    }
-                });
+                static::deleteFilesOnCommit($deletedFiles,
+                    $this->table->getTotum()->getConfig(),
+                    $this->data);
             }
         }
         return $modifyVal;
     }
+
 
     protected function checkValByType(&$val, $row, $isCheck = false)
     {
@@ -209,7 +281,7 @@ class File extends Field
         }
 
         if (!is_array($val)) {
-            throw new errorException('Тип данных не подходит для поля Файл');
+            throw new criticalErrorException($this->translate('The data format is not correct for the File field.'));
         }
 
 
@@ -266,11 +338,15 @@ class File extends Field
                 do {
                     $unlinked = false;
 
-                    $fname = static::getDir($this->table->getTotum()->getConfig())
-                        . $fPrefix
+                    $fname = static::getFilePath(
+                        $fPrefix
                         . ($fnum ? '_' . $fnum : '') //Номер
                         . (!empty($this->data['nameWithHash']) ? '_' . md5(microtime(1) . $this->data['name']) : '') //хэш
-                        . '.' . $ext;
+                        . '.' . $ext,
+                        $this->table->getTotum()->getConfig(),
+                        $this->data
+                    );
+
                     if (!$this->data['multiple'] && $this->table->getTableRow()['type'] !== 'tmp') {
                         break;
                     }
@@ -293,7 +369,7 @@ class File extends Field
 
 
                 if ($fnum === 1030) {
-                    die('Не удалось создать файл для записи в ячейку');
+                    die($this->translate('File name search error.'));
                 }
                 return $fname;
             };
@@ -301,25 +377,20 @@ class File extends Field
             $vals = [];
             foreach ($val as $file) {
                 $fl = [];
-                if (!array_key_exists('name', $file)) {
-                    throw new errorException('Тип данных не подходит для поля Файл');
-                }
-                if (empty($file['tmpfile']) && empty($file['file'])) {
-                    if ($isCheck) {
-                        throw new errorException('Тип данных не подходит для поля Файл');
-                    }
+                if (!is_array($file) || !array_key_exists('name', $file)) {
+                    throw new criticalErrorException($this->translate('The data format is not correct for the File field.'));
                 }
 
                 $file['ext'] = preg_replace('/^.*\.([a-z0-9]{2,4})$/', '$1', strtolower($file['name']));
 
                 if (empty($file['ext'])) {
-                    throw new errorException('У файла должно быть расширение');
+                    throw new criticalErrorException($this->translate('The file must have an extension.'));
                 }
                 if (in_array(
                     $file['ext'],
                     ['php', 'phtml']
                 )) {
-                    throw new errorException('Запрещено добавление исполняемых на сервере файлов');
+                    throw new criticalErrorException($this->translate('Restricted to add executable files to the server.'));
                 }
 
                 if ($file['ext'] === 'jpeg') {
@@ -337,11 +408,12 @@ class File extends Field
 
                     $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname) {
                         if (!copy($ftmpname, $fname)) {
-                            die('{"error":"Не удалось копировать временный файл"}');
+                            die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                         }
                         if (is_file($ftmpname . '_thumb.jpg')) {
                             if (!copy($ftmpname . '_thumb.jpg', $fname . '_thumb.jpg')) {
-                                die('{"error":"Не удалось копировать превью"}');
+                                die(json_encode(['error' => $this->translate('Failed to copy preview.')],
+                                    JSON_UNESCAPED_UNICODE));
                             }
                         }
                         unset(static::$transactionCommits[$fname]);
@@ -351,26 +423,31 @@ class File extends Field
                     $fl['ext'] = $file['ext'];
                     $fl['file'] = preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
                 } elseif (!empty($file['file'])) {
-                    $filepath = static::getDir($this->table->getTotum()->getConfig()) . $file['file'];
+                    $filepath = static::getFilePath($file['file'],
+                        $this->table->getTotum()->getConfig(),
+                        $this->data);
                     $fl['file'] = $file['file'];
 
                     if (key_exists($filepath, static::$transactionCommits)) ; elseif (!is_file($filepath)) {
                         if ($isCheck) {
-                            throw new errorException('файл не найден');
+                            throw new errorException($this->translate('Field [[%s]] is not found.', $file['name']));
                         }
                         $file['size'] = 0;
                         $fl['e'] = 'Файл не найден';
                     } else {
-                        if (strpos($file['file'], $fPrefix) !== 0 && !empty($this->data['fileDuplicateOnCopy'])) {
+                        if (!str_starts_with($file['file'], $fPrefix) && !empty($this->data['fileDuplicateOnCopy'])) {
                             $fname = $funcGetFname($file['ext']);
 
-                            $otherfname = static::getDir($this->table->getTotum()->getConfig()) . $file['file'];
+                            $otherfname = static::getFilePath($file['file'],
+                                $this->table->getTotum()->getConfig(),
+                                $this->data);
 
                             static::$transactionCommits[$fname] = $otherfname;
 
                             $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($otherfname, $fname) {
                                 if (!copy($otherfname, $fname)) {
-                                    die('{"error":"Не удалось копировать  файл в ячейку"}');
+                                    die(json_encode(['error' => $this->translate('Error copying a file to the storage folder.')],
+                                        JSON_UNESCAPED_UNICODE));
                                 }
                                 if (is_file($otherfname . '_thumb.jpg')) {
                                     copy($otherfname . '_thumb.jpg', $fname . '_thumb.jpg');
@@ -395,7 +472,7 @@ class File extends Field
         }
     }
 
-    public static function getContent($fname, Conf $Config)
+    public static function getContent($fname, Conf $Config): bool|string|null
     {
         $filepath = static::getFilePath($fname, $Config);
         if (key_exists($filepath, static::$transactionCommits)) {

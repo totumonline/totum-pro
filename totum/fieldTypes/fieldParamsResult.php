@@ -11,6 +11,7 @@ namespace totum\fieldTypes;
 use totum\common\calculates\Calculate;
 use totum\common\errorException;
 use totum\common\Field;
+use totum\common\Lang\RU;
 
 class fieldParamsResult extends Field
 {
@@ -20,7 +21,7 @@ class fieldParamsResult extends Field
     {
         if (!$isCheck) {
             if (!empty($row['data_src']['v'])) {
-                $val=static::getDataFromDataSrc($row['data_src']['v'], $row['table_name']['v']);
+                $val = static::getDataFromDataSrc($row['data_src']['v'], $row['table_name']['v']);
             }
         }
     }
@@ -28,7 +29,7 @@ class fieldParamsResult extends Field
     public static function getDataFromDataSrc($data_src, $table_name)
     {
         $val = [];
-        foreach ($data_src as $fName => $Vals) {
+        foreach ($data_src ?? [] as $fName => $Vals) {
             if ($Vals['isOn']) {
                 if (in_array($fName, static::CODE_PARAMS)) {
                     $val[$fName] = Calculate::parseTotumCode($Vals['Val'], $table_name);
@@ -41,16 +42,17 @@ class fieldParamsResult extends Field
     }
 
     /*TODO check and remove Легаси для старых баз*/
-    public function calculate(&$newVal, $oldRow, $row, $oldTbl, $tbl, $vars, $calcInit)
+    public function calculate(array &$newVal, $oldRow, $row, $oldTbl, $tbl, $vars, $calcInit)
     {
         if (!empty($oldRow['id']) && $oldRow['id'] === 4) {
-            $newVal = ['v' => ["type" => "fieldParamsResult", "showInWeb" => false]];
+            $newVal = ['v' => ['type' => 'fieldParamsResult', 'showInWeb' => false]];
             return;
         }
     }
 
     public function getValueFromCsv($val)
     {
-        throw new errorException('Для работы с полями есть таблица Обновления');
+        throw new errorException($this->translate('Import from csv is not available for [[%s]] field.',
+            'field setttings'));
     }
 }

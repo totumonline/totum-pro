@@ -9,6 +9,7 @@
 namespace totum\fieldTypes;
 
 use totum\common\Field;
+use totum\common\Lang\RU;
 use totum\tableTypes\aTable;
 
 class Text extends Field
@@ -29,7 +30,8 @@ class Text extends Field
             $paramInXml->addAttribute('error', $fVar['e']);
         }
         if (isset($fVar['c'])) {
-            $paramInXml->addAttribute('c', $fVar['c'] !== $fVar['v'] ? 'Текст изменен' : 'Текст соответствует');
+            $paramInXml->addAttribute('c',
+                $fVar['c'] !== $fVar['v'] ? $this->translate('Text modified') : $this->translate('Text unchanged'));
             $paramInXml->addAttribute('h', isset($fVar['h']) ? '1' : '0');
         }
     }
@@ -51,18 +53,22 @@ class Text extends Field
 
         switch ($viewType) {
             case 'web':
-                if ($this->table->getTableRow()['type'] !== 'tmp' && ($isBig = mb_strlen($valArray['v']) > $this->data['viewTextMaxLength'])) {
+
+                if (is_array($valArray['v'])) {
+                    $valArray['v'] = null;
+                    $valArray['e'] = $this->translate('Field data type error');
+                } elseif ($this->table->getTableRow()['type'] !== 'tmp' && ($isBig = mb_strlen($valArray['v']) > $this->data['viewTextMaxLength'])) {
                     $valArray['v'] = mb_substr($valArray['v'], 0, $this->data['viewTextMaxLength']) . '...';
                 }
 
                 break;
             case 'print':
 
-                if (($isBig = mb_strlen($valArray['v']) > $this->data['viewTextMaxLength']) && !($this->data['printTextfull']??false)) {
+                if (($isBig = mb_strlen($valArray['v']) > $this->data['viewTextMaxLength']) && !($this->data['printTextfull'] ?? false)) {
                     $valArray['v'] = mb_substr($valArray['v'], 0, $this->data['viewTextMaxLength']) . '...';
                 }
                 $valArray['v'] = htmlspecialchars($valArray['v']);
-                if ($this->data['textType']==='text') {
+                if ($this->data['textType'] === 'text') {
                     $valArray['v'] = nl2br($valArray['v']);
                 }
 
@@ -76,7 +82,7 @@ class Text extends Field
     protected function getDefaultValue()
     {
         if ($this->data['textType'] === 'json') {
-            return json_decode($this->data['default'], true) ?? $this->data['default'];
+            return json_decode($this->data['default'] ?? '', true) ?? $this->data['default'] ?? '';
         }
         return parent::getDefaultValue();
     }
@@ -89,7 +95,7 @@ class Text extends Field
                     $val = json_encode($val, JSON_UNESCAPED_UNICODE);
                 }
             } elseif (is_array($val)) {
-                $valTmp = "";
+                $valTmp = '';
                 foreach ($val as $v) {
                     if ($valTmp !== '') {
                         $valTmp .= "\n";
@@ -102,11 +108,12 @@ class Text extends Field
             }
         }
     }
+
     protected function modifyValue($modifyVal, $oldVal, $isCheck, $row)
     {
         if (is_object($modifyVal)) {
             if ($modifyVal->sign === '+') {
-                $modifyVal =  $oldVal.(string)$modifyVal->val;
+                $modifyVal = $oldVal . (string)$modifyVal->val;
             } else {
                 $modifyVal = (string)$modifyVal->val;
             }

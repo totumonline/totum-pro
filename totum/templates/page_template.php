@@ -3,22 +3,24 @@
     <script>App = {}</script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/libs.css?v=005a92c">
-    <script src="/js/libs.js?v=f52b4ad"></script>
+          href="/css/libs.css?v=c197331">
+    <script src="/js/libs.js?v=ca957dc"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=18e0f35">
+          href="/css/main.css?v=054aae8">
 
     <?php
     if ($isCreatorView ?? null) { ?>
-        <script src="/js/functions.js?v=0380ff9"></script>
+        <script src="/js/functions.js?v=0b0d061"></script>
         <?php
            echo '<script>App.functions=App.functions.concat(' . $this->Config->getExtFunctionsTemplates() . ')</script>';
         ?>
         <?php
     } ?>
 
-    <script src="/js/main.js?v=4d50ad9"></script>
+    <script src="/js/main.js?v=1ccb0f5"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?24"></script>
+    <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
 
     <link rel="shortcut icon" type="image/png" href="/fls/6_favicon.png"/>
@@ -33,7 +35,7 @@
 <body id="pk"
       class="lock">
 <noscript>
-    Для работы с системой необходимо включить JavaScript в настройках броузера
+    <?= $this->translate('To work with the system you need to enable JavaScript in your browser settings') ?>
 </noscript>
 <div id="big_loading" style="display: none;"><i class="fa fa-cog fa-spin fa-3x"></i></div>
 <script>

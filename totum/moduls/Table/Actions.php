@@ -8,10 +8,15 @@ use totum\common\Auth;
 use totum\common\calculates\CalculateAction;
 use totum\common\calculates\CalculcateFormat;
 use totum\common\errorException;
+use totum\common\Field;
+use totum\common\Lang\RU;
 use totum\common\Model;
 use totum\common\Totum;
 use totum\common\User;
+use totum\fieldTypes\Select;
+use totum\models\Table;
 use totum\models\TablesFields;
+use totum\models\Tree;
 use totum\tableTypes\aTable;
 
 class Actions
@@ -39,6 +44,9 @@ class Actions
 
     protected $modulePath;
 
+    public $withLog = true;
+    protected array $Cookies = [];
+
     public function __construct(ServerRequestInterface $Request, string $modulePath, aTable $Table = null, Totum $Totum = null)
     {
         if ($this->Table = $Table) {
@@ -50,17 +58,23 @@ class Actions
         $this->Request = $Request;
         $this->post = $Request->getParsedBody();
 
+        $this->Cookies = $Request->getCookieParams();
+
+        if (!empty($this->post['restoreView'])) {
+            $this->Table->setRestoreView(true);
+        }
+
         $this->modulePath = $modulePath;
     }
 
     public function reuser()
     {
         if (!Auth::isCanBeOnShadow($this->User)) {
-            throw new errorException('Функция вам недоступна');
+            throw new errorException($this->translate('The function is not available to you.'));
         }
         $user = Auth::getUsersForShadow($this->Totum->getConfig(), $this->User, $this->post['userId']);
         if (!$user) {
-            throw new errorException('Пользователь не найден');
+            throw new errorException($this->translate('User not found'));
         }
         Auth::asUser($this->Totum->getConfig(), $user[0]['id'], $this->User);
 
@@ -69,10 +83,244 @@ class Actions
         return ['ok' => 1];
     }
 
+    public function seachUserTables()
+    {
+        $TreeModel = $this->Totum->getNamedModel(Tree::class);
+        $q = mb_strtolower($this->post['q'], 'UTF-8');
+        $words = preg_split('/\s+/', $q);
+
+        $checkWords = function ($test) use ($words) {
+            foreach ($words as $w) {
+                if (!str_contains($test, $w)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        $branchesArray = [];
+
+        foreach ($TreeModel->getBranchesByTables(
+            null,
+            array_keys($this->User->getTreeTables()),
+            $this->User->getRoles()
+        ) as $br) {
+            if ((int)$br['id'] !== (int)($this->post['et'] ?? 0)) {
+                array_push($branchesArray,
+                    ...$TreeModel->getBranchesByTables(
+                        $br['id'],
+                        array_keys($this->User->getTreeTables()),
+                        $this->User->getRoles()
+                    ));
+            }
+        }
+        $branchIds = array_column($branchesArray, 'id');
+        $branchesCombine = array_combine($branchIds, array_column($branchesArray, 'top'));
+        $tables = [];
+
+        foreach ($this->Totum->getNamedModel(Table::class)->getAll(
+            ['tree_node_id' => ($branchIds), 'id' => array_keys($this->User->getTreeTables())],
+            'id, title, name, tree_node_id, type, icon',
+            '(sort->>\'v\')::numeric'
+        ) as $table) {
+            if ($checkWords($table['name']) || $checkWords(mb_strtolower($table['title'], 'UTF-8'))) {
+                $tables[] = ['id' => $table['id'], 'title' => $table['title'], 'top' => $branchesCombine[$table['tree_node_id']], 'icon' => $table['icon'] ?? null, 'type' => $table['type']];
+            }
+        }
+
+        $tree = [];
+        foreach ($branchesArray as $br) {
+            if (in_array($br['type'], ['link', 'anchor']) && $checkWords(mb_strtolower($br['title'], 'UTF-8'))) {
+                $tree[] = ['id' => $br['id'], 'title' => $br['title'], 'type' => $br['type'], 'href' => ($br['href'] ?? null), 'icon' => $br['icon']];
+            }
+        }
+        return ['tables' => $tables, 'trees' => $tree];
+    }
+
     public function getNotificationsTable()
     {
-        $Calc = new CalculateAction('=: linkToDataTable(table: \'ttm__manage_notifications\'; title: "Нотификации"; width: 800; height: "80vh"; refresh: false; header: true; footer: true)');
+        $Calc = new CalculateAction('=: linkToDataTable(table: \'ttm__manage_notifications\'; title: "' . $this->translate('Notifications') . '"; width: 800; height: "80vh"; refresh: false; header: true; footer: true)');
         $Calc->execAction('KOD', [], [], [], [], $this->Totum->getTable('tables'), 'exec');
+    }
+
+    public function searchCatalog()
+    {
+        $TableSearch = $this->Totum->getTable('ttm__search_catalog');
+        $catalog = $TableSearch->getByParams(['field' => ['id', 'title'], 'order' => [['field' => 'n', 'ad' => 'asc']]],
+            'rows');
+        return ['catalog' => $catalog];
+    }
+
+    public function searchClick()
+    {
+        if ($this->post['pk'] ?? '') {
+            $data = explode('-', $this->post['pk']);
+            if (count($data) === 2) {
+                if (key_exists($data[0], $this->User->getTables())) {
+                    $TableSearch = $this->Totum->getTable('ttm__search_settings');
+                    if ($codesRow = $TableSearch->getByParams(['where' => [
+                        ['field' => 'table_id', 'operator' => '=', 'value' => $data[0]]
+                    ], 'field' => ['buttons','code']],
+                        'row')) {
+
+                        $Table = $this->Totum->getTable($data[0]);
+                        if ($Table->loadFilteredRows('web', [$data[1]])) {
+                            if($this->post['button']??false){
+                                foreach ($codesRow['buttons'] as $btn){
+                                    if($btn['name']===$this->post['button']){
+                                        $code=$btn['code'];
+                                        break;
+                                    }
+                                }
+                                if(empty($code)){
+                                    throw new errorException('Код указанной кнопки не наден. Попробуйте еще раз');
+                                }
+                            }else{
+                                $code = $codesRow['code'];
+                            }
+
+                            $Calc = new CalculateAction($code);
+                            $Calc->execAction('KOD',
+                                $Table->getTbl()['rows'][$data[1]],
+                                $Table->getTbl()['rows'][$data[1]],
+                                $Table->getTbl(),
+                                $Table->getTbl(),
+                                $Table,
+                                'exec',
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        return ['ok' => 1];
+    }
+
+    public function getSearchResults()
+    {
+
+
+        $Table = $this->Totum->getTable('ttm__search_settings');
+
+
+        $facetFilters = [];
+
+        $settings = $Table->getByParams(['field' => ['table_id', 'buttons']], 'rows');
+        $tables_buttons = [];
+        $tables = [];
+        $column_delete = function (&$list) {
+            unset($list['code']);
+        };
+        array_walk($settings,
+            function ($row) use (&$tables_buttons, &$tables, $column_delete) {
+                $tables_buttons[$row['table_id']] = $row['buttons'] && array_walk($row['buttons'],
+                    $column_delete) ? $row['buttons'] : [];
+                $tables[] = $row['table_id'];
+            });
+
+        $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
+        if ($tables_cleared != $tables) {
+            foreach ($tables_cleared as $table) {
+                $facetFilters[] = 'table:' . $table;
+            }
+            if (empty($facetFilters)) {
+                return ['hits' => []];
+            }
+        }
+
+        if (!empty($this->post['cats'])) {
+            $catsFilters = [];
+            foreach ($this->post['cats'] as $id) {
+                $catsFilters[] = 'catalog:' . $id;
+            }
+            if ($facetFilters) {
+                $facetFilters = [$facetFilters, $catsFilters];
+            } else {
+                $facetFilters = [$catsFilters];
+            }
+        } elseif ($facetFilters) {
+            $facetFilters = [$facetFilters];
+        }
+
+        $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
+        $posts = [
+            "q" => $this->post['q'] ?? '',
+            "matches" => true,
+        ];
+        if ($facetFilters) {
+            $posts["facetFilters"] = $facetFilters;
+        }
+
+
+        $tables = [];
+        $getTable = function ($tableId) use (&$tables) {
+            if (!key_exists($tableId, $tables)) {
+                $tables[$tableId] = $this->Totum->getTable($tableId);
+                $tables[$tableId]->reCalculateFilters('web');
+                $params = $tables[$tableId]->filtersParamsForLoadRows('web', [], [], true);
+                if (empty($params)) {
+                    $tables[$tableId] = false;
+                }
+            }
+            return $tables[$tableId];
+        };
+
+
+        $i = -1;
+        $limit = $Table->getTbl()['params']['h_search_limit']['v'];
+        $offset = 0;
+        $hits = [];
+        do {
+            $i++;
+            $removed = false;
+            $posts['offset'] = $offset;
+            $posts['limit'] = $limit - count($hits);
+            $res = $Calc->execAction('KOD',
+                $Table->getTbl()['params'],
+                $Table->getTbl()['params'],
+                $Table->getTbl(),
+                $Table->getTbl(),
+                $Table,
+                'exec',
+                [
+                    'posts' => json_encode(
+                        $posts,
+                        JSON_UNESCAPED_UNICODE)
+                ]);
+
+            $res = json_decode($res, true);
+
+            foreach ($res['hits'] as $k => $_h) {
+                $offset++;
+                list($tableId, $rowId) = explode('-', $_h['pk']);
+                if ($_Table = $getTable($tableId)) {
+                    try {
+                        $_Table->checkIsUserCanViewIds('web', [$rowId]);
+                    } catch (\Exception $exception) {
+                        $removed = true;
+                        continue;
+                    }
+                }
+
+                foreach ($_h['_matchesInfo'] as $field => &$matches) {
+                    $val = $_h[$field];
+                    foreach ($matches as &$match) {
+                        $match['start'] = mb_strlen(substr($val, 0, $match['start']));
+                        $match['length'] = mb_strlen(substr($val, $match['start'], $match['length']));
+                        unset($match);
+                    }
+                    unset($matches);
+                }
+
+                if (key_exists($tableId, $tables_buttons)) {
+                    $_h['buttons'] = $tables_buttons[$tableId];
+                }
+                $hits[] = $_h;
+            }
+            unset($_h);
+        } while ($removed);
+
+        return ['hits' => array_values($hits)];
     }
 
     public function loadUserButtons()
@@ -129,15 +377,24 @@ class Actions
                 }
             }
         } else {
-            throw new errorException('Предложенный выбор устарел.');
+            throw new errorException($this->translate('The choice is outdated.'));
         }
         return ['ok' => 1];
     }
 
     public function notificationUpdate()
     {
-        if (!empty($this->post['id'])) {
-            if ($rows = $this->Totum->getModel('notifications')->getAll(['id' => $this->post['id'], 'user_id' => $this->User->getId()])) {
+        if (!empty($ids = $this->post['id'])) {
+
+            $model = $this->Totum->getModel('notifications');
+            if ($ids === 'ALL_ACTIVE') {
+                $rows = $model->getAllPrepared(['<=active_dt_from' => date('Y-m-d H:i:s', time() - 2),
+                    'user_id' => $this->User->getId(),
+                    'active' => 'true']);
+            } else {
+                $rows = $model->getAll(['id' => $ids, 'user_id' => $this->User->getId()]);
+            }
+            if ($rows) {
                 $upd = [];
                 switch ($this->post['type']) {
                     case 'deactivate':
@@ -161,6 +418,7 @@ class Actions
                 foreach ($rows as $row) {
                     $md[$row['id']] = $upd;
                 }
+
                 $this->Totum->getTable('notifications')->reCalculateFromOvers(['modify' => $md]);
             }
         }
@@ -180,23 +438,44 @@ class Actions
         if ($data = $model->getField('tbl', $key)) {
             $data = json_decode($data, true);
 
-            if (key_exists('cycle_id', $data['env'])) {
-                $Table = $this->Totum->getTable($data['env']['table'], $data['env']['cycle_id']);
-            } elseif (key_exists('hash', $data['env'])) {
-                $Table = $this->Totum->getTable($data['env']['table'], $data['env']['hash']);
-            } else {
-                $Table = $this->Totum->getTable($data['env']['table']);
-            }
+            list($Table, $row) = $this->loadEnvirement($data);
 
-            $row = [];
-            if (key_exists('id', $data['env'])) {
-                if ($Table->loadFilteredRows('inner', [$data['env']['id']])) {
-                    $row = $Table->getTbl()['rows'][$data['env']['id']];
+            if (key_exists('type', $data) && $data['type'] === 'select') {
+
+                /** @var Select $Field */
+                $Field = Field::init([
+                    'type' => 'select',
+                    'name' => '_linktoinputselect',
+                    'category' => key_exists('id', $row) ? 'column' : 'param',
+                    'codeSelect' => ($data['codeselect'] ?? null),
+                    'checkSelectValues' => true,
+                    'title' => $data['title'],
+                    'multiple' => $data['multiple'] ?? false,
+                ], $Table);
+
+                /*Запрос селекта*/
+                if (key_exists('search', $this->post)) {
+
+                    $val = ['v' => $this->post['search']['checkedVals'] ?? (empty($data['multiple']) ? [] : null)];
+                    $list = $Field->calculateSelectList($val,
+                        $row,
+                        $Table->getTbl(),
+                        $data['vars'] ?? []);
+
+                    return $Field->cropSelectListForWeb($list, $val['v'], $this->post['search']['q']);
+                } /*Проверка результата*/
+                else {
+                    $Field->checkSelectVal('web',
+                        $this->post['val'],
+                        $row,
+                        $Table->getTbl(),
+                        [],
+                        ($data['vars'] ?? []));
                 }
+
             }
 
-
-            if ($this->Table->getFields()[$data['code']] ?? false) {
+            if ($Table->getFields()[$data['code']] ?? false) {
                 $CA = new CalculateAction($this->Table->getFields()[$data['code']]['codeAction']);
             } else {
                 $CA = new CalculateAction($data['code']);
@@ -215,7 +494,7 @@ class Actions
 
             $model->delete($key);
         } else {
-            throw new errorException('Предложенный ввод устарел.');
+            throw new errorException($this->translate('The proposed input is outdated.'));
         }
         return ['ok' => 1];
     }
@@ -321,5 +600,23 @@ class Actions
                 $this->Totum->getInterfaceDatas()
             )]);
         die;
+    }
+
+    protected function loadEnvirement(array $data): array
+    {
+        $Table = $this->Totum->getTable($data['env']['table'], $data['env']['extra'] ?? null);
+
+        $row = [];
+        if (key_exists('id', $data['env'])) {
+            if ($Table->loadFilteredRows('inner', [$data['env']['id']])) {
+                $row = $Table->getTbl()['rows'][$data['env']['id']];
+            }
+        }
+        return [$Table, $row];
+    }
+
+    protected function translate(string $str, mixed $vars = []): string
+    {
+        return $this->Totum->getLangObj()->translate($str, $vars);
     }
 }

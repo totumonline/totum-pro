@@ -9,6 +9,7 @@ use totum\common\controllers\interfaceController;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
 use totum\common\errorException;
+use totum\common\Lang\RU;
 use totum\common\Totum;
 use totum\config\Conf;
 use totum\moduls\Table\ReadTableActions;
@@ -35,7 +36,7 @@ class AnController extends interfaceController
         static::$contentTemplate = $this->folder . '/__Main.php';
         $this->User = Auth::loadAuthUserByLogin($Config, "anonym", false);
         if (!$this->User) {
-            die('Пользователь для анонимных таблиц не подключен');
+            die($this->translate('User %s is not configured. Contact your system administrator.', 'anonym'));
         }
         $this->Totum = new Totum($Config, $this->User);
     }
@@ -70,7 +71,7 @@ class AnController extends interfaceController
             $this->__run($action, $request);
         } catch (\Exception $e) {
             if (!$this->isAjax) {
-                static::$contentTemplate = $this->Config::getTemplatesDir() . '/__error.php';
+                static::$contentTemplate = $this->Config->getTemplatesDir() . '/__error.php';
             }
             $message = $e->getMessage();
 
@@ -82,14 +83,14 @@ class AnController extends interfaceController
     public function actionAjaxActions()
     {
         if (!$this->Table) {
-            return $this->answerVars['error'] ?? 'Таблица не найдена';
+            return $this->answerVars['error'] ?? $this->translate('Table is not found.');
         }
 
         $this->Totum->transactionStart();
 
         try {
             if (!($method = $this->Request->getParsedBody()['method'] ?? '')) {
-                throw new errorException('Ошибка. Не указан метод');
+                throw new errorException($this->translate('Method not specified'));
             }
 
             $Actions = $this->getTableActions($this->Request, $method);
@@ -101,14 +102,14 @@ class AnController extends interfaceController
                 $result['links'] = $links;
             }
             if ($panels = $this->Totum->getPanelLinks()) {
-                $result['panels'] = $panels;
+                $result['showPanels'] = $panels;
             }
             if ($links = $this->Totum->getInterfaceDatas()) {
                 $result['interfaceDatas'] = $links;
             }
             $this->Totum->transactionCommit();
         } catch (errorException $exception) {
-            $result = ['error' => $exception->getMessage() . ($this->User->isCreator() ? "<br/>" . $exception->getPathMess() : '')];
+            $result = ['error' => $exception->getMessage() . ($this->User->isCreator() ? '<br/>' . $exception->getPathMess() : '')];
         }
         return $result;
     }
@@ -119,11 +120,11 @@ class AnController extends interfaceController
             return;
         }
         try {
-            $Actions = $this->getTableActions($this->Request, "getFullTableData");
+            $Actions = $this->getTableActions($this->Request, 'getFullTableData');
             $result = $Actions->getFullTableData(true);
         } catch (criticalErrorException $exception) {
             $this->clearTotum($request);
-            $Actions = $this->getTableActions($this->Request, "getFullTableData");
+            $Actions = $this->getTableActions($this->Request, 'getFullTableData');
             $error = $exception->getMessage();
             $result = $Actions->getFullTableData(false);
         }
@@ -145,10 +146,11 @@ class AnController extends interfaceController
     {
         if (!$this->onlyRead) {
             $Actions = new WriteTableActions($request, $this->modulePath, $this->Table, null);
-            $error = 'Метод [[' . $method . ']] в этом модуле не определен или имеет админский уровень доступа';
+            $error = $this->translate('Method [[%s]] in this module is not defined or has admin level access.',
+                $method);
         } else {
             $Actions = new ReadTableActions($request, $this->modulePath, $this->Table, null);
-            $error = 'Ваш доступ к этой таблице - только на чтение. Обратитесь к администратору для внесения изменений';
+            $error = $this->translate('Your access to this table is read-only. Contact administrator to make changes.');
         }
 
         if (!is_callable([$Actions, $method])) {
@@ -163,41 +165,53 @@ class AnController extends interfaceController
 
         if ($tableId = $requestTable) {
             if (!array_key_exists($tableId, $this->User->getTables())) {
-                $this->__addAnswerVar('error', 'Доступ к таблице запрещен');
+                $this->__addAnswerVar('error', $this->translate('Access to the table is denied.'));
             } else {
                 $tableRow = $this->Totum->getTableRow($tableId);
                 $extradata = null;
-                if ($tableRow['type'] !== 'tmp') {
-                    $this->__addAnswerVar('error', 'Доступ через модуль только для временных таблиц');
+                if ($tableRow['type'] === 'calcs') {
+                    $this->__addAnswerVar('error',
+                        $this->translate('Access to tables in a cycle through this module is not available.'));
                 } else {
                     $this->onlyRead = $this->User->getTables()[$tableId] === 0;
-                    if ($this->isAjax && empty($this->Request->getParsedBody()['tableData']['sess_hash'] ?? null)) {
-                        $this->__addAnswerVar('error', 'Ошибка доступа к таблице');
+                    if ($this->isAjax && $tableRow['type'] === 'tmp' && empty($this->Request->getParsedBody()['tableData']['sess_hash'] ?? null)) {
+                        $this->__addAnswerVar('error', $this->translate('Table access error'));
                     } else {
                         $extradata = $this->Request->getParsedBody()['tableData']['sess_hash'] ?? $_GET['sess_hash'] ?? null;
-                        $this->Table = $this->Totum->getTable($tableRow, $extradata);
-                        if (!$this->isAjax && !$extradata) {
+
+                        $this->Table = $this->Totum->getTable($tableRow,
+                            $tableRow['type'] === 'tmp' ? $extradata : null);
+
+                        if ($tableRow['type'] === 'tmp' && !$this->isAjax && !$extradata) {
                             $add_tbl_data = [];
-                            $add_tbl_data["params"] = [];
-                            $add_tbl_data["tbl"] = [];
+                            $add_tbl_data['params'] = [];
+                            $add_tbl_data['tbl'] = [];
                             if (key_exists('h_get', $this->Table->getFields())) {
-                                $add_tbl_data["params"]['h_get'] = $request->getQueryParams();
+                                $add_tbl_data['params']['h_get'] = $request->getQueryParams();
                             }
                             if (key_exists('h_post', $this->Table->getFields())) {
-                                $add_tbl_data["params"]['h_post'] = $request->getParsedBody();
+                                $add_tbl_data['params']['h_post'] = $request->getParsedBody();
                             }
                             if (key_exists('h_input', $this->Table->getFields())) {
-                                $add_tbl_data["params"]['h_input'] = (string)$request->getBody();
+                                $add_tbl_data['params']['h_input'] = (string)$request->getBody();
                             }
-                            if (!empty($d = ($this->Request->getQueryParams()['d']??null)) && ($d = Crypt::getDeCrypted(
-                                $d,
-                                $this->Config->getCryptSolt()
-                            )) && ($d = json_decode($d, true))) {
+                            if (!empty($d = ($this->Request->getQueryParams()['d'] ?? null)) && ($d = Crypt::getDeCrypted(
+                                    $d,
+                                    $this->Config->getCryptSolt()
+                                )) && ($d = json_decode($d, true))) {
+
+                                if (($d['t'] ?? false) != $this->Table->getTableRow()['id']) {
+                                    $this->__addAnswerVar('error',
+                                        $this->translate('Invalid link parameters.'));
+                                    $this->Table = null;
+                                    return;
+                                }
+
                                 if (!empty($d['d'])) {
-                                    $add_tbl_data["tbl"] = $d['d'];
+                                    $add_tbl_data['tbl'] = $d['d'];
                                 }
                                 if (!empty($d['p'])) {
-                                    $add_tbl_data["params"] = $d['p'] + $add_tbl_data["params"];
+                                    $add_tbl_data['params'] = $d['p'] + $add_tbl_data['params'];
                                 }
                             }
                             if ($add_tbl_data) {
@@ -208,7 +222,7 @@ class AnController extends interfaceController
                 }
             }
         } else {
-            $this->__addAnswerVar('error', 'Неверный путь к таблице');
+            $this->__addAnswerVar('error', $this->translate('Wrong path to the table'));
         }
     }
 

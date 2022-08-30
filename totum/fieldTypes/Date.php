@@ -11,6 +11,7 @@ namespace totum\fieldTypes;
 use totum\common\calculates\Calculate;
 use totum\common\errorException;
 use totum\common\Field;
+use totum\common\Lang\RU;
 use totum\tableTypes\aTable;
 
 class Date extends Field
@@ -48,6 +49,9 @@ class Date extends Field
     {
         parent::addViewValues($viewType, $valArray, $row, $tbl);
         if ($viewType === 'print') {
+            if (!$valArray['v']) {
+                return '';
+            }
             $date = date_create($valArray['v']);
 
             if (!empty($this->data['dateFormat'])) {
@@ -63,8 +67,7 @@ class Date extends Field
 
     public function getValueFromCsv($val)
     {
-
-        $valObj = Calculate::getDateObject($val);
+        $valObj = Calculate::getDateObject($val, $this->table->getLangObj());
         if ($valObj) {
             if (!empty($this->data['dateTime'])) {
                 return $valObj->format('Y-m-d H:i');
@@ -79,7 +82,7 @@ class Date extends Field
     protected function getDefaultValue()
     {
         if (!empty($this->data['default'])) {
-            if ($defDate = Calculate::getDateObject($this->data['default'])) {
+            if ($defDate = Calculate::getDateObject($this->data['default'], $this->table->getLangObj())) {
                 return $defDate->format('Y-m-d' . ($this->data['dateTime'] ? ' H:i' : ''));
             }
         }
@@ -88,14 +91,14 @@ class Date extends Field
     protected function checkValByType(&$val, $row, $isCheck = false)
     {
         if ($val) {
-            if ($date = Calculate::getDateObject($val)) {
+            if ($date = Calculate::getDateObject($val, $this->table->getLangObj())) {
                 if (empty($this->data['dateTime'])) {
                     $val = $date->format('Y-m-d');
                 } else {
                     $val = $date->format('Y-m-d H:i');
                 }
             } else {
-                throw new errorException('Ошибка формата введенной даты');
+                throw new errorException($this->translate('Date format error: [[%s]].', $val));
             }
         }
     }

@@ -7,3 +7,6 @@ totumTmpfiles/
 .idea
 /vendor/
 CalculateExtensions.php
+/secureFiles/
+
+/.github/

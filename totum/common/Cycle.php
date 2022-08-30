@@ -9,18 +9,19 @@
 namespace totum\common;
 
 use PDO;
+use totum\common\Lang\RU;
 use totum\models\CalcsTableCycleVersion;
 use totum\models\CalcsTablesVersions;
 use totum\models\Table;
 use totum\models\TablesCalcsConnects;
 use totum\tableTypes\aTable;
 use totum\tableTypes\calcsTable;
-use totum\tableTypes\globcalcsTable;
+use totum\tableTypes\cyclesTable;
 
 class Cycle
 {
-    protected $cycleId;
-    protected $cyclesTableId;
+    protected int $cycleId;
+    protected int $cyclesTableId;
     protected $cyclesTableRow;
     protected $tables = [];
     protected $tableVersions = [];
@@ -52,7 +53,9 @@ class Cycle
         $tables = $Cycle->getTableIds();
         foreach ($tables as $tableId) {
             $tableRow = $Totum->getTableRow($tableId);
-            $Cycle->addVersionForCycle($tableRow['name']);
+            if (!$Cycle->getVersionForTable($tableRow['name'])) {
+                $Cycle->addVersionForCycle($tableRow['name']);
+            }
         }
 
         $Cycle->afterCreate();
@@ -62,7 +65,7 @@ class Cycle
 
     public function getVersionForTable($tableName)
     {
-        if (!key_exists($tableName, $this->cacheVersions)) {
+        if (empty($this->cacheVersions[$tableName]['table_name'])) {
             $this->cacheVersions[$tableName] = CalcsTableCycleVersion::init($this->Totum->getConfig())->executePrepared(
                 true,
                 ['table_name' => $tableName, 'cycle' => $this->getId()],
@@ -78,7 +81,7 @@ class Cycle
         $defaults = CalcsTablesVersions::init($this->Totum->getConfig())->getDefaultVersion($tableName, true);
         $this->Totum->getTable('calcstable_cycle_version')->reCalculateFromOvers(
             ['add' => [
-                ['table_name' => $tableName, 'cycle' => $cycleId, 'version' => $defaults['version'], 'ord' => $defaults['default_ord']]
+                ['table_name' => $tableName, 'cycle' => $cycleId, 'version' => $defaults['version'], 'ord' => $defaults['default_ord'], 'auto_recalc' => $defaults['default_auto_recalc'] === 'false' ? false : true]
             ]]
         );
 
@@ -88,8 +91,9 @@ class Cycle
     protected function removeVersionsForCycle()
     {
         $cycleId = $this->getId();
-        $this->Totum->getTable('calcstable_cycle_version')->reCalculateFromOvers(
-            ['remove' => $this->Totum->getTable('calcstable_cycle_version')->getByParams(
+        $calcsVersionsTable = $this->Totum->getTable('calcstable_cycle_version');
+        $calcsVersionsTable->reCalculateFromOvers(
+            ['remove' => $calcsVersionsTable->getByParams(
                 [
                     'field' => 'id',
                     'where' => [
@@ -108,6 +112,12 @@ class Cycle
     {
         $Cycle = $Totum->getCycle($newId, $cyclesTableID);
         $tables = $Cycle->getTableIds();
+
+        if (empty($tables)) {
+            $tableRow = $Totum->getTableRow($cyclesTableID);
+            throw new errorException($Totum->getConfig()->getLangObj()->translate('There is no calculation table in [[%s]] cycles table.',
+                $tableRow['title']));
+        }
 
         /** @var TablesCalcsConnects $modelTablesCalcsConnects */
         $modelTablesCalcsConnects = TablesCalcsConnects::init($Totum->getConfig());
@@ -210,15 +220,15 @@ class Cycle
     /**
      * @return bool
      */
-    public function loadRow()
+    public function loadRow(): bool
     {
         if (is_null($this->cyclesTableRow)) {
             if ($this->cycleId && $this->cyclesTableId) {
-                $cycleTableRow = $this->Totum->getTableRow($this->cyclesTableId);
-                if (!$cycleTableRow || $cycleTableRow['type'] !== 'cycles') {
-                    throw new errorException('Таблица циклов не найдена');
+                $cyclesTableRow = $this->Totum->getTableRow($this->cyclesTableId);
+                if (!$cyclesTableRow || $cyclesTableRow['type'] !== 'cycles') {
+                    throw new errorException($this->Totum->getLangObj()->translate('The cycles table is specified incorrectly.'));
                 }
-                if ($row = $this->Totum->getModel($cycleTableRow['name'])->get(['id' => $this->cycleId, 'is_del' => false])) {
+                if ($row = $this->Totum->getModel($cyclesTableRow['name'])->get(['id' => $this->cycleId, 'is_del' => false])) {
                     foreach ($row as $k => &$v) {
                         if (!in_array($k, Model::serviceFields)) {
                             $v = json_decode($v, true);
@@ -247,13 +257,14 @@ class Cycle
 
         if ($tableRow['type'] !== 'calcs') {
             errorException::criticalException(
-                'Через Cycle создаются только расчетные таблицы цикла',
+                $this->Totum->getLangObj()->translate('[[%s]] is available only for the calculation table in the cycle.',
+                    'Cycle->getTable'),
                 $this->getCyclesTable()
             );
         }
         if ((int)$tableRow['tree_node_id'] !== $this->getCyclesTableId()) {
             errorException::criticalException(
-                'Ошибка обращения к таблице не своей циклической таблицы',
+                $this->Totum->getLangObj()->translate('The [[%s]] parameter is not correct.', 'tree_node_id'),
                 $this->getCyclesTable()
             );
         }
@@ -280,22 +291,32 @@ class Cycle
         return $this->tables[$tableRow['name']];
     }
 
-    public function getViewListTables()
+    public function getViewTablesWithOrds()
     {
-        $names = CalcsTableCycleVersion::init($this->Totum->getConfig())->getColumn(
-            'table_name',
+        $data = CalcsTableCycleVersion::init($this->Totum->getConfig())->getAll(
             ['cycles_table' => $this->getCyclesTableId(), 'cycle' => $this->getId()],
-            '(ord->>\'v\')::int, (sort->>\'v\')::int'
+            'table_name,ord,sort'
         );
-        if (count($this->getTableIds()) != $names) {
-            foreach ($this->getTableIds() as $id) {
-                $row = $this->Totum->getTableRow($id);
-                if (!in_array($row['name'], $names)) {
-                    $names[] = $row['name'];
-                }
+        $dataWithOrd = [];
+        foreach ($data as $r) {
+            $ord = $r['ord'] ?? $r['sort'];
+            $dec = 1;
+            while (key_exists($ord, $dataWithOrd)) {
+                $ord += 5 * (1 / (10 ^ $dec));
+                $dec++;
+            }
+            $dataWithOrd[$ord] = $r['table_name'];
+        }
+        ksort($dataWithOrd, SORT_NUMERIC);
+
+        foreach ($this->getTableIds() as $id) {
+            $row = $this->Totum->getTableRow($id);
+            if (!in_array($row['name'], $dataWithOrd)) {
+                $dataWithOrd[] = $row['name'];
             }
         }
-        return $names;
+
+        return $dataWithOrd;
     }
 
     public function saveTables($forceReCalculateCyclesTableRow = false, $forceSaveTables = false)
@@ -323,25 +344,27 @@ class Cycle
         }
     }
 
-    public function getCyclesTable()
+    public function getCyclesTable(): cyclesTable
     {
         return $this->Totum->getTable($this->getCyclesTableId());
     }
 
     public function recalculate($isAdding = false)
     {
-        $tables = $this->getTableIds();
+        $tablesIds = $this->getTableIds();
         $tablesUpdates = [];
 
-        foreach ($tables as &$t) {
+        $tables = [];
+        foreach ($tablesIds as $t) {
             $t = $this->getTable($t);
-            $tablesUpdates[$t->getTableRow()["id"]] = $t->getLastUpdated();
+            $tablesUpdates[$t->getTableRow()['id']] = $t->getLastUpdated();
+            $tables[] = $t;
         }
         unset($t);
 
         $cyclesTable = $this->Totum->getTable($this->cyclesTableId);
         foreach ($tables as $t) {
-            if ($tablesUpdates[$t->getTableRow()["id"]] === $t->getLastUpdated()) {
+            if ($tablesUpdates[$t->getTableRow()['id']] === $t->getLastUpdated()) {
                 /** @var calcsTable $t */
                 if ($isAdding) {
                     $t->setIsTableAdding(true);

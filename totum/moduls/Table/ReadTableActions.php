@@ -11,13 +11,85 @@ use totum\common\Crypt;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\FormatParamsForSelectFromTable;
+use totum\common\Lang\RU;
 use totum\common\Totum;
 use totum\fieldTypes\Comments;
 use totum\fieldTypes\Select;
+use totum\models\TmpTables;
 use totum\tableTypes\aTable;
+use totum\tableTypes\tmpTable;
 
 class ReadTableActions extends Actions
 {
+    protected bool $creatorCommonView = false;
+    protected $kanban_bases = [];
+
+    protected function getTableFormat(array $rowIds): array
+    {
+        $tFormat = [];
+        if ($this->Table->getTableRow()['table_format'] && $this->Table->getTableRow()['table_format'] != 'f1=:') {
+            $Log = $this->Table->calcLog(['name' => 'TABLE FORMAT']);
+
+            $calc = new CalculcateFormat($this->Table->getTableRow()['table_format']);
+            $tFormat = $calc->getFormat(
+                'TABLE',
+                [],
+                $this->Table->getTbl(),
+                $this->Table,
+                ['rows' => $this->Table->getRowsForFormat($rowIds)]
+            );
+            $this->Table->calcLog($Log, 'result', $tFormat);
+        }
+        if ($this->Table->getChangeIds()['reordered']) {
+            $tFormat['refreshOrder'] = true;
+        }
+
+        if (($this->Table->getTableRow()['panels_view']['kanban_html_type'] ?? false) === 'show' && !empty($this->Table->getTableRow()['panels_view']['kanban'])) {
+            $tFormat['kanban_html'] = $this->__getKanbanHtml();
+        }
+
+        return $tFormat;
+    }
+
+    public function getKanbanHtml()
+    {
+        $this->Table->reCalculateFilters(
+            'web',
+            false,
+            false,
+            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+        );
+        return ['kanban_html' => $this->__getKanbanHtml()];
+
+    }
+
+    protected function __getKanbanHtml()
+    {
+        if (!$this->kanban_bases) {
+            $this->getKanbanData();
+        }
+        $fCalc = new CalculcateFormat($this->Table->getTableRow()['panels_view']['kanban_html_code']);
+        $fCalc->setStartSections(['=']);
+        $Log = $this->Table->calcLog(['name' => 'Kanban format']);
+        try {
+            $htmls = [];
+            foreach ($this->kanban_bases as $base) {
+                $htmls[$base] = $fCalc->exec(['name' => '_KANBAN_FORMAT'],
+                    [],
+                    [],
+                    [],
+                    $this->Table->getTbl(),
+                    $this->Table->getTbl(),
+                    $this->Table,
+                    ['kanban' => $base]);
+            }
+            $this->Table->calcLog($Log, 'result', $htmls);
+        } catch (errorException $e) {
+            $this->Table->calcLog($Log, 'error', $e->getMessage());
+        }
+        return $htmls ?? [];
+    }
+
     public function csvExport()
     {
         if ($this->Table->isUserCanAction('csv')) {
@@ -28,7 +100,7 @@ class ReadTableActions extends Actions
                 $this->post['type']
             );
         } else {
-            throw new errorException('У вас нет доступа для csv-выкрузки');
+            throw new errorException($this->translate('Csv download of this table is not allowed for your role.'));
         }
     }
 
@@ -72,22 +144,110 @@ class ReadTableActions extends Actions
                 ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
             );
 
-            $clc = new CalculcateFormat($field['format']);
+
             $tbl = $this->Table->getTbl();
             $item = $tbl['params'];
+
             if ($field['category'] === 'column') {
-                $this->Table->checkIsUserCanViewIds('web', [$this->post['id']]);
-                $item = $this->Table->getTbl()["rows"][$this->post['id']];
+                if (is_numeric($this->post['id'])) {
+                    $this->Table->checkIsUserCanViewIds('web', [$this->post['id']]);
+                    $item = $this->Table->getTbl()['rows'][$this->post['id']];
+                } else {
+                    $item = $this->getInsertRow($this->post['id']);
+                }
+            }
+            if (!($field = $this->Table->getVisibleFields('web')[$field['name']] ?? null)) {
+                throw new errorException($this->translate('Field [[%s]] is not found.', $field['title']));
             }
 
-            $result = $clc->getPanelFormat(
-                $field['name'],
-                $item,
-                $tbl,
-                $this->Table
-            );
+            $Field = Field::init($field, $this->Table);
+            $result = $Field->getPanelFormat($item,
+                $tbl);
         }
         return ['panelFormats' => $result];
+    }
+
+    public function saveLinkToEdit()
+    {
+        /** @var TmpTables $model */
+        $model = $this->Totum->getNamedModel(TmpTables::class);
+
+        if (!empty($this->post['shash']) && ($data = $model->getByHash(TmpTables::SERVICE_TABLES['linktoedit'],
+                $this->User,
+                $this->post['shash']))) {
+
+            $LinkedTable = $this->Totum->getTable($data['table']['name'], $data['table']['extra'] ?? null);
+
+
+            if (!empty($this->post['search'])) {
+
+                if (!empty($data['table']['id'])) {
+                    $LinkedTable->loadFilteredRows('inner', [$data['table']['id']]);
+                    $item = $LinkedTable->getTbl()['rows'][$data['table']['id']];
+                } else {
+                    $item = $LinkedTable->getTbl()['params'];
+                }
+
+                if (!empty($this->post['search']['comment'])) {
+                    if ($this->post['search']['comment'] === 'getValues') {
+                        return ['value' => Field::init($LinkedTable->getFields()[$data['table']['field']],
+                            $LinkedTable)->getFullValue($item[$data['table']['field']]['v'] ?? [],
+                            $item['id'] ?? null)];
+                    }
+                } else {
+                    foreach ($item as $k => &$v) {
+                        if (is_array($v)) {
+                            $v = $v['v'];
+                        }
+                    }
+                    unset($v);
+
+                    if ($this->post['search']['checkedVals'] ?? false) {
+                        $item[$data['table']['field']] = $this->post['search']['checkedVals'];
+                    }
+
+                    return $this->getEditSelectFromTable(['field' => $data['table']['field'], 'item' => $item],
+                        $LinkedTable,
+                        'inner',
+                        [],
+                        ($this->post['search']['q'] ?? ''),
+                        ($this->post['search']['parentId'] ?? null));
+                }
+
+            } else {
+
+                $value = $this->post['data'];
+
+                if (is_string($value) && $LinkedTable->getFields()[$data['table']['field']]['type'] === 'file') {
+                    $val = json_decode($value, true);
+                    if (!json_last_error()) {
+                        $value = $val;
+                    }
+                }
+
+                $item = [];
+                if ($data['table']['id'] ?? false) {
+                    $item[$data['table']['id']] = [$data['table']['field'] => $value];
+                } else {
+                    $item['params'] = [$data['table']['field'] => $value];
+                }
+
+
+                $modifyData = [
+                    match ($this->post['special'] ?? false) {
+                        'setValuesToDefaults', 'setValuesToPinned' => $this->post['special'],
+                        default => 'modify'
+                    } => $item
+                ];
+
+                $LinkedTable->reCalculateFromOvers($modifyData);
+            }
+
+        } else {
+            throw new errorException($this->translate('Temporary table storage time has expired'));
+        }
+
+        return ['ok' => 1];
     }
 
     public function getValue()
@@ -95,13 +255,13 @@ class ReadTableActions extends Actions
         $data = json_decode($this->post['data'], true) ?? [];
 
         if (empty($data['fieldName'])) {
-            throw new errorException('Не задано имя поля');
+            throw new errorException($this->translate('The name of the field is not set.'));
         }
-        if (empty($field = $this->Table->getVisibleFields('web')[$data['fieldName']])) {
-            throw new errorException('Доступ к полю запрещен');
+        if (empty($field = ($this->Table->getVisibleFields('web')[$data['fieldName']] ?? null))) {
+            throw new errorException($this->translate('Access to the field is denied'));
         }
         if (empty($data['rowId']) && $field['category'] === 'column') {
-            throw new errorException('Не задана строка');
+            throw new errorException($this->translate('Fill in the parameter [[%s]].', 'rowId'));
         }
 
         if (!empty($data['rowId'])) {
@@ -115,7 +275,7 @@ class ReadTableActions extends Actions
         }
 
         if (!isset($val)) {
-            throw new errorException('Ошибка доступа к полю');
+            throw new errorException('Getting value error');
         }
         if (is_string($val)) {
             $val = json_decode($val, true);
@@ -124,6 +284,44 @@ class ReadTableActions extends Actions
         return ['value' => Field::init($field, $this->Table)->getFullValue($val['v'], $data['rowId'] ?? null)];
     }
 
+    /**
+     * Нажатие кнопки в linktodatajson
+     *
+     * @throws errorException
+     */
+    public function linkJsonClick()
+    {
+        if (empty($this->post['hash']) || !is_string($this->post['hash'])) {
+            throw new errorException($this->translate('Interface Error'));
+        }
+
+        /** @var TmpTables $model */
+        $model = $this->Totum->getNamedModel(TmpTables::class);
+        $data = $model->getByHash(TmpTables::SERVICE_TABLES['linktodatajson'], $this->User, $this->post['hash'], true);
+        if (!$data) {
+            throw new errorException($this->translate('Temporary table storage time has expired'));
+        }
+        list($Table, $row) = $this->loadEnvirement($data);
+
+
+        $vars = $data['var'];
+        $vars['value'] = json_decode($this->post['json'], true);
+
+        $CA = new CalculateAction($data['code']);
+        $CA->execAction(
+            'CODE FROM JSON LINK',
+            [],
+            $row,
+            $Table->getTbl(),
+            $Table->getTbl(),
+            $Table,
+            'exec',
+            $vars
+        );
+        $model->deleteByHash(TmpTables::SERVICE_TABLES['linktodatajson'], $this->User, $this->post['hash']);
+        return ['ok' => 1];
+
+    }
 
     /**
      * Нажатие кнопки на панели кнопок
@@ -139,21 +337,7 @@ class ReadTableActions extends Actions
         if ($data = $model->getField('tbl', $key)) {
             $data = json_decode($data, true);
             if (key_exists('index', $this->post) && $data['buttons'][$this->post['index']] ?? null) {
-
-                if (key_exists('cycle_id', $data['env'])) {
-                    $Table = $this->Totum->getTable($data['env']['table'], $data['env']['cycle_id']);
-                } elseif (key_exists('hash', $data['env'])) {
-                    $Table = $this->Totum->getTable($data['env']['table'], $data['env']['hash']);
-                } else {
-                    $Table = $this->Totum->getTable($data['env']['table']);
-                }
-
-                $row = [];
-                if (key_exists('id', $data['env'])) {
-                    if ($Table->loadFilteredRows('inner', [$data['env']['id']])) {
-                        $row = $Table->getTbl()['rows'][$data['env']['id']];
-                    }
-                }
+                list($Table, $row) = $this->loadEnvirement($data);
 
 
                 if ($Table->getFields()[$data['buttons'][$this->post['index']]['code']] ?? false) {
@@ -172,10 +356,10 @@ class ReadTableActions extends Actions
                 );
                 return ["ok" => 1];
             } else {
-                throw new errorException('Ошибка интерфейса - выбрана несуществующая кнопка');
+                throw new errorException($this->translate('Interface Error'));
             }
         } else {
-            throw new errorException('Предложенный выбор устарел.');
+            throw new errorException($this->translate('The choice is outdated.'));
         }
     }
 
@@ -211,7 +395,7 @@ class ReadTableActions extends Actions
                     $CA = new CalculateAction($row['code']);
                     if ($row['id']) {
                         $this->Table->checkIsUserCanViewIds('web', [$row['id']]);
-                        $item = $this->Table->getTbl()["rows"][$row['id']];
+                        $item = $this->Table->getTbl()['rows'][$row['id']];
                     } else {
                         $item = $this->Table->getTbl()['params'];
                     }
@@ -230,49 +414,164 @@ class ReadTableActions extends Actions
                 }
             }
         } else {
-            throw new errorException('Предложенный выбор устарел.');
+            throw new errorException($this->translate('The choice is outdated.'));
+        }
+        return ['ok' => 1];
+    }
+
+    public function filesUpload()
+    {
+        $model = $this->Totum->getModel('_tmp_tables', true);
+        $key = ['table_name' => '_linkToFileUpload', 'user_id' => $this->User->getId(), 'hash' => $this->post['hash'] ?? null];
+        if ($data = $model->getField('tbl', $key)) {
+            $data = json_decode($data, true);
+            $files = json_decode($this->post['files'] ?? '[]', true);
+            foreach ($files as &$file) {
+                $file['filestring'] = base64_decode($file['base64']);
+                unset($file['base64']);
+            }
+            list($Table, $row) = $this->loadEnvirement($data);
+
+            $vars = $data['vars'] ?? [];
+            $vars['input'] = $files;
+
+            $CA = new CalculateAction($data['code']);
+            $CA->execAction(
+                'CODE UPLOAD FILES',
+                [],
+                $row,
+                $Table->getTbl(),
+                $Table->getTbl(),
+                $Table,
+                'exec',
+                $vars
+            );
+            $model->delete($key);
+        } else {
+            throw new errorException($this->translate('The proposed input is outdated.'));
         }
         return ['ok' => 1];
     }
 
     public function loadPage()
     {
-        $lastId = $this->post['lastId'] ?? 0;
+        if (key_exists('offset', $this->post) && !is_null($this->post['offset']) && $this->post['offset'] !== '') {
+            $lastId = ['offset' => $this->post['offset']];
+        } else {
+            $lastId = $this->post['lastId'] ?? 0;
+        }
         $prevLastId = (int)($this->post['prevLastId'] ?? 0);
         $onPage = $this->post['pageCount'] ?? 0;
         $this->Table->reCalculateFilters(
             'web',
             true,
             false,
-            ["params" => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
         );
-        return $this->Table->getSortedFilteredRows('web', 'web', [], $lastId, $prevLastId, $onPage);
+        if (method_exists($this->Table, 'withoutNotLoaded')) {
+            $this->Table->withoutNotLoaded();
+        }
+
+        $data = $this->Table->getSortedFilteredRows('web', 'web', [], $lastId, $prevLastId, $onPage);
+
+        $rowIds = array_column($data['rows'], 'id');
+        $data['f'] = $this->getTableFormat($rowIds);
+
+        if ($this->post['recFormats'] ?? false) {
+            $data['params'] = $this->addValuesAndFormatsOfParams($this->Table->getTbl()['params'], $rowIds)['params'];
+        }
+
+        return $data;
+    }
+
+    public function loadTreeRows()
+    {
+        $this->Table->reCalculateFilters(
+            'web',
+            true,
+            false,
+            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+        );
+
+        if (method_exists($this->Table, 'withoutNotLoaded')) {
+            $this->Table->withoutNotLoaded();
+        }
+        $onPage = $this->post['onPage'] ?? 0;
+        $params = $this->Table->filtersParamsForLoadRows('web');
+        $data['rows'] = [];
+        $data['treeCounts'] = [];
+        foreach (json_decode($this->post['branches'], true) as $branch) {
+            $offset = $onPage * ($branch['p']);
+            $treeIds = $params === false ? [] : $this->Table->getByParams(
+                [
+                    'where' => [...$params, ['field' => 'tree', 'value' => $branch['v'], 'operator' => '=']],
+                    'field' => 'id',
+                    'offset' => $offset,
+                    'limit' => $onPage,
+                    'order' => $this->Table->orderParamsForLoadRows()
+                ],
+                'list'
+            );
+
+            $data['treeCounts'][$branch['v']] = $this->Table->countByParams([...$params, ['field' => 'tree', 'value' => $branch['v'], 'operator' => '=']]);
+            if ($treeIds) {
+                foreach ($this->Table->getVisibleFields('web', true)['column'] as $f) {
+                    if ($f['type'] === 'select') {
+                        Field::init($f, $this->Table)->emptyCommonSelectViewList();
+                    }
+                }
+                $rows = $this->Table->getSortedFilteredRows('web', 'web', $treeIds)['rows'];
+                $data['rows'] = array_merge($data['rows'], $rows);
+            }
+        }
+        $data['order'] = array_keys($this->Table->getTbl()['rows']);
+
+        $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS ROWS']);
+        $this->Table->getValuesAndFormatsForClient($data, 'web', array_keys($data['rows']));
+        $this->Table->calcLog($Log, 'result', 'done');
+        $data['f'] = $this->getTableFormat(array_column($data['rows'], 'id'));
+
+        return $data;
     }
 
 
     public function loadPreviewHtml()
     {
+        $this->Table->reCalculateFilters(
+            'web',
+            false,
+            false,
+            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+        );
+
         $data = json_decode($this->post['data'], true);
 
         $fields = $this->Table->getFields();
 
-        if (!($field = $fields[$data['field']] ?? null)) {
-            throw new errorException('Не найдено поле [[' . $data['field'] . ']]. Возможно изменилась структура таблицы. Перегрузите страницу');
+        if (!($field = $this->Table->getVisibleFields('web')[$data['field']] ?? null)) {
+            throw new errorException($this->translate('Field [[%s]] is not found.', $data['field']));
         }
 
         if (!in_array($field['type'], ['select'])) {
-            throw new errorException('Ошибка - поле не типа select');
+            throw new errorException($this->translate('Field not of type select/tree'));
         }
 
         $this->Table->loadDataRow();
         $row = $data['item'];
 
-        if ($field['category'] === 'column' && !isset($row['id'])) {
-            $row['id'] = null;
+        if ($field['category'] === 'column') {
+            if (!isset($row['id'])) {
+                $row['id'] = null;
+            } else {
+                /*Проверка не заблокирована ли строка для пользователя*/
+                $this->Table->checkIsUserCanViewIds('web', [$row['id']]);
+            }
         }
+
         foreach ($row as $k => &$v) {
             if (key_exists($k, $fields)) {
-                if ($fields[$k]['type'] === 'date' && $v && $v = Calculate::getDateObject($v)) {
+                if ($fields[$k]['type'] === 'date' && $v && $v = Calculate::getDateObject($v,
+                        $this->Totum->getLangObj())) {
                     if (!empty($fields[$k]['dateTime'])) {
                         $v = $v->format('Y-m-d H:i');
                     } else {
@@ -285,18 +584,21 @@ class ReadTableActions extends Actions
         /** @var Select $Field */
         $Field = Field::init($field, $this->Table);
 
-        return ['previews' => $Field->getPreviewHtml($data['val'], $row, $this->Table->getTbl())];
+        return ['previews' => $Field->getPreviewHtml(['v' => $data['val']], $row, $this->Table->getTbl())];
     }
 
     public function refresh()
     {
         $result = [];
+        $filterParams = ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')];
+
         if ($this->post['recalculate'] ?? false) {
             try {
                 $inVars = ['calculate' => aTable::CALC_INTERVAL_TYPES['changed'], 'channel' => 'web',
-                    'modify' => ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]];
+                    'modify' => $filterParams];
                 $this->Totum->transactionStart();
                 $this->Table->reCalculateFromOvers($inVars);
+                $this->Table->reCalculateFilters('web', false, $filterParams);
                 $this->Totum->transactionCommit();
             } catch (errorException $e) {
                 $error = $e->getMessage();
@@ -304,22 +606,25 @@ class ReadTableActions extends Actions
                     $error .= ' <br/> ' . $e->getPathMess();
                     $result['error'] = $error;
                 }
-                $this->Totum->transactionRollback();
-                throw new criticalErrorException($e->getMessage());
+                errorException::criticalException($e, $this->Totum);
             }
         } else {
             $this->Table->reCalculateFilters(
                 'web',
                 false,
                 false,
-                ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+                $filterParams
             );
         }
 
 
         switch ($pageViewType = $this->getPageViewType()) {
             case 'tree':
-                $result += ['chdata' => $this->addValuesAndFormats(['params' => $this->Table->getTbl()['params']])];
+                $result += ['chdata' => []];
+
+                if (!is_array($this->post) || !key_exists('tree', $this->post)) {
+                    throw new errorException($this->translate('The tree index is not passed'));
+                }
                 $treeIndex = json_decode($this->post['tree'], true);
                 $result['chdata'] = array_merge(
                     $result['chdata'],
@@ -333,34 +638,57 @@ class ReadTableActions extends Actions
                                 }
                             }
                         },
-                        [""]
+                        ['']
                     )
                 );
+
+                if ($this->isPagingView('tree') && $ids = json_decode($this->post['ids'], true)) {
+                    $result['chdata']['rows'] = $this->Table->getSortedFilteredRows('web', 'web', $ids)['rows'];
+                }
+
+                $pageIds = array_column($result['chdata']['rows'] ?? [], 'id');
+                $result['chdata']['params'] = $this->addValuesAndFormatsOfParams($this->Table->getTbl()['params'],
+                    $pageIds)['params'];
+                $result['chdata']['f'] = $this->getTableFormat($pageIds);
                 break;
             default:
+
                 $result += ['chdata' => $this->getTableClientData(
-                    json_decode($this->post['ids'], true),
+                    match ($this->post['withoutIds'] ?? null) {
+                        null => json_decode($this->post['ids'], true),
+                        'page' => ['offset' => $this->post['offset'] ?? 0],
+                        default => (int)$this->post['withoutIds']
+                    },
                     $this->post['onPage'] ?? null,
                     false
                 )];
 
-                if ($pageViewType === 'panels' && $this->Table->getTableRow()['with_order_field']) {
-                    $result['chdata']['nsorted_ids'] = array_column($result['chdata']['rows'], 'id');
-                } elseif ($pageViewType === 'paging') {
-                    $params = $this->Table->filtersParamsForLoadRows('web');
-                    $result['allCount'] = $params === false ? 0 : $this->Table->countByParams($params);
+                switch ($pageViewType) {
+                    case 'panels':
+                        if ($this->Table->getTableRow()['with_order_field']) {
+                            $result['chdata']['nsorted_ids'] = array_column($result['chdata']['rows'], 'id');
+                        }
+                        break;
+                    default:
+                        if ($this->isPagingView()) {
+                            $params = $this->Table->filtersParamsForLoadRows('web');
+                            $result['allCount'] = $params === false ? 0 : $this->Table->countByParams($params);
+                        }
+                        break;
                 }
         }
 
 
-        $result['updated'] = $this->Table->getUpdated();
+        $result['updated'] = $this->Table->getSavedUpdated();
         $result['refresh'] = true;
 
-        $result['chdata']['rows'] = array_combine(
-            array_column($result['chdata']['rows'], 'id'),
-            $result['chdata']['rows']
-        );
-        if ($this->Table->getTableRow()['new_row_in_sort']) {
+        if (($this->post['getList'] ?? false) !== 'true') {
+            $result['chdata']['rows'] = array_combine(
+                array_column($result['chdata']['rows'], 'id'),
+                $result['chdata']['rows']
+            );
+        }
+        if ($this->Table->getTableRow()['new_row_in_sort'] || $this->Table->getChangeIds()['reordered']) {
             $result['chdata']['order'] = array_column($result['chdata']['rows'], 'id');
         }
         return $result;
@@ -379,6 +707,106 @@ class ReadTableActions extends Actions
             ]
         );
         return ['ok' => 1];
+    }
+
+    protected function getEditSelectFromTable(array $data, aTable $Table, $channel, $filters, $q = '', $parentId = null): array
+    {
+        $fields = $Table->getFields();
+
+        if (!($field = $fields[$data['field']] ?? null)) {
+            throw new errorException($this->translate('Field [[%s]] is not found.', $data['field']));
+        }
+
+        $Table->loadDataRow();
+        $Table->reCalculateFilters(
+            $channel,
+            false,
+            false,
+            ['params' => $filters]
+        );
+
+        $row = $data['item'];
+
+        if ($field['category'] === 'column' && !isset($row['id'])) {
+            $row['id'] = null;
+        }
+        foreach ($row as $k => &$v) {
+            if ($k !== 'id') {
+                $v = ['v' => $v];
+            }
+        }
+        if ($field['category'] === 'column') {
+            if (array_key_exists('id', $row) && !is_null($row['id'])) {
+                $Table->loadFilteredRows('web', [$row['id']]);
+                $row = $row + $Table->getTbl()['rows'][$row['id']] ?? [];
+            } else {
+                $row = $row + $Table->checkInsertRow([], $data['item'], null, []);
+            }
+        } else {
+            $row = $row + $Table->getTbl()['params'];
+        }
+
+
+        if (!in_array(
+            $field['type'],
+            ['select', 'tree']
+        )) {
+            throw new errorException($this->translate('Field not of type select/tree'));
+        }
+
+        /** @var Select $Field */
+        $Field = Field::init($field, $Table);
+
+        $list = $Field->calculateSelectList($row[$field['name']], $row, $Table->getTbl());
+
+        return $Field->cropSelectListForWeb($list, $row[$field['name']]['v'], $q, $parentId);
+    }
+
+    protected function getInsertRow($hash, $addData = [], $tableData = [], $clearField = null)
+    {
+        $this->Table->reCalculateFilters(
+            'web',
+            false,
+            false,
+            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+        );
+
+        $visibleFields = $this->Table->getVisibleFields('web', true);
+
+
+        $columnFilter = [];
+        foreach ($this->Table->getSortedFields()['filter'] as $k => $f) {
+            if (($f['showInWeb'] ?? false) && ($f['column'] ?? false)) {
+                $columnFilter[$f['column']] = $k;
+            }
+        }
+        foreach ($visibleFields['column'] as $v) {
+            $filtered = null;
+            if (key_exists($v['name'], $columnFilter) && empty($v['code'])) {
+                $val = $this->Table->getTbl()['params'][$columnFilter[$v['name']]]['v'];
+
+                if (isset($columnFilter[$v['name']])
+                    && $val !== '*ALL*'
+                    && $val !== ['*ALL*']
+                    && $val !== '*NONE*'
+                    && $val !== ['*NONE*']
+                ) {
+                    $filtered = $val ?? null;
+                }
+                if (!empty($filtered)) {
+                    $filtersData[$v['name']] = $filtered;
+                }
+            }
+        }
+
+        return $this->Table->checkInsertRow(
+            $tableData,
+            $addData,
+            $hash,
+            [],
+            $clearField,
+            $filtersData ?? []
+        );
     }
 
     protected function getPanelsCookieName()
@@ -409,31 +837,38 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
 
         $settings = json_decode($this->post['settings'], true);
-        $tableAll = ['<h1>' . $this->Table->getTableRow()['title'] . '</h1>'];
+
 
         $sosiskaMaxWidth = $settings['sosiskaMaxWidth'];
         $fields = array_intersect_key($this->Table->getFields(), $settings['fields']);
 
         $fieldNames = array_keys($fields);
-
         $ids = $this->Table->loadFilteredRows('web', $settings['ids'] ?? []);
+        $title = $this->Table->getTableRow()['title'];
+        $tableFormat = $this->getTableFormat($ids);
+        if ($tableFormat['tabletitle'] ?? false) {
+            $title = $tableFormat['tabletitle'];
+        }
+
+        $tableAll = ['<h1>' . htmlspecialchars($title) . '</h1>'];
+
         $data = ['params' => $this->Table->getTbl()['params'], 'rows' => []];
-        foreach ($settings['ids'] as $id) {
+        foreach ($settings['ids'] ?? [] as $id) {
             if (in_array($id, $ids)) {
                 $data['rows'][$id] = $this->Table->getTbl()['rows'][$id];
             }
         }
-        $result = $this->Table->getValuesAndFormatsForClient($data, 'print', $fieldNames);
+        $result = $this->Table->getValuesAndFormatsForClient($data, 'print', array_keys($data['rows']), $fieldNames);
 
 
-        $getTdTitle = function ($field, $withWidth = true) {
+        $getTdTitle = function ($field, $withWidth = true, $width = null) {
             $title = htmlspecialchars($field['title']);
             if (!empty($field['unitType'])) {
                 $title .= ', ' . $field['unitType'];
             }
 
             return '<td'
-                . ($withWidth ? ' style="width: ' . $field['width'] . 'px;"' : '')
+                . ($withWidth ? ' style="width: ' . ($field['width'] ?? $width) . 'px;"' : '')
                 . ' class="title">' . $title . '</td>';
         };
 
@@ -475,84 +910,53 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             }
         }
 
-        $table = [];
-        $width = 0;
-        foreach ($fields as $field) {
-            if ($field['category'] === 'column') {
-                if (!$table) {
-                    $table = ['<table style="width: ', 'px;"><thead><tr>', 'head' => [], '</tr></thead><tbody><tr>', 'body' => [], '</tr></tbody></table>'];
-                    if (array_key_exists('id', $settings['fields'])) {
-                        $table['head'][] = '<td style="width: ' . $settings['fields']['id'] . 'px;" class="title">id</td>';
-                        $width += $settings['fields']['id'];
+
+        /*Строчная часть*/
+        if ($settings['rotated'] ?? null) {
+
+            $table = ['<table style="width: ', 'px;"><thead><tr>', 'head' => [], '</tr></thead><tbody><tr>', 'body' => [], '</tr></tbody></table>'];
+            $table['head'][] = '<td style="width: 120px;" class="title"></td>';
+            $width = 120;
+
+            foreach ($fields as $field) {
+                if ($field['category'] === 'column') {
+                    $table['body'][$field['name']][] = $getTdTitle($field);
+                } elseif ($field['category'] === 'footer') {
+                    $field['column'] = '';
+                }
+            }
+            foreach ($result['rows'] as $id => $row) {
+                $title = '';
+                if ($this->Table->getTableRow()['main_field']) {
+                    $mainField = $this->Table->getFields()[$this->Table->getTableRow()['main_field']];
+                    switch ($mainField['type']) {
+                        case 'date':
+                            if ($row[$mainField['name']]['v']) {
+                                $title = $this->Totum->getLangObj()->dateFormat(date_create($row[$mainField['name']]['v']),
+                                    $mainField['dateFormat']);
+                            }
+                            break;
+                        default:
+                            $title = $row[$mainField['name']]['v'];
                     }
                 }
-                $table['head'][] = $getTdTitle($field);
-                $width += $settings['fields'][$field['name']];
-            }
-        }
-        if ($table) {
-            foreach ($result['rows'] as $id => $row) {
-                $tr = '<tr>';
-                if (array_key_exists('id', $settings['fields'])) {
-                    $tr .= '<td class="f-id"><span>' . $id . '</span></td>';
+                if (array_key_exists('id', $settings['fields']) && (empty($title) || strip_tags($title) === '')) {
+                    $title = $id;
                 }
+
+
+                $table['head'][] = '<td style="width: ' . $settings['rotated'] . 'px;" class="title">' . $title . '</td>';
                 foreach ($fields as $field) {
                     if ($field['category'] === 'column') {
-                        $tr .= '<td class="f-' . $field['type'] . ' n-' . $field['name'] . '"><span>' . $row[$field['name']]['v'] . '</span></td>';
+                        $table['body'][$field['name']][] = '<td class="f-' . $field['type'] . ' n-' . $field['name'] . '"><span>' . $row[$field['name']]['v'] . '</span></td>';
                     }
                 }
-                $tr .= '</tr>';
-                $table['body'][] = $tr;
             }
 
-
-            if ($columnFooters = array_filter(
-                $fields,
-                function ($field) use ($fields) {
-                    if ($field['category'] === 'footer' && $field['column'] && array_key_exists(
-                            $field['column'],
-                            $fields
-                        )) {
-                        return true;
-                    }
-                }
-            )) {
-                while ($columnFooters) {
-                    $tr_names = '<tr>';
-                    $tr_values = '<tr>';
-                    foreach ($fields as $field) {
-                        if ($field['category'] === 'column') {
-                            $column = $field['name'];
-
-                            if ($thisColumnFooters = array_filter(
-                                $columnFooters,
-                                function ($field) use ($column) {
-                                    if ($field['column'] === $column) {
-                                        return true;
-                                    }
-                                }
-                            )) {
-                                $name = array_keys($thisColumnFooters)[0];
-                                $thisColumnFooter = $columnFooters[$name];
-
-                                $tr_names .= $getTdTitle($thisColumnFooter, false);
-                                $tr_values .= '<td class="f-' . $thisColumnFooter['type'] . ' n-' . $thisColumnFooter['name'] . '">' . $result['params'][$thisColumnFooter['name']]['v'] . '</td>';
-
-                                unset($columnFooters[$name]);
-                            } else {
-                                $tr_names .= '<td></td>';
-                                $tr_values .= '<td></td>';
-                            }
-                        }
-                    }
-                    $tr_names .= '</tr>';
-                    $tr_values .= '</tr>';
-                    $table['body'][] = $tr_names;
-                    $table['body'][] = $tr_values;
-                    unset($tr_names);
-                    unset($tr_values);
-                }
+            foreach ($table['body'] as &$row) {
+                $row = '<tr>' . implode('', $row) . '</tr>';
             }
+            unset($row);
 
             $tableAll[] = $table[0] . $width . $table[1] . implode(
                     '',
@@ -561,13 +965,106 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     '',
                     $table['body']
                 ) . $table[3];
+
+
+        } else {
+            $table = [];
+            $width = 0;
+            foreach ($fields as $field) {
+                if ($field['category'] === 'column') {
+                    if (!$table) {
+                        $table = ['<table style="width: ', 'px;"><thead><tr>', 'head' => [], '</tr></thead><tbody><tr>', 'body' => [], '</tr></tbody></table>'];
+                        if (array_key_exists('id', $settings['fields'])) {
+                            $table['head'][] = '<td style="width: ' . $settings['fields']['id'] . 'px;" class="title">id</td>';
+                            $width += $settings['fields']['id'];
+                        }
+                    }
+                    $table['head'][] = $getTdTitle($field);
+                    $width += $settings['fields'][$field['name']];
+                }
+            }
+            if ($table) {
+                foreach ($result['rows'] as $id => $row) {
+                    $tr = '<tr>';
+                    if (array_key_exists('id', $settings['fields'])) {
+                        $tr .= '<td class="f-id"><span>' . $id . '</span></td>';
+                    }
+                    foreach ($fields as $field) {
+                        if ($field['category'] === 'column') {
+                            $tr .= '<td class="f-' . $field['type'] . ' n-' . $field['name'] . '"><span>' . (is_array($row[$field['name']]['v']) ? json_encode($row[$field['name']]['v'],
+                                    JSON_UNESCAPED_UNICODE) : $row[$field['name']]['v']) . '</span></td>';
+                        }
+                    }
+                    $tr .= '</tr>';
+                    $table['body'][] = $tr;
+                }
+
+
+                if ($columnFooters = array_filter(
+                    $fields,
+                    function ($field) use ($fields) {
+                        if ($field['category'] === 'footer' && !empty($field['column']) && array_key_exists(
+                                $field['column'],
+                                $fields
+                            )) {
+                            return true;
+                        }
+                    }
+                )) {
+                    while ($columnFooters) {
+                        $tr_names = '<tr>';
+                        $tr_values = '<tr>';
+                        foreach ($fields as $field) {
+                            if ($field['category'] === 'column') {
+                                $column = $field['name'];
+
+                                if ($thisColumnFooters = array_filter(
+                                    $columnFooters,
+                                    function ($field) use ($column) {
+                                        if ($field['column'] === $column) {
+                                            return true;
+                                        }
+                                    }
+                                )) {
+                                    $name = array_keys($thisColumnFooters)[0];
+                                    $thisColumnFooter = $columnFooters[$name];
+
+                                    $tr_names .= $getTdTitle($thisColumnFooter, false);
+                                    $tr_values .= '<td class="f-' . $thisColumnFooter['type'] . ' n-' . $thisColumnFooter['name'] . '">' . $result['params'][$thisColumnFooter['name']]['v'] . '</td>';
+
+                                    unset($columnFooters[$name]);
+                                } else {
+                                    $tr_names .= '<td></td>';
+                                    $tr_values .= '<td></td>';
+                                }
+                            }
+                        }
+                        $tr_names .= '</tr>';
+                        $tr_values .= '</tr>';
+                        $table['body'][] = $tr_names;
+                        $table['body'][] = $tr_values;
+                        unset($tr_names);
+                        unset($tr_values);
+                    }
+                }
+
+                $tableAll[] = $table[0] . $width . $table[1] . implode(
+                        '',
+                        $table['head']
+                    ) . $table[2] . implode(
+                        '',
+                        $table['body']
+                    ) . $table[3];
+            }
         }
+        /*/строчная часть*/
 
 
         $table = [];
         $width = 0;
 
 
+        /*Общие футеры*/
         foreach ($fields as $field) {
             if ($field['category'] === 'footer' && empty($field['column'])) {
                 if (!$table || $field['tableBreakBefore'] || $width > $sosiskaMaxWidth) {
@@ -637,16 +1134,22 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         if ($withRecalculate) {
             try {
                 $inVars = ['calculate' => aTable::CALC_INTERVAL_TYPES['changed'], 'channel' => 'web', 'addFilters' => $addFilters];
+
                 $this->Totum->transactionStart();
                 $this->Table->reCalculateFromOvers($inVars);
+                $this->Table->reCalculateFilters('web', false, $addFilters);
                 $this->Totum->transactionCommit();
+
             } catch (errorException $e) {
                 $error = $e->getMessage();
                 if ($this->Totum->getUser()->isCreator()) {
                     $error .= ' <br/> ' . $e->getPathMess();
                 }
                 $this->Totum->transactionRollback();
-                throw new criticalErrorException($e->getMessage());
+                $Conf = $this->Totum->getConfig()->getClearConf();
+                $this->Totum = new Totum($Conf, $this->User);
+                $this->Table->setNewTotum($this->Totum);
+                throw new criticalErrorException($error);
             }
         } else {
             $this->Table->reCalculateFilters('web', true, $addFilters);
@@ -660,31 +1163,8 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         switch ($this->getPageViewType()) {
             case 'panels':
                 $result['viewType'] = 'panels';
-                $panelViewSettings = $this->Table->getTableRow()['panels_view'];
-                $fields = array_column($panelViewSettings['fields'], 'field');
+                $result['kanban'] = $this->getKanbanData($fields);
 
-                if ($panelViewSettings['kanban'] && $kanban = $this->Table->getFields()[$panelViewSettings['kanban']]) {
-                    if (!in_array($panelViewSettings['kanban'], $fields)) {
-                        $fields[] = $panelViewSettings['kanban'];
-                    }
-                    $result["kanban"] = [];
-                    $results = Field::init($kanban, $this->Table)->calculateSelectList(
-                        $val,
-                        [],
-                        $this->Table->getTbl()
-                    );
-                    unset($results['previewdata']);
-
-                    if ($kanban['withEmptyVal'] ?? false) {
-                        $result["kanban"][] = ["", $kanban['withEmptyVal']];
-                    }
-
-                    foreach ($results as $k => $v) {
-                        if (!$v[1]) {
-                            $result["kanban"][] = [$k, $v[0]];
-                        }
-                    }
-                }
                 foreach ($result['fields'] as $k => $v) {
                     if ($v['category'] === 'column' && !in_array($k, $fields)) {
                         unset($result['fields'][$k]);
@@ -695,7 +1175,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     $result,
                     $this->getTableClientData(
                         0,
-                        null,
+                        $this->isPagingView() ? 0 : null,
                         false,
                         $fields
                     )
@@ -705,15 +1185,40 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 $tree = $this->Table->getFields()['tree'];
                 $result = array_merge(
                     $result,
-                    $this->getTreeTopLevel($tree['treeViewLoad'] ?? null, $tree['treeViewOpen'] ?? null)
+                    $this->getTreeTopLevel($tree['treeViewLoad'] ?? null,
+                        $tree['treeViewOpen'] ?? null)
                 );
                 break;
-            case 'paging':
-                $result = array_merge($result, $this->getTableClientData(0, 0, false));
-                break;
+            case 'commonByCount':
+                /*For off button on table head*/
+                $result['panels'] = 'off';
+            // no break
             default:
-                $result = array_merge($result, $this->getTableClientData(0, null, false));
+                $result = array_merge($result, $this->getTableClientData(0, $this->isPagingView() ? 0 : null, false));
 
+        }
+        if ($result['rows'] && ($result['f']['order'] ?? false)) {
+            $rows = [];
+            $rows_other = [];
+            foreach ($result['rows'] as $row) {
+                $k = array_search($row['id'], $result['f']['order']);
+                if ($k !== false) {
+                    $rows[$k] = $row;
+                } else {
+                    $rows_other[] = $row;
+                }
+            }
+            ksort($rows);
+            $rows = array_values($rows);
+            $result['rows'] = array_merge($rows, $rows_other);
+            unset($result['f']['order']);
+        }
+
+        if ($this->isPagingView() && $this->Totum->getMessenger()->isFormatUseRows()) {
+            $result['formatUseRows'] = true;
+        }
+        if ($this->Totum->getConfig()->getSettings('h_hide_teh_plate')) {
+            $result['hide_teh_plate'] = true;
         }
 
         return $result;
@@ -721,47 +1226,70 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
     protected function getPageViewType(): string
     {
-        if ($this->Request->getQueryParams()['iframe'] ?? false) ; elseif (($panelViewSettings = ($this->Table->getTableRow()['panels_view'] ?? null))
-        ) {
-            $checkCookies = function () use ($panelViewSettings) {
-                $name = $this->getPanelsCookieName()[0];
-                if (key_exists($name, $_COOKIE)) {
-                    return $_COOKIE[$name] === '1';
-                }
-                return $panelViewSettings['panels_view_first'];
-            };
-
-            if ($panelViewSettings['state'] === 'panel'
-                || (
-                    $panelViewSettings['state'] === 'both'
-                    && $checkCookies()
-                )) {
-                return 'panels';
-            }
+        if (($this->post['restoreView'] ?? false) || ($this->User->isCreator() && ($this->Cookies['ttm__commonTableView'] ?? false))) {
+            $this->creatorCommonView = true;
+            return 'common';
         }
+
         if (($tree = $this->Table->getFields()['tree'] ?? null)
             && $tree['category'] === 'column'
             && $tree['type'] === 'tree'
             && !empty($tree['treeViewType'])) {
             return 'tree';
         }
-        if (($this->Table->getTableRow()['pagination'] ?? '0/0') !== '0/0') {
-            return 'paging';
+
+        if ($this->Request->getQueryParams()['iframe'] ?? false) ; elseif (($panelViewSettings = ($this->Table->getTableRow()['panels_view'] ?? null))
+        ) {
+            if (($this->post['panelsView'] ?? false) === 'true') {
+                return 'panels';
+            } elseif (empty($this->post)) {
+                $params = $this->Table->filtersParamsForLoadRows('web');
+                $allCount = $params === false ? 0 : $this->Table->countByParams($params);
+                if ($allCount <= ($panelViewSettings['panels_max_count'] ?? 100)) {
+                    $checkCookies = function () use ($panelViewSettings) {
+                        $name = $this->getPanelsCookieName()[0];
+                        if (key_exists($name, $_COOKIE)) {
+                            return $_COOKIE[$name] === '1';
+                        }
+                        return $panelViewSettings['panels_view_first'];
+                    };
+
+                    if ($panelViewSettings['state'] === 'panel'
+                        || (
+                            $panelViewSettings['state'] === 'both'
+                            && $checkCookies()
+                        )) {
+                        return 'panels';
+                    }
+                } else {
+                    return 'commonByCount';
+                }
+            }
         }
 
         return 'common';
     }
 
-    protected function addValuesAndFormats($data)
+    protected function isPagingView($type = null): bool
     {
-        $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS']);
+        if (($this->Table->getTableRow()['pagination'] ?? '0/0') === '0/0') {
+            return false;
+        }
+        if ($type === 'tree') {
+            return $this->getPageViewType() === 'tree' && $this->Table->getFields()['tree']['treeViewType'] === 'other';
+        }
+        return true;
+    }
+
+    protected function addValuesAndFormatsOfParams($params, array $rowIds)
+    {
+        $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS OF OTHER NON-ROWS PARTS']);
         {
-            $data = $this->Table->getValuesAndFormatsForClient($data, 'web');
-            $data['f'] = $this->getTableFormat();
+            $params = $this->Table->getValuesAndFormatsForClient(['params' => $params], 'web', $rowIds);
         }
         $this->Table->calcLog($Log, 'result', 'done');
 
-        return $data;
+        return $params;
     }
 
     protected function getTableClientData($pageIds = 0, $onPage = null, $calcFilters = true, $onlyFields = null)
@@ -775,32 +1303,38 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             );
         }
         $data = [];
-        $data['rows'] = [];
 
-        if (is_null($onPage)) {
-            $data['rows'] = $this->Table->getSortedFilteredRows(
-                'web',
-                'web',
-                [],
-                null,
-                null,
-                null,
-                $onlyFields
-            )['rows'];
-        } elseif ($onPage > 0) {
-            $data['rows'] = $this->Table->getSortedFilteredRows(
-                'web',
-                'web',
-                [],
-                $pageIds,
-                0,
-                $onPage,
-                $onlyFields
-            )['rows'];
+        if (method_exists($this->Table, 'withoutNotLoaded')) {
+            $this->Table->withoutNotLoaded();
         }
 
-        $result = $this->addValuesAndFormats(['params' => $this->Table->getTbl()['params']]);
-        $result['rows'] = $data['rows'];
+        if (is_null($onPage)) {
+            $data = $this->Table->getSortedFilteredRows(
+                'web',
+                'web',
+                [],
+                null,
+                null,
+                null,
+                $onlyFields
+            );
+        } elseif ($onPage > 0) {
+            $data = $this->Table->getSortedFilteredRows(
+                'web',
+                'web',
+                [],
+                lastId: is_array($pageIds) || $pageIds >= 0 ? $pageIds : 0,
+                prevLastId: $pageIds < 0 ? $pageIds : 0,
+                onPage: $onPage,
+                onlyFields: $onlyFields
+            );
+        }
+
+        $pageIds = array_column($data['rows'] ?? [], 'id');
+        $result = $this->addValuesAndFormatsOfParams($this->Table->getTbl()['params'], $pageIds);
+        $result['f'] = $this->getTableFormat($pageIds);
+        $result['rows'] = $data['rows'] ?? [];
+        $result['offset'] = $data['offset'] ?? null;
 
         $result['filtersString'] = $this->getFiltersString();
         return $result;
@@ -819,7 +1353,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 }
             }
         }
-        return Crypt::getCrypted(json_encode($_filters, JSON_UNESCAPED_UNICODE));
+        if ($_filters) {
+            return Crypt::getCrypted(json_encode($_filters, JSON_UNESCAPED_UNICODE));
+        }
     }
 
     public function checkTableIsChanged()
@@ -828,6 +1364,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         if ($_SERVER['HTTP_HOST'] === 'localhost:8080') {
             die('test');
         }
+        $this->withLog = false;
 
         $table_id = (int)$this->post['table_id'];
         $cycle_id = ($this->post['cycle_id'] ?? $this->post['tableData']['sess_hash'] ?? 0);
@@ -883,20 +1420,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                                 if ($table['insertable'] === true) {
                                     $fields[$f['name']]['changeSelectTable'] = 2;
                                 }
+                            } elseif (key_exists($table['id'], $this->User->getTables())) {
+                                $fields[$f['name']]['viewSelectTable'] = 1;
                             }
                         }
 
                         $fields[$f['name']]['selectTableId'] = $table['id'];
-
-                        if ($table['type'] !== 'calcs') {
-                            $fields[$f['name']]['linkToSelectTable'] = ['link' => $this->modulePath . $table['top'] . '/' . $table['id'], 'title' => $table['title']];
-                        } else {
-                            $topTable = $this->Totum->getTableRow($table['tree_node_id']);
-                            $fields[$f['name']]['linkToSelectTable'] =
-                                ['link' => $this->modulePath . $topTable['top'] . '/' . $topTable['id'] . '/' . $this->Cycle->getId() . '/' . $table['id']
-                                    , 'title' => $table['title']
-                                ];
-                        }
+                        $fields[$f['name']]['linkToSelectTable'] = ['link' => $this->modulePath . $table['top'] . '/' . $table['id'], 'title' => $table['title']];
                     }
                 }
             }
@@ -909,13 +1439,18 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             'editing' => !$readOnly,
             'adding' => !$readOnly && $this->Table->isUserCanAction('insert')
             , 'deleting' => !$readOnly && $this->Table->isUserCanAction('delete')
+            , 'restoring' => !$readOnly && $this->Table->isUserCanAction('restore')
             , 'duplicating' => !$readOnly && $this->Table->isUserCanAction('duplicate')
         ];
 
         $result['withCsvButtons'] = $this->Table->isUserCanAction('csv');
         $result['withCsvEditButtons'] = $this->Table->isUserCanAction('csv_edit');
-        $result['tableRow'] = $this->tableRowForClient($this->Table->getTableRow());
+        $result['tableRow'] = $this->tableRowForClient($this->Table->getTableRow(), $visibleFields);
+
+
         $result['fields'] = $this->fieldsForClient($visibleFields);
+
+
         if ($this->Table->getTableRow()['type'] === 'calcs') {
             $result['tableRow']['fields_sets'] = $this->Table->changeFieldsSets();
             $result['tableRow']['cycle_id'] = $this->Table->getCycle()->getId();
@@ -923,6 +1458,25 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
         $result['updated'] = $this->Table->getSavedUpdated();
         return $result;
+    }
+
+    public function viewRow()
+    {
+        $id = (int)($this->post['id'] ?? null);
+        if (!$id) {
+            throw new errorException($this->translate('ID is empty'));
+        }
+        $this->Table->loadDataRow();
+        if ($this->Table->loadFilteredRows('web', [$id])) {
+            $res['row'] = $this->Table->getValuesAndFormatsForClient(
+                ['rows' => [$this->Table->getTbl()['rows'][$id]]],
+                'edit', []
+            )['rows'][0];
+            $res['f'] = $this->getTableFormat([]);
+            return $res;
+        } else {
+            throw new errorException($this->translate('Row not found'));
+        }
     }
 
     public function getTableData()
@@ -948,11 +1502,20 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             ) ?? []) : $this->post['data']) {
             if ($click['item'] === 'params') {
                 $row = $this->Table->getTbl()['params'];
+            } elseif (is_string($click['item']) && $click['item'][0] === 'i') {
+
+                $row = $this->getInsertRow($click['item']);
+                if (is_null($row)) {
+                    throw new errorException($this->translate('Add row out of date'));
+                }
+                $this->Table->setInsertRowHash($click['item']);
+                unset($v);
             } else {
                 /*Проверка не заблокирована ли строка для пользователя*/
                 $ids = $this->Table->loadFilteredRows('web', [$click['item']]);
                 if (!$ids || !($row = $this->Table->getTbl()['rows'][$click['item']] ?? null) || !empty($row['is_del'])) {
-                    throw new errorException('Таблица была изменена. Обновите таблицу для проведения изменений');
+                    throw new errorException($this->translate('Table [[%s]] was changed. Update the table to make the changes.',
+                        ''));
                 }
             }
 
@@ -960,11 +1523,44 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 $fields = $this->Table->getVisibleFields('web');
                 /* Проверка доступа к нажатию кнопки */
                 if (!key_exists($click['fieldName'], $fields)) {
-                    throw new errorException('Поле недоступно для пользователя');
+                    throw new errorException($this->translate('Access to the field is denied'));
                 } elseif (get_class($this) === ReadTableActions::class && empty($fields[$click['fieldName']]['pressableOnOnlyRead'])) {
-                    throw new errorException('Кнопка недоступна для нажатия в режиме "только для чтения"');
+                    throw new errorException($this->translate('Your access to this table is read-only. Contact administrator to make changes.'));
                 }
-                $this->clickToButton($fields[$click['fieldName']], $row, ['ids' => $click['checked_ids'] ?? []]);
+                $vars = [];
+                if ($click['checked_ids'] ?? null) {
+                    $vars['ids'] = function () use ($click) {
+                        return $this->Table->checkIsUserCanViewIds('web', $click['checked_ids']);
+                    };
+                } else {
+                    $vars['ids'] = [];
+                }
+                if ($ids = json_decode($this->post['ids'] ?? '[]', true)) {
+
+                    $vars['rows'] = function () use ($ids) {
+                        $ids = $this->Table->loadFilteredRows('web', $ids);
+                        $vars['rows'] = array_intersect_key($this->Table->getTbl()['rows'],
+                            array_flip($ids));
+                        foreach ($vars['rows'] as &$_row) {
+                            unset($_row['_E']);
+                            foreach ($_row as $k => $v) {
+                                $_row[$k] = match ($k) {
+                                    'id' => $v,
+                                    default => $v['v'] ?? null
+                                };
+                            }
+                        }
+                        unset($_row);
+                        return $vars['rows'];
+                    };
+
+                } else {
+                    $vars['rows'] = [];
+                }
+
+                $this->clickToButton($fields[$click['fieldName']], $row, $vars);
+
+
             } catch (\ErrorException $e) {
                 throw $e;
             }
@@ -1012,55 +1608,12 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $data = $data ?? json_decode($this->post['data'] ?? '[]', true) ?? [];
         $q = $q ?? $this->post['q'] ?? '';
         $parentId = $parentId ?? $this->post['parentId'] ?? null;
-        $fields = $this->Table->getFields();
-
-        if (!($field = $fields[$data['field']] ?? null)) {
-            throw new errorException('Не найдено поле [[' . $data['field'] . ']]. Возможно изменилась структура таблицы. Перегрузите страницу');
-        }
-
-        $this->Table->loadDataRow();
-        $this->Table->reCalculateFilters(
+        return $this->getEditSelectFromTable($data,
+            $this->Table,
             'web',
-            false,
-            false,
-            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
-        );
-
-        $row = $data['item'];
-
-        if ($field['category'] === 'column' && !isset($row['id'])) {
-            $row['id'] = null;
-        }
-        foreach ($row as $k => &$v) {
-            if ($k !== 'id') {
-                $v = ['v' => $v];
-            }
-        }
-        if ($field['category'] === 'column') {
-            if (array_key_exists('id', $row) && !is_null($row['id'])) {
-                $this->Table->loadFilteredRows('web', [$row['id']]);
-                $row = $row + $this->Table->getTbl()['rows'][$row['id']] ?? [];
-            } else {
-                $row = $row + $this->Table->checkInsertRow([], $data['item']);
-            }
-        } else {
-            $row = $row + $this->Table->getTbl()['params'];
-        }
-
-
-        if (!in_array(
-            $field['type'],
-            ['select', 'tree']
-        )) {
-            throw new errorException('Ошибка - поле не типа select/tree');
-        }
-
-        /** @var Select $Field */
-        $Field = Field::init($field, $this->Table);
-
-        $list = $Field->calculateSelectList($row[$field['name']], $row, $this->Table->getTbl());
-
-        return $Field->cropSelectListForWeb($list, $row[$field['name']]['v'], $q, $parentId);
+            $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? ''),
+            $q,
+            $parentId);
     }
 
 
@@ -1069,20 +1622,20 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $data = is_string($this->post['data']) ? json_decode($this->post['data'], true) : $this->post['data'];
 
         $filterFields = $this->Table->getVisibleFields('web', true)['filter'] ?? [];
-        $filters = array_intersect_key($data["params"] ?? [], $filterFields);
+        $filters = array_intersect_key($data['params'] ?? [], $filterFields);
 
         if ($filters) {
-            return $this->editFilters($filters, $data["setValuesToDefaults"] ?? false);
+            return $this->editFilters($filters, $data['setValuesToDefaults'] ?? false);
         } elseif (!is_a($this, WriteTableActions::class)) {
-            throw new errorException('Ваш доступ к этой таблице - только на чтение. Обратитесь к администратору для внесения изменений');
+            throw new errorException($this->translate('Your access to this table is read-only. Contact administrator to make changes.'));
         } else {
-            $clearFields = $data["params"] ?? [];
+            $clearFields = $data['params'] ?? [];
             if ($filters) {
                 $clearFields = array_diff_key($clearFields, $filters);
             }
-            $data["params"] = $clearFields;
+            $data['params'] = $clearFields;
 
-            return $this->modify(['modify' => $data, "setValuesToDefaults" => $data["setValuesToDefaults"] ?? false]);
+            return $this->modify(['modify' => $data, 'setValuesToDefaults' => $data['setValuesToDefaults'] ?? false]);
         }
     }
 
@@ -1141,8 +1694,8 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         foreach ($this->Table->getVisibleFields('web', true)['filter'] as $fName => $sortedVisibleField) {
             $filters['params'][$fName] = $params[$fName];
         }
-        $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS']);
-        $changedData = $this->Table->getValuesAndFormatsForClient($filters, 'web');
+        $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS OF FILTERS']);
+        $changedData = $this->Table->getValuesAndFormatsForClient($filters, 'web', []);
 
         $this->Table->calcLog($Log, 'result', $changedData);
 
@@ -1159,13 +1712,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
         $fields = $this->Table->getFields();
         if (empty($fields[$field])) {
-            throw new errorException('Поле [[' . $field . ']] в этой таблице не найдено');
+            throw new errorException($this->translate('Function [[%s]] is not found.', $field));
         }
         if (empty($fields[$field]['showInWeb']) || (!empty($fields[$field]['logRoles']) && !array_intersect(
                     $fields[$field]['logRoles'],
                     $this->User->getRoles()
                 ))) {
-            throw new errorException('Доступ к логам запрещен');
+            throw new errorException($this->translate('Access to the logs is denied'));
         }
 
 
@@ -1176,7 +1729,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             $field
         );
 
-        $title = 'Лог ручных изменений по полю "' . $fields[$field]['title'] . '"';
+        $title = $this->translate('Log of manual changes by field "%s"', $fields[$field]['title']);
         if ($id) {
             $title .= ' id ' . $id;
             if ($rowName) {
@@ -1187,7 +1740,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         if (empty($logs)) {
             $this->Table->getTotum()->addToInterfaceDatas(
                 'text',
-                ['title' => $title, 'width' => '500', 'text' => 'Ручных изменений по полю не производилось']
+                ['title' => $title, 'width' => '500', 'text' => $this->translate('No manual changes were made in the field')]
             );
         } else {
             $tmp = $this->Totum->getTable('log_structure');
@@ -1218,7 +1771,15 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
     {
         $anchorFilters = $this->Table->getAnchorFilters() ?? [];
 
-        foreach ($fields as &$field) {
+        foreach ($fields as $fName => &$field) {
+
+            if (!$this->User->isCreator() && $field['category'] === 'column' && $field['type'] === 'button' && $this->Table->getTableRow()['type'] === 'cycles' && str_starts_with($field['name'],
+                    'tab_')) {
+                unset($fields[$fName]);
+                continue;
+            }
+
+
             if (!$this->Table->isField('editable', 'web', $field)) {
                 $field['editable'] = false;
             } elseif (key_exists($field['name'], $anchorFilters)) {
@@ -1251,6 +1812,19 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 }
             }
 
+            if ($field['type'] === 'select') {
+                foreach ($field['codeSelect'] ?? [] as $code) {
+                    if (is_string($code) && preg_match('/(selectRowListForSelect|selectListAssoc)\([^)]*(preview|previewscode)\s*:/i',
+                            $code)) {
+                        $field['withPreview'] = true;
+                        break;
+                    }
+                }
+            } elseif ($field['type'] === 'number') {
+                $field['dectimalSeparator'] = $field['dectimalSeparator'] ?? $this->Totum->getConfig()->getSettings('numbers_format')['dectimalSeparator'] ?? ',';
+            }
+
+
             foreach (Totum::FIELD_CODE_PARAMS as $param) {
                 if (!empty($field[$param])) {
                     $field[$param] = true;
@@ -1259,7 +1833,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
             if (!is_a($this, WriteTableActions::class)
                 && !empty($field['CodeActionOnClick'])
-                && empty($field['clickableOnOnlyRead'])) {
+                && empty($field['AllowActionClickOnRead'])) {
                 unset($field['CodeActionOnClick']);
             }
 
@@ -1286,6 +1860,8 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 }
             }
             $field['help'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $field['help'] ?? '');
+
+
         }
         if ($this->Table->getTableRow()['name'] === 'tables_fields') {
             if ($this->Totum->getUser()->isCreator()) {
@@ -1301,7 +1877,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     'title->>\'v\''
                 );
                 $fields['data_src']['jsonFields']['fieldSettings']['selectTable']['values'] = $this->Totum->getModel('tables')->getFieldIndexedByField(
-                    ['is_del' => false],
+                    ['is_del' => false, 'type' => ['globcalcs', 'simple']],
                     'name',
                     'title',
                     'title->>\'v\''
@@ -1318,26 +1894,40 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
      * @param $tableRow
      * @return array
      */
-    protected function tableRowForClient($tableRow)
+    protected function tableRowForClient($tableRow, $visibleFields = null)
     {
-        $fields = ['title', 'updated', 'type', 'id', 'sess_hash', 'description', 'fields_sets', 'panel', 'order_field',
-            'order_desc', 'fields_actuality', 'with_order_field', 'main_field', 'delete_timer', '__version', 'pagination', 'panels_view', 'new_row_in_sort', 'rotated_view'];
+        $fields = ['title', 'updated', 'type', 'id', 'tree_node_id', 'sess_hash', 'description', 'fields_sets', 'panel', 'order_field',
+            'order_desc', 'fields_actuality', 'with_order_field', 'main_field', 'delete_timer', '__version', 'pagination',
+            'panels_view', 'new_row_in_sort', 'rotated_view', 'deleting', 'on_duplicate'];
         if ($this->User->isCreator()) {
             $fields = array_merge(
                 $fields,
                 [
-                    'name', 'sort', 'actual'
+                    'name', 'sort', 'actual', 'default_action', 'row_format', 'table_format'
                 ]
             );
+
         } else {
             $tableRow['description'] = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $tableRow['description']);
         }
         $_tableRow = array_intersect_key($tableRow, array_flip($fields));
-
-        if (($tableRow['panels_view'] ?? null) && $tableRow['panels_view']['state'] === 'panel') {
-            $_tableRow['panels_view'] = $tableRow['panels_view'];
+        foreach (Totum::TABLE_CODE_PARAMS as $name) {
+            if (key_exists($name, $_tableRow)) {
+                $_tableRow[$name] = trim($_tableRow[$name]);
+                $_tableRow[$name] = !!preg_match('/^\s*[a-z0-9]*\=\:\s*[^\s]+/mu', $_tableRow[$name]);
+            }
         }
 
+
+        if (($tableRow['panels_view'] ?? null) && $visibleFields) {
+            if ($tableRow['panels_view']['state'] === 'panel') {
+                $_tableRow['panels_view'] = $tableRow['panels_view'];
+            }
+            $_tableRow['panels_view']['fields'] = array_filter($_tableRow['panels_view']['fields'],
+                function ($field) use ($visibleFields) {
+                    return key_exists($field['field'], $visibleFields);
+                });
+        }
         if ($this->Table->getTableRow()['type'] === 'calcs') {
             $_tableRow['fields_sets'] = $this->Table->changeFieldsSets();
             $_tableRow['cycle_id'] = $this->Table->getCycle()->getId();
@@ -1350,8 +1940,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     $this->Table->getTableRow()['id'],
                     $this->User->getFavoriteTables()
                 );
+            if ($this->User->isCreator() && in_array($this->Table->getTableRow()['type'], ['tmp', 'simple'])) {
+                $_tableRow  ['__is_in_forms'] = !!$this->Totum->getModel('ttm__forms')->get(['table_name'=>$tableRow['name']], 'id');
+            }
+
         }
         $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description']);
+
 
         return $_tableRow;
     }
@@ -1366,8 +1961,8 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 $field,
                 $this->Table->getFields()
             ) && (($fieldParams = $this->Table->getFields()[$field])['CodeActionOnClick'] ?? false)) {
-            if (!is_a($this, WriteTableActions::class) && empty($fieldParams['clickableOnOnlyRead'])) {
-                throw new errorException('Действие недоступно при просмотре');
+            if (!is_a($this, WriteTableActions::class) && empty($fieldParams['AllowActionClickOnRead'])) {
+                throw new errorException($this->translate('Your access to this table is read-only. Contact administrator to make changes.'));
             }
             if ($id) {
                 if ($this->Table->loadFilteredRows('web', [$id])) {
@@ -1407,19 +2002,6 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         return $this->getTableClientChangedData([]);
     }
 
-    protected function getTableFormat()
-    {
-        $tFormat = [];
-        if ($this->Table->getTableRow()['table_format'] && $this->Table->getTableRow()['table_format'] != 'f1=:') {
-            $Log = $this->Table->calcLog(['name' => 'Table format']);
-
-            $calc = new CalculcateFormat($this->Table->getTableRow()['table_format']);
-            $tFormat = $calc->getFormat('TABLE', [], $this->Table->getTbl(), $this->Table);
-            $this->Table->calcLog($Log, 'result', $tFormat);
-        }
-        return $tFormat;
-    }
-
     protected function modify($data)
     {
         $tableData = $this->post['tableData'] ?? [];
@@ -1429,44 +2011,15 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         );
         $this->Table->checkAndModify($tableData, $data);
 
-        return $this->getTableClientChangedData($data);
-    }
-
-    protected function DEL___getSortedActionFields(): array
-    {
-        $fields = ['column' => [], 'param' => [], 'footer' => [], 'filter' => []];
-
-        foreach ($this->Table->getFields() as $fName => $field) {
-            $fActions = [
-                'filter' => false,
-                'add' => false,
-                'edit' => false,
-                'click' => false,
-            ];
-            if ($field['category'] === 'filter') {
-                if (!empty($field['showInWeb'])) {
-                    $fActions['filter'] = true;
-                    $fActions['edit'] = !empty($field['editable']);
-
-                    if (!empty($field['webRoles'])) {
-                        if (count(array_intersect($field['webRoles'], $this->User->getRoles())) == 0) {
-                            $fActions['edit'] = false;
-                        }
-                    }
-                }
-            } elseif ($field['type'] === 'button' && !empty($field['pressableOnOnlyRead'])) {
-                $fActions['click'] = true;
-            }
-            $fields[$field['category']] = $fActions;
-        }
-        return $fields;
+        return $this->getTableClientChangedData($data, true);
     }
 
     protected function getTableClientChangedData($data, $force = false)
     {
         $return = [];
+        if ($force || $this->Table->getTableRow()['type'] === 'tmp' || $this->Totum->isAnyChages() || !empty($data['refresh']) || $this->Totum->getConfig()->procVar()) {
 
-        if ($force || $this->Table->getTableRow()['type'] === 'tmp' || $this->Totum->isAnyChages() || !empty($data['refresh'])) {
+
             $this->Table->reCalculateFilters(
                 'web',
                 false,
@@ -1474,8 +2027,11 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
             );
 
-            $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS']);
+
             $pageIds = json_decode($this->post['ids'], true);
+            if ($pageIds) {
+                $pageIds = $this->Table->loadFilteredRows('web', $pageIds ?? []);
+            }
 
             $return['chdata']['rows'] = [];
 
@@ -1486,63 +2042,63 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     $this->Table->getTbl()['rows'],
                     $changedIds['added']
                 );
+                array_push($pageIds, ...array_keys($changedIds['added']));
             }
 
             if ($changedIds['deleted']) {
                 $return['chdata']['deleted'] = array_keys($changedIds['deleted']);
-            }
-            $modify = $data['modify'] ?? [];
-            unset($modify['params']);
-            $sortedVisibleFields = $this->Table->getVisibleFields('web', true);
-
-
-            if ($changedIds['changed'] += ($modify ?? [])) {
-                //Подумать - а не дублируется ли с тем блоком, что ниже
-                $selectOrFormatColumns = [];
-                foreach ($sortedVisibleFields['column'] as $k => $v) {
-                    if ((($v['type'] === 'select' || $v['type'] === 'tree') && !empty($v['codeSelectIndividual'])) || !empty($v['format'])) {
-                        $selectOrFormatColumns[$k] = true;
-                    }
+                if ($pageIds) {
+                    $pageIds = array_diff($pageIds, array_keys($changedIds['deleted']));
                 }
-                $tbl = $this->Table->getTbl();
-                foreach ($changedIds['changed'] as $id => $changes) {
-                    if (empty($tbl['rows'][$id]) || !in_array($id, $pageIds)) {
-                        continue;
-                    }
+            }
+            if ($changedIds['restored']) {
+                $return['chdata']['deleted'] = array_keys($changedIds['restored']);
+                $pageIds = array_diff($pageIds, array_keys($changedIds['restored']));
+            }
 
-                    if (empty($changes)) {
-                        $return['chdata']['rows'][$id] = $tbl['rows'][$id];
-                        continue;
-                    }
-                    $return['chdata']['rows'][$id] = ($return['chdata']['rows'][$id] ?? []) + array_intersect_key(
-                            $tbl['rows'][$id],
-                            $changes
-                        ) + array_intersect_key($tbl['rows'][$id], $selectOrFormatColumns);
-                    foreach ($changes as $k => $null) {
-                        if (is_array($return['chdata']['rows'][$id][$k])) {
-                            $return['chdata']['rows'][$id][$k]['changed'] = true;
+            //Отправка на клиент изменений, селектов и форматов
+            {
+                if (!empty($pageIds)) {
+
+                    $sortedVisibleFields = $this->Table->getVisibleFields('web', true);
+                    $selectOrFormatColumns = [];
+                    foreach ($sortedVisibleFields['column'] as $k => $v) {
+                        if ((($v['type'] === 'select' || $v['type'] === 'tree') && !empty($v['codeSelectIndividual'])) || !empty($v['format'])) {
+                            $selectOrFormatColumns[$k] = true;
                         }
                     }
-                }
-            }
 
-            //Отправка на клиент селектов и форматов
-            {
-                $selectOrFormatColumns = [];
-                foreach ($sortedVisibleFields['column'] as $k => $v) {
-                    if (in_array($v['type'], ['select', 'tree']) || !empty($v['format'])) {
-                        $selectOrFormatColumns[] = $k;
+
+                    $modify = $data['modify'] ?? [];
+                    unset($modify['params']);
+                    $changedIds['changed'] += ($modify ?? []);
+                    $selectOrFormatColumns['id'] = true;
+                    if ($this->getPageViewType() === 'tree') {
+                        $selectOrFormatColumns['n'] = true;
                     }
-                }
-                if ($selectOrFormatColumns && !empty($pageIds)) {
-                    $selectOrFormatColumns[] = 'id';
-                    $selectOrFormatColumns = array_flip($selectOrFormatColumns);
-
-                    $pageIds = $this->Table->loadFilteredRows('web', $pageIds);
 
                     $rows = $this->Table->getTbl()['rows'];
                     foreach ($pageIds as $id) {
                         if (!empty($rows[$id])) {
+
+                            if (key_exists($id, $changedIds['changed'])) {
+                                $changes = $changedIds['changed'][$id];
+                                if (empty($changes)) {
+                                    $return['chdata']['rows'][$id] = $rows[$id];
+                                    continue;
+                                } else {
+                                    $return['chdata']['rows'][$id] = ($return['chdata']['rows'][$id] ?? []) + array_intersect_key(
+                                            $rows[$id],
+                                            $changes
+                                        );
+                                    foreach ($changes as $k => $_) {
+                                        if (is_array($return['chdata']['rows'][$id][$k])) {
+                                            $return['chdata']['rows'][$id][$k]['changed'] = true;
+                                        }
+                                    }
+                                }
+                            }
+
                             $return['chdata']['rows'][$id] = ($return['chdata']['rows'][$id] ?? []) + array_intersect_key(
                                     $rows[$id],
                                     $selectOrFormatColumns
@@ -1550,41 +2106,45 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                         }
                     }
                 }
-            }
 
+                if ($this->Table->getChangeIds()['reordered']) {
+                    $return['chdata']['order'] = array_column($return['chdata']['rows'], 'id');
+                }
+            }
             if ($this->getPageViewType() === 'tree' && $this->Table->getFields()['tree']['treeViewType'] === 'self') {
                 $return['chdata']['tree'] = $this->getResultTree(
                     function ($k, $v) {
                         return 'child';
                     },
-                    [""],
+                    [''],
                     true
                 )['tree'];
             }
 
+            $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS']);
 
-            $return['chdata']['params'] = $this->Table->getTbl()['params'];
-            $return['chdata']['f'] = $this->getTableFormat();
-
-            if (!empty($return['chdata']['rows'])) {
-                foreach ($return['chdata']['rows'] as $id => &$row) {
-                    $row['id'] = $id;
-                }
-                unset($row);
-            }
-
-            $return['chdata']['params'] = $return['chdata']['params'] ?? [];
-
-            $return['chdata'] = $this->Table->getValuesAndFormatsForClient($return['chdata'], 'web');
+            $return['chdata']['params'] = $this->Table->getTbl()['params'] ?? [];
+            $return['chdata']['f'] = $this->getTableFormat($pageIds ?: []);
+            $return['chdata'] = $this->Table->getValuesAndFormatsForClient($return['chdata'], 'web', $pageIds ?: []);
 
             if (empty($return['chdata']['params'])) {
                 unset($return['chdata']['params']);
             }
 
-
-            if ($this->Table->getTableRow()['pagination'] && $this->Table->getTableRow()['pagination'] !== '0/0') {
-                $params = $this->Table->filtersParamsForLoadRows('web');
-                $return['allCount'] = $params === false ? 0 : $this->Table->countByParams($params);
+            if ($this->isPagingView()) {
+                if ($this->isPagingView('tree')) {
+                    $branches = [];
+                    foreach ($return['chdata']['rows'] ?? [] as $row) {
+                        $branches[$row['tree']['v']] = 1;
+                    }
+                    foreach ($branches as $b => $_) {
+                        $params = $this->Table->filtersParamsForLoadRows('web');
+                        $return['chdata']['treeCounts'][$b] = $params === false ? 0 : $this->Table->countByParams([...$params, ['field' => 'tree', 'value' => $b, 'operator' => '=']]);
+                    }
+                } else {
+                    $params = $this->Table->filtersParamsForLoadRows('web');
+                    $return['allCount'] = $params === false ? 0 : $this->Table->countByParams($params);
+                }
             }
             $return['updated'] = $this->Table->getSavedUpdated();
 
@@ -1601,7 +2161,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
      * @return array
      * @throws errorException
      */
-    protected function getPermittedFilters($filtersString)
+    protected function getPermittedFilters($filtersString): array
     {
         $permittedFilters = [];
         $deCryptFilters = $this->deCryptFilters($filtersString);
@@ -1621,33 +2181,40 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
     protected function getTreeTopLevel($load, $open)
     {
-        $result = $this->addValuesAndFormats(['params' => $this->Table->getTbl()['params']]);
 
-        $result = array_merge(
-            $result,
-            $this->getResultTree(
-                function ($k, $v) use ($load, $open) {
-                    if ($v[3] === null || $load || $open) {
-                        if (!$open) {
-                            return 'closed';
-                        }
-                        return 'this';
-                    } elseif (is_null($v['path'][3])) {
-                        return 'child';
+
+        $result = $this->getResultTree(
+            function ($k, $v) use ($load, $open) {
+                if ($v[3] === null || $load || $open) {
+                    if (!$open) {
+                        return 'closed';
                     }
-                },
-                null
-            )
+                    return 'this';
+                } elseif (is_null($v['path'][3])) {
+                    return 'child';
+                }
+            },
+            null
         );
+
+        $pageIds = array_column($result['rows'] ?? [], 'id');
+        $result['params'] = $this->addValuesAndFormatsOfParams($this->Table->getTbl()['params'], $pageIds)['params'];
         $result['filtersString'] = $this->getFiltersString();
+        $result['f'] = $this->getTableFormat($pageIds);
         return $result;
     }
 
-    protected function getResultTree($filterFunc, $loadingIds, $onlyTree = false)
+    protected function getResultTree($filterFunc, $loadingIds, $withoutRows = false)
     {
+        $rowsSwitcher = $withoutRows ? false : ($this->isPagingView('tree') && ($this->Table->getFields()['tree_category']['category'] ?? false) !== 'column' ? 'counts' : 'rows');
+
         $Tree = Field::init($this->Table->getFields()['tree'], $this->Table);
-        $val = ["v" => null];
+        $val = ['v' => null];
+
+        $Tree->clearCachedLists();
         $list = $Tree->calculateSelectList($val, [], $this->Table->getTbl());
+
+
         $bids = [];
         $tree = [];
         $thisNodes = [];
@@ -1655,7 +2222,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             if ($Tree->getData('treeViewType') !== 'self' && !is_null($t = $Tree->getData('withEmptyVal'))) {
                 $tree[] = ['v' => null, 't' => $t];
             }
-            $bids[] = "";
+            $bids[] = '';
         } else {
             $bids = $loadingIds;
             $thisNodes = array_intersect_key($list, array_flip($loadingIds));
@@ -1685,34 +2252,158 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         }
         $result['rows'] = [];
 
-        if ($bids && !$onlyTree) {
-            $treeIds = $this->Table->getByParams(
-                (new FormatParamsForSelectFromTable)
-                    ->where('tree', $bids)
-                    ->field('id')
-                    ->params(),
-                'list'
-            );
-            if ($this->Table->getFields()['tree']['treeViewType'] === 'other'
-                && key_exists('tree_category', $this->Table->getFields())) {
-                $treeIds = array_merge(
-                    $treeIds,
-                    $this->Table->getByParams(
+        if ($bids) {
+            switch ($rowsSwitcher) {
+                case 'rows':
+                    $treeIds = $this->Table->getByParams(
                         (new FormatParamsForSelectFromTable)
-                            ->where('tree_category', $bids)
-                            ->where('tree_category', "", "!=")
+                            ->where('tree', $bids)
                             ->field('id')
                             ->params(),
                         'list'
-                    )
-                );
-            }
+                    );
 
-            if ($treeIds) {
-                $result['rows'] = $this->Table->getSortedFilteredRows('web', 'web', $treeIds)['rows'];
+                    /*add tree_category rows*/
+                    if ($this->Table->getFields()['tree']['treeViewType'] === 'other'
+                        && ($this->Table->getFields()['tree_category']['category'] ?? false) === 'column') {
+                        $treeIds = array_merge(
+                            $treeIds,
+                            $this->Table->getByParams(
+                                (new FormatParamsForSelectFromTable)
+                                    ->where('tree_category', $bids)
+                                    ->where('tree_category', '', '!=')
+                                    ->field('id')
+                                    ->params(),
+                                'list'
+                            )
+                        );
+                    }
+
+                    if ($treeIds) {
+                        $result['rows'] = $this->Table->getSortedFilteredRows('web', 'web', $treeIds)['rows'];
+
+                        /*TreeBranchesFilter*/
+                        $TreeBranchesFilter = false;
+                        foreach ($this->Table->getSortedFields()['filter'] ?? [] as $fName => $field) {
+                            if (!empty($field['showInWeb']) && !empty($field['column'])
+                                && !empty($this->Table->getTbl()['params'][$field['name']]['v'])
+                                && $this->Table->getTbl()['params'][$field['name']]['v'] !== '*ALL*'
+                                && $this->Table->getTbl()['params'][$field['name']]['v'] !== ['*ALL*']
+                            ) {
+                                $TreeBranchesFilter = true;
+                                break 1;
+                            }
+                        }
+
+                        if ($TreeBranchesFilter) {
+                            $rowIds = [];
+                            foreach ($result['rows'] as $row) {
+                                $rowIds[$row['tree']['v']] = true;
+                            }
+
+                            $treeBranches = [];
+
+                            $addBranch = function ($treeId) use (&$addBranch, $list, &$treeBranches) {
+                                if (!key_exists($treeId, $treeBranches)) {
+                                    $treeBranches[$treeId] = true;
+                                    if (!empty($list[$treeId][3])) {
+                                        $addBranch($list[$treeId][3]);
+                                    }
+                                }
+                            };
+
+                            foreach ($rowIds as $treeId => $_) {
+                                if (key_exists($treeId, $list)) {
+                                    $addBranch($treeId);
+                                }
+                            }
+
+                            $tree = [];
+                            if ($Tree->getData('treeViewType') !== 'self' && !is_null($t = $Tree->getData('withEmptyVal'))) {
+                                $tree[] = ['v' => null, 't' => $t];
+                            }
+                            foreach ($list as $k => $v) {
+                                /*Без удаленных*/
+                                if ($v[1] === 0 && key_exists($k, $treeBranches)) {
+                                    switch ($filterFunc($k, $v, $thisNodes)) {
+                                        case 'this':
+                                        case 'parent':
+                                            $tree[] = ['v' => $k, 't' => $v[0], 'l' => true, 'opened' => true, 'p' => $v[3]];
+                                            break 1;
+                                        case 'closed':
+                                            $tree[] = ['v' => $k, 't' => $v[0], 'l' => true, 'opened' => false, 'p' => $v[3]];
+                                            break 1;
+                                        case 'loaded':
+                                        case 'child':
+                                            $tree[] = ['v' => $k, 't' => $v[0], 'p' => $v[3]];
+                                            break 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case 'counts':
+
+                    if ($tree) {
+                        $this->Table->reCalculateFilters('web');
+                        $params = $this->Table->filtersParamsForLoadRows('web');
+                        foreach ($tree as &$b) {
+                            $b['count'] = $params === false ? 0 : $this->Table->countByParams([...$params, ['field' => 'tree', 'operator' => '=', 'value' => $b['v']]]);
+                        }
+                        unset($b);
+
+                        /*TreeBranchesFilter*/
+                        $TreeBranchesFilter = false;
+                        foreach ($this->Table->getSortedFields()['filter'] ?? [] as $fName => $field) {
+                            if (!empty($field['showInWeb']) && !empty($field['column'])
+                                && !empty($this->Table->getTbl()['params'][$field['name']]['v'])
+                                && $this->Table->getTbl()['params'][$field['name']]['v'] !== '*ALL*'
+                                && $this->Table->getTbl()['params'][$field['name']]['v'] !== ['*ALL*']
+                            ) {
+                                $TreeBranchesFilter = true;
+                                break 1;
+                            }
+                        }
+
+                        if ($TreeBranchesFilter) {
+                            $rowIds = [];
+                            foreach ($tree as $b) {
+                                if ($b['count']) {
+                                    $rowIds[$b['v']] = true;
+                                }
+                            }
+
+                            $treeBranches = [];
+
+                            $treeOld = $tree;
+                            $addBranch = function ($treeId) use (&$addBranch, $list, &$treeBranches) {
+                                if (!key_exists($treeId, $treeBranches)) {
+                                    $treeBranches[$treeId] = true;
+                                    if (!empty($list[$treeId][3])) {
+                                        $addBranch($list[$treeId][3]);
+                                    }
+                                }
+                            };
+
+                            foreach ($tree as $_) {
+                                if ($_['count']) {
+                                    $addBranch($_['v']);
+                                }
+                            }
+
+                            foreach ($tree as $k => $v) {
+                                /*Без удаленных*/
+                                if (!key_exists($v['v'], $treeBranches)) {
+                                    unset($tree[$k]);
+                                }
+                            }
+                            $tree = array_values($tree);
+                        }
+                    }
+                    break;
             }
         }
-
         $result['tree'] = $tree;
 
         return $result;
@@ -1721,6 +2412,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
     public function loadTreeBranches()
     {
         if ($branchIds = $this->Request->getParsedBody()['branchIds'] ?? 0) {
+            $this->Table->reCalculateFilters(
+                'web',
+                true,
+                false,
+                ["params" => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+            );
+
             $parentIds = ($this->Request->getParsedBody()['withParents'] ?? null) ? null : [];
             $recurcive = ($this->Request->getParsedBody()['recurcive'] ?? null) === 'true';
             return $this->getResultTree(
@@ -1740,7 +2438,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
                     if (in_array($k, $branchIds)) {
                         return 'this';
-                    } elseif (in_array($k, $parentIds)) {
+                    } elseif ($parentIds && in_array($k, $parentIds)) {
                         return 'parent';
                     } elseif ($recurcive) {
                         $path = $v;
@@ -1751,14 +2449,49 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                             $path = $path['path'] ?? null;
                         }
                         return false;
-                    } elseif (in_array($v[3] ?? null, $branchIds) || in_array($v[3] ?? null, $parentIds)) {
+                    } elseif (in_array($v[3] ?? null, $branchIds) || in_array($v[3] ?? null, $parentIds ?? [])) {
                         return 'child';
                     }
                 },
                 $branchIds
             );
         } else {
-            throw new errorException('Ошибка получения Id ветки');
+            throw new errorException($this->translate('Failed to get branch Id'));
         }
+    }
+
+    protected function getKanbanData(&$fields = null)
+    {
+        $panelViewSettings = $this->Table->getTableRow()['panels_view'];
+        $fields = array_column($panelViewSettings['fields'], 'field');
+
+        if ($panelViewSettings['kanban'] && $kanban = $this->Table->getFields()[$panelViewSettings['kanban']]) {
+            if (!in_array($panelViewSettings['kanban'], $fields)) {
+                $fields[] = $panelViewSettings['kanban'];
+            }
+            $kanban_data = [];
+
+            $val = [];
+            $results = Field::init($kanban, $this->Table)->calculateSelectList(
+                $val,
+                [],
+                $this->Table->getTbl()
+            );
+            unset($results['previewdata']);
+
+            if ($kanban['withEmptyVal'] ?? false) {
+                $kanban_data[] = ['', $kanban['withEmptyVal']];
+            }
+
+            foreach ($results as $k => $v) {
+                if (!$v[1]) {
+                    $kanban_data[] = [$k, $v[0]];
+                }
+            }
+            $this->kanban_bases = array_column($kanban_data, 0);
+
+            return $kanban_data;
+        }
+        return null;
     }
 }
