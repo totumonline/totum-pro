@@ -245,7 +245,9 @@ class Actions
         $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
         $posts = [
             "q" => $this->post['q'] ?? '',
-            "matches" => true,
+            "attributesToHighlight" => ["index", "title"],
+            "highlightPreTag" => "-highlightPreTag-",
+            "highlightPostTag" => "-highlightPostTag-",
         ];
         if ($facetFilters) {
             $posts["facetFilters"] = $facetFilters;
@@ -302,15 +304,12 @@ class Actions
                     }
                 }
 
-                foreach ($_h['_matchesInfo'] as $field => &$matches) {
-                    $val = $_h[$field];
-                    foreach ($matches as &$match) {
-                        $match['start'] = mb_strlen(substr($val, 0, $match['start']));
-                        $match['length'] = mb_strlen(substr($val, $match['start'], $match['length']));
-                        unset($match);
-                    }
-                    unset($matches);
+                foreach ($_h['_formatted'] as &$match) {
+                    $match=htmlspecialchars($match);
+                    $match = str_replace('-highlightPreTag-', '<span class="marker">', $match);
+                    $match = str_replace('-highlightPostTag-', '</span>', $match);
                 }
+                unset($match);
 
                 if (key_exists($tableId, $tables_buttons)) {
                     $_h['buttons'] = $tables_buttons[$tableId];
