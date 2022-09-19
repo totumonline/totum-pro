@@ -148,7 +148,6 @@ class Actions
         $TableSearch = $this->Totum->getTable('ttm__search_catalog');
         $catalog = $TableSearch->getByParams(['field' => ['name', 'title'], 'order' => [['field' => 'n', 'ad' => 'asc']]],
             'rows');
-
         return ['catalog' => $catalog];
     }
 
@@ -161,22 +160,22 @@ class Actions
                     $TableSearch = $this->Totum->getTable('ttm__search_settings');
                     if ($codesRow = $TableSearch->getByParams(['where' => [
                         ['field' => 'table_id', 'operator' => '=', 'value' => $data[0]]
-                    ], 'field' => ['buttons','code']],
+                    ], 'field' => ['buttons', 'code']],
                         'row')) {
 
                         $Table = $this->Totum->getTable($data[0]);
                         if ($Table->loadFilteredRows('web', [$data[1]])) {
-                            if($this->post['button']??false){
-                                foreach ($codesRow['buttons'] as $btn){
-                                    if($btn['name']===$this->post['button']){
-                                        $code=$btn['code'];
+                            if ($this->post['button'] ?? false) {
+                                foreach ($codesRow['buttons'] as $btn) {
+                                    if ($btn['name'] === $this->post['button']) {
+                                        $code = $btn['code'];
                                         break;
                                     }
                                 }
-                                if(empty($code)){
+                                if (empty($code)) {
                                     throw new errorException('Код указанной кнопки не наден. Попробуйте еще раз');
                                 }
-                            }else{
+                            } else {
                                 $code = $codesRow['code'];
                             }
 
@@ -278,7 +277,7 @@ class Actions
             $removed = false;
             $posts['offset'] = $offset;
             $posts['limit'] = $limit - count($hits);
-            $res = $Calc->execAction('KOD',
+            $resIn = $Calc->execAction('KOD',
                 $Table->getTbl()['params'],
                 $Table->getTbl()['params'],
                 $Table->getTbl(),
@@ -291,7 +290,11 @@ class Actions
                         JSON_UNESCAPED_UNICODE)
                 ]);
 
-            $res = json_decode($res, true);
+            $res = json_decode($resIn, true);
+
+            if (($res['code'] ?? false) === 'bad_request') {
+                throw new errorException($res['message']);
+            }
 
             foreach ($res['hits'] as $k => $_h) {
                 $offset++;
@@ -306,7 +309,7 @@ class Actions
                 }
 
                 foreach ($_h['_formatted'] as &$match) {
-                    $match=htmlspecialchars($match);
+                    $match = htmlspecialchars($match);
                     $match = str_replace('-highlightPreTag-', '<span class="marker">', $match);
                     $match = str_replace('-highlightPostTag-', '</span>', $match);
                 }
