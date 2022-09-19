@@ -146,8 +146,9 @@ class Actions
     public function searchCatalog()
     {
         $TableSearch = $this->Totum->getTable('ttm__search_catalog');
-        $catalog = $TableSearch->getByParams(['field' => ['id', 'title'], 'order' => [['field' => 'n', 'ad' => 'asc']]],
+        $catalog = $TableSearch->getByParams(['field' => ['name', 'title'], 'order' => [['field' => 'n', 'ad' => 'asc']]],
             'rows');
+
         return ['catalog' => $catalog];
     }
 
