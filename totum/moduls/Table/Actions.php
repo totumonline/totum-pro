@@ -270,6 +270,9 @@ class Actions
 
         $i = -1;
         $limit = $Table->getTbl()['params']['h_search_limit']['v'];
+        if (empty($limit)) {
+            $limit = 20;
+        }
         $offset = 0;
         $hits = [];
         do {
