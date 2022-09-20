@@ -304,7 +304,7 @@ class Actions
                 list($tableId, $rowId) = explode('-', $_h['pk']);
                 if ($_Table = $getTable($tableId)) {
                     try {
-                        $_Table->checkIsUserCanViewIds('web', [$rowId]);
+                        $_Table->checkIsUserCanViewIds('web', [$rowId], isCritical: false);
                     } catch (\Exception $exception) {
                         $removed = true;
                         continue;
