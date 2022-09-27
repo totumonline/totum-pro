@@ -21,13 +21,14 @@ trait FuncNumbersTrait
         $func = function ($val, $dectimal) use ($logData, $type) {
             $mod = bcmod($val, 1, 10);
             if ($val > 0) {
-                if ($nextDigit = ($mod[$dectimal + 2] ?? 0)) {
-                    if ($type === 'up' || ($type != 'down' && $nextDigit >= 5)) {
-                        $val = bcadd($val, number_format(1 / (10 ** $dectimal), $dectimal, '.', ''), $dectimal);
-                    }
+                if (($type === 'up' && (int)(substr($mod,
+                                $dectimal + 2) ?? 0)) ||
+                    ($type != 'down' && ($mod[$dectimal + 2] ?? 0) >= 5)) {
+                    $val = bcadd($val, number_format(1 / (10 ** $dectimal), $dectimal, '.', ''), $dectimal);
                 }
-            } elseif ($val < 0 && ($nextDigit = ($mod[$dectimal + 3] ?? 0))) {
-                if ($type === 'down' || ($type !== 'up' && $nextDigit >= 5)) {
+            } elseif ($val < 0) {
+                if (($type === 'down' && (int)(substr($mod,
+                                $dectimal + 3) ?? 0)) || ($type !== 'up' && ($mod[$dectimal + 3] ?? 0) >= 5)) {
                     $val = bcsub($val, number_format(1 / (10 ** $dectimal), $dectimal, '.', ''), $dectimal);
                 }
             }
@@ -35,9 +36,12 @@ trait FuncNumbersTrait
             return bcadd($val, 0, $dectimal);
         };
 
+
         if (is_numeric($val)) {
             if (!is_infinite($val)) {
-                $val = number_format((float)$val, 12, '.', '');
+                if (!preg_match('/^[0-9.]+$/', $val)) {
+                    $val = number_format((float)$val, 12, '.', '');
+                }
             } else {
                 throw new errorException('Infinite value in round operation');
             }
@@ -112,7 +116,7 @@ trait FuncNumbersTrait
 
         $this->__checkRequiredParams($params, ['num']);
         $this->__checkNotArrayParams($params, ['num', 'dectimals', 'decsep', 'thousandssep', 'unittype', 'prefix']);
-        $this->__checkNumericParam($params['num'], 'num');
+        $this->__checkNumericParam($params['num'], 'num', true);
 
         return ((string)($params['prefix'] ?? '')) . number_format(
                 (float)$params['num'],
