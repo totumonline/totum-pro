@@ -1290,9 +1290,9 @@ class Calculate
         }
     }
 
-    protected function __checkNumericParam($isDigit, $paramName)
+    protected function __checkNumericParam($isDigit, $paramName, $withEfloats = false)
     {
-        if (is_array($isDigit) || !is_numeric($isDigit)) {
+        if (is_array($isDigit) || !is_numeric($isDigit) || (!$withEfloats && !preg_match('/^[-+]?[0-9.]+$/', $isDigit))) {
             throw new errorException($this->translate('The %s parameter must be a number.', $paramName));
         }
     }
@@ -1516,7 +1516,7 @@ class Calculate
                 }
 
 
-                $fieldValue = $this->__getValue($fc[2] ?? $fc[1]);
+                $fieldValue = $this->__getValue($fc[2] ?? $fc[1] ?? throw new errorException($this->translate('TOTUM-code format error: missing part of parameter.')));
 
                 if (in_array(strtolower($funcName), ['set', 'setlist', 'setlistextended'])) {
                     if ($fc[1]['type'] === 'operator') {

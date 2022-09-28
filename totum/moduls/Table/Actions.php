@@ -221,7 +221,7 @@ class Actions
         $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
         if ($tables_cleared != $tables) {
             foreach ($tables_cleared as $table) {
-                $facetFilters[] = 'table:' . $table;
+                $facetFilters[] = 'table = ' . $table;
             }
             if (empty($facetFilters)) {
                 return ['hits' => []];
@@ -230,8 +230,8 @@ class Actions
 
         if (!empty($this->post['cats'])) {
             $catsFilters = [];
-            foreach ($this->post['cats'] as $id) {
-                $catsFilters[] = 'catalog:' . $id;
+            foreach ($this->post['cats'] as $name) {
+                $catsFilters[] = 'catalog = ' . $name;
             }
             if ($facetFilters) {
                 $facetFilters = [$facetFilters, $catsFilters];
@@ -250,7 +250,7 @@ class Actions
             "highlightPostTag" => "-highlightPostTag-",
         ];
         if ($facetFilters) {
-            $posts["facetFilters"] = $facetFilters;
+            $posts["filter"] = $facetFilters;
         }
 
 
@@ -270,6 +270,9 @@ class Actions
 
         $i = -1;
         $limit = $Table->getTbl()['params']['h_search_limit']['v'];
+        if (empty($limit)) {
+            $limit = 20;
+        }
         $offset = 0;
         $hits = [];
         do {
@@ -292,7 +295,7 @@ class Actions
 
             $res = json_decode($resIn, true);
 
-            if (($res['code'] ?? false) === 'bad_request') {
+            if (($res['code'] ?? false)) {
                 throw new errorException($res['message']);
             }
 
@@ -301,7 +304,7 @@ class Actions
                 list($tableId, $rowId) = explode('-', $_h['pk']);
                 if ($_Table = $getTable($tableId)) {
                     try {
-                        $_Table->checkIsUserCanViewIds('web', [$rowId]);
+                        $_Table->checkIsUserCanViewIds('web', [$rowId], isCritical: false);
                     } catch (\Exception $exception) {
                         $removed = true;
                         continue;
