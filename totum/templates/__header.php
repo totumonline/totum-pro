@@ -2,7 +2,12 @@
 
 if (is_null($isCreatorView ?? null)) {
     return;
-} ?>
+}
+
+$searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['header'], true)['h_get_updates']['v'] ?? null) === true ? '<span class="btn btn-default btn-sm" style="margin-top: -3px;" id="search-button"><i
+                                    class="fa fa-search"></i></span>' : '';
+
+?>
 <nav class="totbar-default navbar-default">
     <div class="container-fluid">
         <div
@@ -40,20 +45,20 @@ if (is_null($isCreatorView ?? null)) {
                     <span class="btn btn-default btn-sm" style="margin-top: -3px;" id="bell-notifications"
                           data-periodicity="<?= $notification_period ?? 0 ?>"><i
                                 class="fa fa-bell"></i></span>
-                    <span class="btn btn-default btn-sm" style="margin-top: -3px;" id="search-button"><i
-                                class="fa fa-search"></i></span>
+                    <?= $searchButton ?>
+
                 </li>
 
                 <li class="navbar-text"
                     id="UserFio"><?= $UserName ?></li>
             </ul>
-                <script>
-                    (function () {
-                        let reUsers = <?=json_encode($reUsers??[], JSON_UNESCAPED_UNICODE); ?>;
-                        let UserTables = <?=json_encode($UserTables ?? [], JSON_UNESCAPED_UNICODE); ?>;
-                        App.reUserInterface(reUsers, UserTables, <?=!empty($isCreatorNotItself) ? 'true' : 'false'?>, <?=!empty($isCreatorView) ? 'true' : 'false'?>);
-                    }());
-                </script>
+            <script>
+                (function () {
+                    let reUsers = <?=json_encode($reUsers ?? [], JSON_UNESCAPED_UNICODE); ?>;
+                    let UserTables = <?=json_encode($UserTables ?? [], JSON_UNESCAPED_UNICODE); ?>;
+                    App.reUserInterface(reUsers, UserTables, <?=!empty($isCreatorNotItself) ? 'true' : 'false'?>, <?=!empty($isCreatorView) ? 'true' : 'false'?>);
+                }());
+            </script>
         </div><!-- /.navbar-collapse -->
     </div><!-- /.container-fluid -->
 </nav>
