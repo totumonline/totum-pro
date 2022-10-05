@@ -3,12 +3,12 @@
     <script>App = {}</script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/libs.css?v=c197331">
-    <script src="/js/libs.js?v=bad17d5"></script>
+          href="/css/libs.css?v=3710809">
+    <script src="/js/libs.js?v=50d05f1"></script>
     <link rel="stylesheet"
           type="text/css"
           href="/css/main.css?v=8a6985f">
-    <script src="/js/main.js?v=da373a4"></script>
+    <script src="/js/main.js?v=59fbcbb"></script>
     <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?25"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
