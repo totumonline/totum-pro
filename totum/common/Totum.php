@@ -234,6 +234,9 @@ class Totum
                                 if (empty($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
                                     $deletes[] = $pkCreate($id);
                                 } else {
+                                    if(!is_array($Table->getTbl()['rows'][$id]['ttm_search']['v'])){
+                                        errorException::criticalException($this->translate('Check that the ttm__search field type in table %s is data', $Table->getTableRow()['name']), $this);
+                                    }
                                     $updates[] = array_merge(
                                         $Table->getTbl()['rows'][$id]['ttm_search']['v'],
                                         ['pk' => $pkCreate($id), 'table' => (string)$tableId]
