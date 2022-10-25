@@ -173,7 +173,7 @@ class Actions
                                     }
                                 }
                                 if (empty($code)) {
-                                    throw new errorException('Код указанной кнопки не наден. Попробуйте еще раз');
+                                    throw new errorException($this->translate('The code for the specified button is not found. Try again.'));
                                 }
                             } else {
                                 $code = $codesRow['code'];

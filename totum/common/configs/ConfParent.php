@@ -423,10 +423,10 @@ abstract class ConfParent
     public function getCalculateExtensionFunction($funcName)
     {
         $this->getObjectWithExtFunctions();
-        if (!method_exists($this->CalculateExtensions, $funcName)) {
-            throw new errorException($this->translate('Function [[%s]] is not found.', $funcName));
+        if (method_exists($this->CalculateExtensions, $funcName) || (property_exists($this->CalculateExtensions, $funcName) && is_callable($this->CalculateExtensions->$funcName))) {
+            return $this->CalculateExtensions->$funcName;
         }
-        return $this->CalculateExtensions->$funcName;
+        throw new errorException($this->translate('Function [[%s]] is not found.', $funcName));
     }
 
     public function getExtFunctionsTemplates()

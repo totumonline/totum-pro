@@ -902,44 +902,43 @@ class TableController extends interfaceController
         if (!empty($filename = $request->getQueryParams()['file'] ?? null)) {
             session_write_close();
             if (!$this->Table) {
-                $error = 'Таблица файла не найдена';
+                $error = $this->translate('The file table was not found.');
             } else {
                 preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)/', $filename, $matches);
                 /*Проверка не скормили ли неверный путь*/
-                if($matches['table']!==(string)$this->Table->getTableRow()['id']
-                    || ($this->Table->getTableRow()['type']==='calcs' && $matches[2]!==(string)$this->Table->getCycle()->getId())){
-                    $error = 'Путь к файлу неверно сформирован';
-                }
-                else if ($field = $this->Table->getFields()[$matches['field']]) {
+                if ($matches['table'] !== (string)$this->Table->getTableRow()['id']
+                    || ($this->Table->getTableRow()['type'] === 'calcs' && $matches[2] !== (string)$this->Table->getCycle()->getId())) {
+                    $error = $this->translate('The file path is not formed correctly.');
+                } elseif ($field = $this->Table->getFields()[$matches['field']]) {
                     if (empty($field['secureFile'])) {
-                        $error = 'Файл не защищенный';
+                        $error = $this->translate('The file is not protected');
                     } elseif (!$this->Table->isField('visible', 'web', $field)) {
-                        $error = 'Доступ к полю файла запрещен';
+                        $error = $this->translate('Access to the file field is denied');
                     } else {
                         if ($field['category'] === 'column') {
                             $rowId = $this->Table->getTableRow()['type'] === 'calcs' ? (int)$matches[3] : (int)$matches[2];
                             if ($this->Table->loadFilteredRows('web', [$rowId])) {
                                 $filepath = File::getFilePath($filename, $this->Config, $field);
                             } else {
-                                $error = 'Доступ к строке файла запрещен или строка не существует';
+                                $error = $this->translate('Access to the file row is denied or the row does not exist');
                             }
                         } else {
                             $filepath = File::getFilePath($filename, $this->Config, $field);
                         }
                     }
                 } else {
-                    $error = 'Поле файла не найдено';
+                    $error = $this->translate('The file field was not found');
                 }
             }
             if (!empty($filepath)) {
                 if (!is_file($filepath)) {
-                    $error = 'Файл не существует на диске';
+                    $error = $this->translate('The file does not exist on the disk');
                 } else {
                     readfile($filepath);
                     die;
                 }
-            }else if(empty($error)){
-                $error = 'Ошибка парсинга имени файла';
+            } elseif (empty($error)) {
+                $error = $this->translate('File name parsing error');
             }
 
             if ($error) {
