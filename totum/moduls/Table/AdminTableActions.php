@@ -3,6 +3,7 @@
 
 namespace totum\moduls\Table;
 
+use Composer\Package\Package;
 use totum\common\calculates\CalculateAction;
 use totum\common\errorException;
 use totum\common\Lang\RU;
@@ -72,6 +73,113 @@ class AdminTableActions extends WriteTableActions
         }
 
         return ['tables' => $tables];
+    }
+
+    public function getCodeInAddFields()
+    {
+        if (!empty($this->post['forCycles']) && ($cycles = json_decode($this->post['forCycles'], true))) {
+            $tablesVersions = $this->Totum->getNamedModel(CalcsTableCycleVersion::class)->getAll(
+                ['cycles_table' => $this->Table->getTableRow()['id'], 'cycle' => $cycles, 'is_del' => false],
+                'version, table_name',
+                null,
+                null,
+                'version, table_name'
+            );
+            $where = [];
+            $params = [];
+            foreach ($tablesVersions as $row) {
+                $where[] = '(table_name->>\'v\' = ? AND version->>\'v\' = ?)';
+                $params[] = $row['table_name'];
+                $params[] = $row['version'];
+            }
+            $result = $this->Totum->getNamedModel(TablesFields::class)->getAllPrepared(
+                (object)['whereStr' => 'data->\'v\'->>\'codeOnlyInAdd\' = \'true\' AND is_del = false AND (' . implode(' OR ',
+                        $where) . ')', 'params' => $params],
+                'name, table_name, title',
+                'table_name');
+
+            $tables = [];
+            foreach ($result as $field) {
+                $tables[$field['table_name']][$field['name']] = ['name' => $field['table_name'] . '-' . $field['name'], 'title' => $field['title']];
+            }
+            foreach ($tables as &$table) {
+                $table = array_values($table);
+            }
+            unset($table);
+            return ['tables' => $tables];
+
+
+        } else {
+            $fields = [];
+            foreach ($this->Table->getSortedFields()['column'] as $field) {
+                if (!empty($field['code']) && !empty($field['codeOnlyInAdd'])) {
+                    $fields[] = ['name' => $field['name'], 'title' => $field['title']];
+                }
+            }
+            if (!$fields) {
+                return ['tables' => []];
+            }
+            return ['tables' => ['' => $fields]];
+        }
+    }
+
+    public function recalculateWithCodeInAddFields()
+    {
+        if ($this->post['forCycle'] === 'true') {
+            $fields = json_decode($this->post['fields'] ?? '[]', true);
+            $rows = json_decode($this->post['rows'] ?? '[]', true);
+            $tables_fields = [];
+            foreach ($fields as $field) {
+                list($table, $fieldName) = explode('-', $field);
+                $tables_fields[$table][] = $fieldName;
+            }
+            $tables = [];
+            foreach ($rows as $id) {
+                $Cycle = $this->Totum->getCycle($id, $this->Table->getTableRow()['id']);
+
+                if (empty($tables)) {
+                    $tables = $Cycle->getTableIds();
+                    foreach ($tables as &$t) {
+                        $t = $this->Totum->getTableRow($t);
+                    }
+                    unset($t);
+                }
+                foreach ($tables as $inTableRow) {
+                    $CalcsTable = $Cycle->getTable($inTableRow);
+                    if(!empty($tables_fields[$inTableRow['name']])){
+                        $CalcsTable->reCalculateFromOvers(['inAddRecalc'=>$tables_fields[$inTableRow['name']]]);
+                    }else{
+                        $CalcsTable->reCalculateFromOvers();
+                    }
+                }
+            }
+        } else {
+            $preparedFields = [];
+            $fields = json_decode($this->post['fields'] ?? '[]', true);
+            $rows = json_decode($this->post['rows'] ?? '[]', true);
+            foreach ($rows as $id) {
+                if (!is_numeric($id)) {
+                    throw new errorException('id must be numeric');
+                }
+            }
+
+            if ($fields) {
+                foreach ($fields as $i => $field) {
+                    $preparedFields[] = 'field: $#fields[' . $i . ']';
+                }
+            }
+            $Ca = new CalculateAction('=: recalculate(table: $#ntn; where: "id"=$#ids; ' . (implode('; ',
+                    $preparedFields)) . ')');
+            $Ca->execAction('CODE',
+                [],
+                [],
+                $this->Table->getTbl(),
+                $this->Table->getTbl(),
+                $this->Table,
+                'exec',
+                ['ids' => $rows, 'fields' => $fields]);
+        }
+        return $this->getTableClientChangedData([], true);
     }
 
     public function refresh_cycles()
@@ -217,7 +325,7 @@ CODE;
                     $this->Table->getTbl(),
                     $this->Table,
                     'exec',
-                    ['title' => $this->translate('Add form'), 'data'=>['h_table_name'=>$this->Table->getTableRow()['name']]]
+                    ['title' => $this->translate('Add form'), 'data' => ['h_table_name' => $this->Table->getTableRow()['name']]]
                 );
 
 

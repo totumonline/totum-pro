@@ -15,8 +15,12 @@ use totum\common\Lang\RU;
 use totum\common\Totum;
 use totum\fieldTypes\Comments;
 use totum\fieldTypes\Select;
+use totum\models\CalcsTablesVersions;
+use totum\models\Table;
+use totum\models\TablesFields;
 use totum\models\TmpTables;
 use totum\tableTypes\aTable;
+use totum\tableTypes\RealTables;
 use totum\tableTypes\tmpTable;
 
 class ReadTableActions extends Actions
@@ -1941,12 +1945,44 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     $this->User->getFavoriteTables()
                 );
             if ($this->User->isCreator() && in_array($this->Table->getTableRow()['type'], ['tmp', 'simple'])) {
-                $_tableRow  ['__is_in_forms'] = !!$this->Totum->getModel('ttm__forms')->get(['table_name'=>$tableRow['name']], 'id');
+                $_tableRow  ['__is_in_forms'] = !!$this->Totum->getModel('ttm__forms')->get(['table_name' => $tableRow['name']],
+                    'id');
             }
 
         }
         $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description']);
 
+
+        if (false && is_a($this->Table, RealTables::class)) {
+
+            if ($this->Table->getTableRow()['type'] === 'cycles') {
+                $calcTablesNames = array_column(Table::init($this->Totum->getConfig())->getAll(
+                    ['tree_node_id' => $this->Table->getTableRow()['id'], 'type' => 'calcs', 'is_del' => false],
+                    'name'
+                ),
+                    'name');
+                $tablesVersions = $this->Totum->getNamedModel(CalcsTableCycleVersion::class)->executePrepared(
+                    true,
+                    ['table_name' => $calcTablesNames, 'is_default' => 'true'],
+                    'version, table_name'
+                )->fetchAll();
+
+                $where = [];
+                $params = [];
+                foreach ($tablesVersions as $row) {
+                    $where[] = '(table_name->>\'v\' = ? AND version->>\'v\' = ?)';
+                    $params[] = $row['table_name'];
+                    $params[] = $row['version'];
+                }
+                $result = $this->Totum->getNamedModel(TablesFields::class)->executePrepared(true,
+                    (object)['whereStr' => 'data->>\'codeOnlyInAdd\' = \'true\' AND is_del = false AND (' . implode(' OR ',
+                            $where) . ')', 'params' => $params], 'data', null, 1);
+
+                if ($result) {
+                    $_tableRow['calcsHaveOnAddingCodes'] = true;
+                }
+            }
+        }
 
         return $_tableRow;
     }
