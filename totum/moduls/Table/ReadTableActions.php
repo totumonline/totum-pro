@@ -1562,6 +1562,35 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     $vars['rows'] = [];
                 }
 
+                if ($click['sl'] ?? null) {
+                    $selected = [];
+                    foreach ($click['sl'] as $fName => $rows) {
+                        foreach ($rows as $id) {
+                            $selected[$id][] = $fName;
+                        }
+                    }
+
+                    $vars['sl'] = function () use ($selected) {
+                        $this->Table->checkIsUserCanViewIds('web', array_keys($selected));
+                        $fields = [];
+                        foreach ($selected as $s) {
+                            foreach ($s as $f) {
+                                $fields[$f] = 1;
+                            }
+                        }
+                        $visibleFields = $this->Table->getVisibleFields("web");
+                        foreach ($fields as $f => $_) {
+                            if (!key_exists($f, $visibleFields)) {
+                                throw new errorException('Visibility field error. Use web interface for correct work');
+                            }
+                        }
+                        return $selected;
+                    };
+                } else {
+                    $vars['sl'] = [];
+                }
+
+
                 $this->clickToButton($fields[$click['fieldName']], $row, $vars);
 
 
@@ -1976,7 +2005,10 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 }
                 $result = $this->Totum->getNamedModel(TablesFields::class)->executePrepared(true,
                     (object)['whereStr' => 'data->>\'codeOnlyInAdd\' = \'true\' AND is_del = false AND (' . implode(' OR ',
-                            $where) . ')', 'params' => $params], 'data', null, 1);
+                            $where) . ')', 'params' => $params],
+                    'data',
+                    null,
+                    1);
 
                 if ($result) {
                     $_tableRow['calcsHaveOnAddingCodes'] = true;
