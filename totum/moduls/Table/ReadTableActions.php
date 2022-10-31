@@ -1981,40 +1981,10 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         }
         $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description']);
 
-
-        if (false && is_a($this->Table, RealTables::class)) {
-
-            if ($this->Table->getTableRow()['type'] === 'cycles') {
-                $calcTablesNames = array_column(Table::init($this->Totum->getConfig())->getAll(
-                    ['tree_node_id' => $this->Table->getTableRow()['id'], 'type' => 'calcs', 'is_del' => false],
-                    'name'
-                ),
-                    'name');
-                $tablesVersions = $this->Totum->getNamedModel(CalcsTableCycleVersion::class)->executePrepared(
-                    true,
-                    ['table_name' => $calcTablesNames, 'is_default' => 'true'],
-                    'version, table_name'
-                )->fetchAll();
-
-                $where = [];
-                $params = [];
-                foreach ($tablesVersions as $row) {
-                    $where[] = '(table_name->>\'v\' = ? AND version->>\'v\' = ?)';
-                    $params[] = $row['table_name'];
-                    $params[] = $row['version'];
-                }
-                $result = $this->Totum->getNamedModel(TablesFields::class)->executePrepared(true,
-                    (object)['whereStr' => 'data->>\'codeOnlyInAdd\' = \'true\' AND is_del = false AND (' . implode(' OR ',
-                            $where) . ')', 'params' => $params],
-                    'data',
-                    null,
-                    1);
-
-                if ($result) {
-                    $_tableRow['calcsHaveOnAddingCodes'] = true;
-                }
-            }
+        if ($tableRow['actual'] === 'refresh') {
+            $_tableRow['__autorefresh'] = true;
         }
+
 
         return $_tableRow;
     }
