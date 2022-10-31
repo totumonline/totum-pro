@@ -1570,7 +1570,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                         }
                     }
 
-                    $vars['sl'] = function () use ($selected) {
+                    $vars['slPro'] = function () use ($selected) {
                         $this->Table->checkIsUserCanViewIds('web', array_keys($selected));
                         $fields = [];
                         foreach ($selected as $s) {
@@ -1587,7 +1587,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                         return $selected;
                     };
                 } else {
-                    $vars['sl'] = [];
+                    $vars['slPro'] = [];
                 }
 
 
