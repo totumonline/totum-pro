@@ -1931,7 +1931,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
     {
         $fields = ['title', 'updated', 'type', 'id', 'tree_node_id', 'sess_hash', 'description', 'fields_sets', 'panel', 'order_field',
             'order_desc', 'fields_actuality', 'with_order_field', 'main_field', 'delete_timer', '__version', 'pagination',
-            'panels_view', 'new_row_in_sort', 'rotated_view', 'deleting', 'on_duplicate'];
+            'panels_view', 'new_row_in_sort', 'rotated_view', 'deleting', 'on_duplicate', 'row_buffering'];
         if ($this->User->isCreator()) {
             $fields = array_merge(
                 $fields,
