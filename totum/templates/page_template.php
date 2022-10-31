@@ -30,6 +30,8 @@
     ?>
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1">
 
+    <style><?=$this->Config->getThemesCss()?></style>
+
 </head>
 <body id="pk"
       class="lock">
