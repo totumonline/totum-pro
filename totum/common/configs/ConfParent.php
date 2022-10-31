@@ -743,6 +743,8 @@ SQL
 
     public function getThemesCss()
     {
-        return preg_replace('~<\s*/\s*style\s*~', '', $this->getSettings('h_custom_css'));
+        if ($css = trim($this->getSettings('h_custom_css'))) {
+            return '<style>' . preg_replace('~<\s*/\s*style\s*~', '', $css) . '</style>';
+        }
     }
 }
