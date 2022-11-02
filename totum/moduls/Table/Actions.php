@@ -3,12 +3,14 @@
 
 namespace totum\moduls\Table;
 
+use JetBrains\PhpStorm\ArrayShape;
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\Auth;
 use totum\common\calculates\CalculateAction;
 use totum\common\calculates\CalculcateFormat;
 use totum\common\errorException;
 use totum\common\Field;
+use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\Model;
 use totum\common\Totum;
@@ -81,6 +83,39 @@ class Actions
         $this->Totum->addToInterfaceLink($this->Request->getParsedBody()['location'], 'self', 'reload');
 
         return ['ok' => 1];
+    }
+
+    #[ArrayShape(['default' => "bool", 'userLinks' => "array"])]
+    public function getUserHelpLinks()
+    {
+        $DocsTable = $this->Totum->getTable('ttm__user_documentation');
+        $tableName = '';
+        if ($this->Table) {
+            $tableName = $this->Table->getTableRow()['name'];
+        }
+        $roles = $this->User->getRoles();
+
+        $links = [];
+        foreach ($DocsTable->getByParams(
+            (new FormatParamsForSelectFromTable)
+                ->order('n')
+                ->field('link')
+                ->field('title')
+                ->field('for_roles')
+                ->field('for_tables')->params(),
+            'rows') as $_link) {
+            if ($_link['for_tables'] && !in_array($tableName, haystack: $_link['for_tables'])) {
+                continue;
+            }
+            if ($_link['for_roles'] && !array_intersect($roles, $_link['for_roles'])) {
+                continue;
+            }
+            $links[] = [$_link['title'], $_link['link']];
+
+        }
+
+
+        return ['default' => !$DocsTable->getTbl()['params']['h_turn_off_system_links']['v'], 'userLinks' => $links];
     }
 
     public function seachUserTables()
