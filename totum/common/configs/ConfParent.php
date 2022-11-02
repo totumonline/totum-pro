@@ -206,6 +206,15 @@ abstract class ConfParent
         return $this->baseDir . 'http/fls/';
     }
 
+    public function getCryptKeyFileContent()
+    {
+        $fName = $this->getBaseDir() . 'crypto.key';
+        if (!file_exists($fName)) {
+            throw new errorException($this->translate('Crypto.key file not exists'));
+        }
+        return file_get_contents($fName);
+    }
+
 
     public function getCryptSolt()
     {
@@ -438,6 +447,7 @@ abstract class ConfParent
 
     public function getObjectWithExtFunctions()
     {
+        ;
         if (!$this->CalculateExtensions) {
             if (file_exists($fName = dirname((new \ReflectionClass($this))->getFileName()) . '/CalculateExtensions.php')) {
                 include($fName);
