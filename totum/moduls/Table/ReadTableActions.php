@@ -183,6 +183,9 @@ class ReadTableActions extends Actions
             $LinkedTable = $this->Totum->getTable($data['table']['name'], $data['table']['extra'] ?? null);
             $LinkedTable->setWithALogTrue('linkToEdit');
 
+            $fieldName = $data['table']['field'];
+            $fieldData = $LinkedTable->getFields()[$fieldName];
+
             if (!empty($this->post['search'])) {
 
                 if (!empty($data['table']['id'])) {
@@ -194,8 +197,8 @@ class ReadTableActions extends Actions
 
                 if (!empty($this->post['search']['comment'])) {
                     if ($this->post['search']['comment'] === 'getValues') {
-                        return ['value' => Field::init($LinkedTable->getFields()[$data['table']['field']],
-                            $LinkedTable)->getFullValue($item[$data['table']['field']]['v'] ?? [],
+                        return ['value' => Field::init($fieldData,
+                            $LinkedTable)->getFullValue($item[$fieldName]['v'] ?? [],
                             $item['id'] ?? null)];
                     }
                 } else {
@@ -207,10 +210,10 @@ class ReadTableActions extends Actions
                     unset($v);
 
                     if ($this->post['search']['checkedVals'] ?? false) {
-                        $item[$data['table']['field']] = $this->post['search']['checkedVals'];
+                        $item[$fieldName] = $this->post['search']['checkedVals'];
                     }
 
-                    return $this->getEditSelectFromTable(['field' => $data['table']['field'], 'item' => $item],
+                    return $this->getEditSelectFromTable(['field' => $fieldName, 'item' => $item],
                         $LinkedTable,
                         'inner',
                         [],
@@ -222,7 +225,8 @@ class ReadTableActions extends Actions
 
                 $value = $this->post['data'];
 
-                if (is_string($value) && $LinkedTable->getFields()[$data['table']['field']]['type'] === 'file') {
+                if (is_string($value) && Field::isFieldListValues($fieldData['type'],
+                        $fieldData['multiple'] ?? false)) {
                     $val = json_decode($value, true);
                     if (!json_last_error()) {
                         $value = $val;
@@ -231,9 +235,9 @@ class ReadTableActions extends Actions
 
                 $item = [];
                 if ($data['table']['id'] ?? false) {
-                    $item[$data['table']['id']] = [$data['table']['field'] => $value];
+                    $item[$data['table']['id']] = [$fieldName => $value];
                 } else {
-                    $item['params'] = [$data['table']['field'] => $value];
+                    $item['params'] = [$fieldName => $value];
                 }
 
 
@@ -2075,18 +2079,27 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
             $changedIds = $this->Table->getChangeIds();
 
+
+            $displaced = [];
             if ($changedIds['added']) {
                 $return['chdata']['rows'] = array_intersect_key(
                     $this->Table->getTbl()['rows'],
                     $changedIds['added']
                 );
+
+
+                if (($this->post['onPage'] ?? false) && (count($pageIds) + count($changedIds['added'])) > (int)$this->post['onPage']) {
+                    $displaceOffset = $this->post['onPage'] - (count($pageIds) + count($changedIds['added']));
+                    $displaced = array_slice($pageIds, $displaceOffset);
+                }
+
                 array_push($pageIds, ...array_keys($changedIds['added']));
             }
 
-            if ($changedIds['deleted']) {
-                $return['chdata']['deleted'] = array_keys($changedIds['deleted']);
+            if ($changedIds['deleted'] || $displaced) {
+                $return['chdata']['deleted'] = array_merge(array_keys($changedIds['deleted'] ?? []), $displaced);
                 if ($pageIds) {
-                    $pageIds = array_diff($pageIds, array_keys($changedIds['deleted']));
+                    $pageIds = array_diff($pageIds, $return['chdata']['deleted']);
                 }
             }
             if ($changedIds['restored']) {
