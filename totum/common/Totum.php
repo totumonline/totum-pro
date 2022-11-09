@@ -108,7 +108,7 @@ class Totum
         $this->orderFieldCodeErrors[$Table->getTableRow()['name']][$nameVar] = 1;
     }
 
-    
+
     public function getMessenger()
     {
         return $this->Messenger = $this->Messenger ?? new TotumMessenger();
@@ -234,8 +234,10 @@ class Totum
                                 if (empty($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
                                     $deletes[] = $pkCreate($id);
                                 } else {
-                                    if(!is_array($Table->getTbl()['rows'][$id]['ttm_search']['v'])){
-                                        errorException::criticalException($this->translate('Check that the ttm__search field type in table %s is data', $Table->getTableRow()['name']), $this);
+                                    if (!is_array($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
+                                        errorException::criticalException($this->translate('Check that the ttm__search field type in table %s is data',
+                                            $Table->getTableRow()['name']),
+                                            $this);
                                     }
                                     $updates[] = array_merge(
                                         $Table->getTbl()['rows'][$id]['ttm_search']['v'],
@@ -528,4 +530,28 @@ class Totum
     {
         return $this->getLangObj()->translate($str, $vars);
     }
+
+
+    protected array $hashes = [];
+
+    function hashValue($type, $hash = null, $value = '*GET*')
+    {
+        if (!is_null($hash)) {
+            $hash = (string)$hash;
+        }
+
+        if ($value === '*GET*') {
+            return $this->hashes[$type][$hash] ?? null;
+        }
+
+        if (is_null($hash)) {
+            do {
+                $hash = "h" . substr((float)microtime(), 2, 5);
+            } while (key_exists($hash, $this->hashes[$type] ?? []));
+        }
+        $this->hashes[$type][$hash] = $value;
+
+        return $hash;
+    }
+
 }
