@@ -31,7 +31,15 @@ trait FuncDbTrait
         $DbRow = Model::getClearValuesWithExtract($DbRow);
 
         try {
-            $PDO = new \PDO('pgsql:host=' . $DbRow['host'] . ';port=' . $DbRow['port'] . ';dbname=' . $DbRow['database_name'],
+            switch ($DbRow['type']){
+                case 'postgresql': $type = 'pgsql'; break;
+                case 'mysql': $type = 'mysql'; break;
+                default:
+                    throw new errorException('THIS CONNECTION UNAVAILABLE');
+            }
+
+
+            $PDO = new \PDO($type.':host=' . $DbRow['host'] . ';port=' . $DbRow['port'] . ';dbname=' . $DbRow['database_name'],
                 $DbRow['username'],
                 Crypt::getDeCrypted($DbRow['user_pass'],
                     $this->Table->getTotum()->getConfig()->getCryptKeyFileContent()));
