@@ -31,18 +31,10 @@ trait FuncDbTrait
         $DbRow = Model::getClearValuesWithExtract($DbRow);
 
         try {
-            switch ($DbRow['type']){
-                case 'postgresql': $type = 'pgsql'; break;
-                case 'mysql': $type = 'mysql'; break;
-                default:
-                    throw new errorException('THIS CONNECTION UNAVAILABLE');
-            }
-
-
-            $PDO = new \PDO($type.':host=' . $DbRow['host'] . ';port=' . $DbRow['port'] . ';dbname=' . $DbRow['database_name'],
+            $PDO = new \PDO($DbRow['type'] . ':host=' . $DbRow['host'] . ';port=' . $DbRow['port'] . ';dbname=' . $DbRow['database_name'],
                 $DbRow['username'],
                 Crypt::getDeCrypted($DbRow['user_pass'],
-                    $this->Table->getTotum()->getConfig()->getCryptKeyFileContent()));
+                    $this->Table->getTotum()->getConfig()->getCryptKeyFileContent()), $DbRow['options'] ?? []);
         } catch (\Exception $e) {
             throw new errorException($e->getMessage());
         }
@@ -109,6 +101,7 @@ trait FuncDbTrait
 
         return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
+
     protected function funcProDbSelectList($params)
     {
         $params = $this->getParamsArray($params);
