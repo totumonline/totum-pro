@@ -10,3 +10,5 @@ CalculateExtensions.php
 /secureFiles/
 
 /.github/
+totum/ext/
+/Crypto.key

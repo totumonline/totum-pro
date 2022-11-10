@@ -19,11 +19,26 @@ class RemotesController extends Controller
     {
         $requestUri = preg_replace('/\?.*/', '', $request->getUri()->getPath());
         $requestPath = substr($requestUri, strlen($this->totumPrefix . 'Remotes/'));
+        $pathData = [];
 
-        $remoteSelect = $this->Config->getModel('ttm__remotes')->get(
-            ['on_off' => 'true', 'name' => $requestPath],
-            '*'
-        );
+        if (str_contains($requestPath, '/')) {
+            $path = explode('/', $requestPath);
+            $remoteSelect = $this->Config->getModel('ttm__remotes')->get(
+                ['on_off' => 'true', 'name' => $path[0], 'path' => 'true'],
+                '*'
+            );
+            if ($remoteSelect) {
+                $pathData = array_splice($path, 1);
+            }
+        }
+
+
+        if (empty($remoteSelect)) {
+            $remoteSelect = $this->Config->getModel('ttm__remotes')->get(
+                ['on_off' => 'true', 'name' => $requestPath],
+                '*'
+            );
+        }
         $error = null;
         $data = null;
         if ($remoteSelect) {
@@ -36,7 +51,7 @@ class RemotesController extends Controller
                     do {
                         $onceMore = false;
                         try {
-                            $data = $this->action($User, $remote, $remote_row, $request);
+                            $data = $this->action($User, $remote, $remote_row, $request, $pathData);
                         } catch (tableSaveOrDeadLockException $exception) {
                             $this->Config = $this->Config->getClearConf();
                             if (++$tries < 5) {
@@ -99,7 +114,7 @@ class RemotesController extends Controller
         }
     }
 
-    protected function action($User, $remote, $remote_row, $request)
+    protected function action($User, $remote, $remote_row, $request, $pathData)
     {
         $Totum = new Totum($this->Config, $User);
         $Totum->transactionStart();
@@ -118,7 +133,9 @@ class RemotesController extends Controller
                 'get' => $request->getQueryParams() ?? [],
                 'post' => $request->getParsedBody() ?? [],
                 'input' => (string)$request->getBody(),
-                'headers' => ($headers = $request->getHeaders()) ? $headers : []
+                'headers' => ($headers = $request->getHeaders()) ? $headers : [],
+                'path' => $pathData,
+                'method' => $_SERVER['REQUEST_METHOD']
             ]
         );
 

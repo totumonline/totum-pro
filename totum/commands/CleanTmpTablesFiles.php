@@ -32,15 +32,20 @@ class CleanTmpTablesFiles extends Command
                 $Conf->setHostSchema(null, $schema);
             }
         }
-        $dir = $Conf->getFilesDir();
-        if (is_dir($dir)) {
-            if ($dh = opendir($dir)) {
-                while (($file = readdir($dh)) !== false) {
-                    if (is_file($fName = $dir . '/' . $file) && strpos($file, '!tmp!') && fileatime($fName) < time() - 3600) {
-                        unlink($fName);
+        $dirs[] = $Conf->getFilesDir();
+        $dirs[] = $Conf->getSecureFilesDir();
+
+        foreach ($dirs as $dir) {
+            if (is_dir($dir)) {
+                if ($dh = opendir($dir)) {
+                    while (($file = readdir($dh)) !== false) {
+                        if (is_file($fName = $dir . '/' . $file) && strpos($file,
+                                '!tmp!') && fileatime($fName) < time() - 3600) {
+                            unlink($fName);
+                        }
                     }
+                    closedir($dh);
                 }
-                closedir($dh);
             }
         }
 

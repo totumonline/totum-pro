@@ -7,9 +7,9 @@
     <script src="/js/libs.js?v=50d05f1"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=90167b6">
-    <script src="/js/main.js?v=713cfec"></script>
-    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?25"></script>
+          href="/css/main.css?v=3be65c0">
+    <script src="/js/main.js?v=660abcc"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?28"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
     <link rel="shortcut icon" type="image/png" href="/fls/6_favicon.png"/>
@@ -19,6 +19,8 @@
     include dirname(__FILE__) . DIRECTORY_SEPARATOR . '__titles_descriptions.php';
     ?>
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1">
+
+    <?=$this->Config->getThemesCss()?>
 </head>
 <body id="pk"
       class="lock">

@@ -206,6 +206,15 @@ abstract class ConfParent
         return $this->baseDir . 'http/fls/';
     }
 
+    public function getCryptKeyFileContent()
+    {
+        $fName = $this->getBaseDir() . 'Crypto.key';
+        if (!file_exists($fName)) {
+            throw new errorException($this->translate('Crypto.key file not exists'));
+        }
+        return file_get_contents($fName);
+    }
+
 
     public function getCryptSolt()
     {
@@ -226,7 +235,7 @@ abstract class ConfParent
 
     public function getSecureFilesDir(): string
     {
-        $dir=$this->baseDir . 'secureFiles/';
+        $dir = $this->baseDir . 'secureFiles/';
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
@@ -423,7 +432,8 @@ abstract class ConfParent
     public function getCalculateExtensionFunction($funcName)
     {
         $this->getObjectWithExtFunctions();
-        if (method_exists($this->CalculateExtensions, $funcName) || (property_exists($this->CalculateExtensions, $funcName) && is_callable($this->CalculateExtensions->$funcName))) {
+        if (method_exists($this->CalculateExtensions, $funcName) || (property_exists($this->CalculateExtensions,
+                    $funcName) && is_callable($this->CalculateExtensions->$funcName))) {
             return $this->CalculateExtensions->$funcName;
         }
         throw new errorException($this->translate('Function [[%s]] is not found.', $funcName));
@@ -437,6 +447,7 @@ abstract class ConfParent
 
     public function getObjectWithExtFunctions()
     {
+        ;
         if (!$this->CalculateExtensions) {
             if (file_exists($fName = dirname((new \ReflectionClass($this))->getFileName()) . '/CalculateExtensions.php')) {
                 include($fName);
@@ -740,4 +751,10 @@ SQL
         return [];
     }
 
+    public function getThemesCss()
+    {
+        if ($css = trim($this->getSettings('h_custom_css'))) {
+            return '<style>' . preg_replace('~<\s*/\s*style\s*~', '', $css) . '</style>';
+        }
+    }
 }
