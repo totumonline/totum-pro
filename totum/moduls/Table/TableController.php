@@ -902,12 +902,13 @@ class TableController extends interfaceController
 
     protected function checkIsSecureFileRequest(ServerRequestInterface $request)
     {
-        if (!empty($filename = $request->getQueryParams()['file'] ?? null) && !empty($fieldName = $request->getQueryParams()['field'] ?? null) && preg_match('/^[a-z][a-z0-9_]{2,50}$/', $fieldName)) {
+        if (!empty($filename = $request->getQueryParams()['file'] ?? null) && !empty($fieldName = $request->getQueryParams()['field'] ?? null) && preg_match('/^[a-z][a-z0-9_]{2,50}$/',
+                $fieldName)) {
             session_write_close();
             if (!$this->Table) {
                 $error = $this->translate('The file table was not found.');
             } else {
-                preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>'.$fieldName.')(?<hash>_[a-z_0-9]{32,32})?/',
+                preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>' . $fieldName . ')(?<hash>_[a-z_0-9]{32,32})?/',
                     $filename,
                     $matches);
                 /*Проверка не скормили ли неверный путь*/
@@ -940,6 +941,9 @@ class TableController extends interfaceController
                 if (!is_file($filepath)) {
                     $error = $this->translate('The file does not exist on the disk');
                 } else {
+                    if (preg_match('/\.pdf$/i', $filepath)) {
+                        header('Content-type: application/pdf');
+                    }
                     readfile($filepath);
                     die;
                 }
