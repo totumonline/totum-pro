@@ -663,4 +663,77 @@ SQL;
             return $protocol . $link;
         }
     }
+
+    protected function funcProPrefilteredIds($params)
+    {
+        $params = $this->getParamsArray($params, ['exclude']);
+        $exclude = $params['exclude'] ?? [];
+        $excludeList = $params['excludelist'] ?? [];
+        $this->__checkListParam($exclude, 'exclude');
+        $this->__checkListParam($excludeList, 'excludelist');
+        $exclude = array_unique(array_merge($exclude, $excludeList));
+        $filters = [];
+        $columns = $this->Table->getSortedFields()['column'];
+        $data = $this->Table->getTbl()['params'];
+
+        $channel = 'web';
+
+        foreach ($this->Table->getSortedFields()['filter'] ?? [] as $fName => $field) {
+            if (!$this->Table->isField('filterable', $channel, $field)) {
+                continue;
+            }
+
+            if (!empty($field['column']) //определена колонка
+                && (!empty($columnField = $columns[$field['column']] ?? []) || $field['column'] === 'id') //определена колонка и она существует в таблице
+                && !is_null($fVal_V = $data[$fName]['v']) //не "Все"
+                && !(is_array($fVal_V) && count($fVal_V) === 0) //Не ничего не выбрано - не Все в мульти
+            ) {
+                if ($fVal_V === '*NONE*' || (is_array($fVal_V) && in_array('*NONE*', $fVal_V))) {
+                    $issetBlockedFilters = true;
+                    break;
+                } elseif ($fVal_V === '*ALL*' || (is_array($fVal_V) && in_array(
+                            '*ALL*',
+                            $fVal_V
+                        )) || (!in_array(
+                            $field['type'],
+                            ['select', 'tree']
+                        ) && $fVal_V === '')) {
+                    continue;
+                } else {
+                    $param = [];
+                    $param['field'] = $field['column'];
+                    $param['value'] = $fVal_V;
+                    $param['operator'] = '=';
+
+
+                    if (!empty($field['intervalFilter'])) {
+                        switch ($field['intervalFilter']) {
+                            case  'start':
+                                $param['operator'] = '>=';
+                                break;
+                            case  'end':
+                                $param['operator'] = '<=';
+                                break;
+                        }
+                    } //Для вебного Выбрать Пустое в мультиселекте
+                    elseif (($fVal_V === [""] || $fVal_V === "")
+                        && in_array($field['type'], ['select', 'tree'])
+                        && (($columnField && !empty($columnField['multiple'])) || !empty($field['selectFilterWithEmpty']))
+                    ) {
+                        $param['value'] = "";
+                    }
+                    $params[] = $param;
+                }
+            }
+        }
+        if (!empty($issetBlockedFilters)) {
+            return [];
+        }
+        return $this->Table->getByParams(
+            [
+                'where' => $params, 'field' => 'id'
+            ],
+            'list'
+        );
+    }
 }
