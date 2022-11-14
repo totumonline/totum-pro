@@ -907,7 +907,7 @@ class TableController extends interfaceController
             if (!$this->Table) {
                 $error = $this->translate('The file table was not found.');
             } else {
-                preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)/', $filename, $matches);
+                preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)(?<hash>_[a-z_0-9]{32,32})?/', $filename, $matches);
                 /*Проверка не скормили ли неверный путь*/
                 if ($matches['table'] !== (string)$this->Table->getTableRow()['id']
                     || ($this->Table->getTableRow()['type'] === 'calcs' && $matches[2] !== (string)$this->Table->getCycle()->getId())) {
