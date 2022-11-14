@@ -902,7 +902,7 @@ class TableController extends interfaceController
 
     protected function checkIsSecureFileRequest(ServerRequestInterface $request)
     {
-        if (!empty($filename = $request->getQueryParams()['file'] ?? null) && !empty($fieldName = $request->getQueryParams('field') ?? null) && preg_match('/^[a-z][a-z0-9_]{2,50}$/', $fieldName)) {
+        if (!empty($filename = $request->getQueryParams()['file'] ?? null) && !empty($fieldName = $request->getQueryParams()['field'] ?? null) && preg_match('/^[a-z][a-z0-9_]{2,50}$/', $fieldName)) {
             session_write_close();
             if (!$this->Table) {
                 $error = $this->translate('The file table was not found.');
