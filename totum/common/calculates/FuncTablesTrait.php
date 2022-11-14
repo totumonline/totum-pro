@@ -679,7 +679,7 @@ SQL;
         $channel = 'web';
 
         foreach ($this->Table->getSortedFields()['filter'] ?? [] as $fName => $field) {
-            if (!$this->Table->isField('filterable', $channel, $field)) {
+            if (!$this->Table->isField('filterable', $channel, $field) || in_array($fName, $exclude)) {
                 continue;
             }
 
