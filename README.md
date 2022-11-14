@@ -154,6 +154,9 @@ echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" > /etc/apt/sources.l
 ```
 apt update && apt install meilisearch-http
 ```
+```
+apt-mark hold meilisearch-http
+```
 
 Switching to the user Totum:
 
