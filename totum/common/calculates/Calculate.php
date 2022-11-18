@@ -29,6 +29,7 @@ class Calculate
     use FuncOperationsTrait;
     use ParsesTrait;
     use FuncDbTrait;
+    use FuncServicesTrait;
 
     protected static $codes;
     protected static $initCodes = [];
