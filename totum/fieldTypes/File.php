@@ -20,7 +20,6 @@ use totum\models\CalcsTableCycleVersion;
 class File extends Field
 {
     protected static $transactionCommits = [];
-    protected static $secureFields = [];
 
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
@@ -85,24 +84,10 @@ class File extends Field
     public static function getFilePath($file_name, Conf $Config, $fileData = null): string
     {
         if (is_null($fileData)) {
-            preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>[a-z][a-z_0-9]+)/', $file_name, $matches);
-
-            $version = null;
-
-            if ($matches[2]) {
-                $TableRow = $Config->getTableRow($matches['table']);
-                if ($TableRow['type'] == 'calcs') {
-                    $version = CalcsTableCycleVersion::init($Config)->getField('version',
-                        ['table_name' => $TableRow['name'], 'cycle' => (int)$matches[2]]);
-                }
+            if (file_exists($Config->getFilesDir() . $file_name) || !file_exists($Config->getSecureFilesDir() . $file_name)) {
+                return $Config->getFilesDir() . $file_name;
             }
-            $key = $matches['table'] . '/' . $matches['field'] . '/' . $version;
-            if (!key_exists($key, static::$secureFields)) {
-                $fileData = json_decode($Config->getModel('tables_fields')->getPrepared(['table_id' => $matches['table'], 'version' => $version, 'name' => $matches['field']],
-                        "data")['data'] ?? '[]', true);
-                static::$secureFields[$key] = $fileData;
-            }
-            $fileData = static::$secureFields[$key];
+            return $Config->getSecureFilesDir() . $file_name;
         }
         if ($fileData['secureFile'] ?? false) {
             return $Config->getSecureFilesDir() . $file_name;
