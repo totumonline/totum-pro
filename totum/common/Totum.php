@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '4.8.50.0-3.1';
+    public const VERSION = '4.8.50.1-3.1';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -258,8 +258,6 @@ class Totum
             $SearchTable = $this->getTable('ttm__search_settings');
             $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/"+$#path`)');
             if ($updates) {
-                $SearchTable = $this->getTable('ttm__search_settings');
-                $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/documents"`)');
                 $Calc->execAction('KOD',
                     $SearchTable->getTbl()['params'],
                     $SearchTable->getTbl()['params'],
@@ -273,6 +271,7 @@ class Totum
                     ]);
             }
             if ($deletes) {
+
                 $Calc->execAction('KOD',
                     $SearchTable->getTbl()['params'],
                     $SearchTable->getTbl()['params'],
