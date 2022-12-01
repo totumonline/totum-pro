@@ -676,7 +676,7 @@ CONF;
             $schemaRows,
             $funcRoles,
             $getTreeId,
-            $funcCategories
+            $funcCategories, 'not calculated in cycles'
         );
 
         $this->caclsFilteredTables(
@@ -687,7 +687,7 @@ CONF;
             $schemaRows,
             $funcRoles,
             $getTreeId,
-            $funcCategories
+            $funcCategories, 'calculated in cycles'
         );
 
         $this->Totum->getModel('roles')->saveVars(
@@ -757,7 +757,7 @@ CONF;
         return $this->CalculateLog;
     }
 
-    protected function caclsFilteredTables($fulterFunc, $calcTableFields, &$schemaRows, $funcRoles, $getTreeId, $funcCategories)
+    protected function caclsFilteredTables($fulterFunc, $calcTableFields, &$schemaRows, $funcRoles, $getTreeId, $funcCategories, string $filterDescription)
     {
         $tablesChanges = [];
 
@@ -798,13 +798,55 @@ CONF;
         $fieldsAdd = [];
         $fieldsModify = [];
         $n = 0;
+
         foreach ($schemaRows as $schemaRow) {
             if ($fulterFunc($schemaRow)) {
                 $calcTableFields($fieldsAdd, $fieldsModify, $schemaRow);
                 $n++;
             }
         }
-        $this->consoleLog('Add and modify fields for ' . $n . ' tables ', 2);
+
+        $this->consoleLog('Add and modify fields for ' . $n . ' "'.$filterDescription.'" tables ', 2);
+
+        $heldFields = $this->Config->getSettings('h_held_fields');
+        if ($heldFields) {
+            $heldParams = $heldWhere = [];
+            foreach ($heldFields as $_table => $_fields) {
+                foreach ($_fields as $_field) {
+                    $heldWhere[] = "(table_name->>'v' = ? and name->>'v'=?)";
+                    $heldParams[] = $_table;
+                    $heldParams[] = $_field;
+                }
+            }
+
+            $stm = $this->Totum->getConfig()->getSql()->getPDO()->prepare("select id, table_name->>'v' as table_name, name->>'v' as name from tables_fields where " . implode(' OR ',
+                    $heldWhere) . " order by table_name->>'v'");
+            $stm->execute($heldParams);
+            $heldFieldsData = $stm->fetchAll(PDO::FETCH_ASSOC);
+            $heldFieldsData = array_combine(array_column($heldFieldsData, 'id'), $heldFieldsData);
+            $helded = [];
+            foreach ($fieldsModify as $id => $row) {
+                if (key_exists($id, $heldFieldsData)) {
+                    unset($fieldsModify[$id]);
+                    unset($heldFieldsData[$id]['id']);
+                    $helded[] = $heldFieldsData[$id];
+                }
+            }
+            if ($helded) {
+                if ($this->outputConsole) {
+                    $this->outputConsole->writeln(str_repeat(' ',
+                            2) . '<info>The following fields are blocked from changing</info>');
+                    $table = new \Symfony\Component\Console\Helper\Table($this->outputConsole);
+                    $table
+                        ->setHeaders(['table name', 'field name'])
+                        ->setRows($helded);
+                    $table->render();
+                }
+            }
+        }
+
+
+
         $this->Totum->getTable('tables_fields')->reCalculateFromOvers(['add' => $fieldsAdd, 'modify' => $fieldsModify]);
         $this->Totum->clearTables();
         $this->Totum->getConfig()->clearRowsCache();
@@ -1011,8 +1053,8 @@ CONF;
 
                             if ($schemaRow['name'] === 'ttm__user_documentation') {
                                 foreach ($schemaRow['data']['rows'] as &$row) {
-                                    if(!empty($row['for_roles']['v'])){
-                                        foreach ($row['for_roles']['v'] as &$id){
+                                    if (!empty($row['for_roles']['v'])) {
+                                        foreach ($row['for_roles']['v'] as &$id) {
                                             $id = $funcRoles($id);
                                         }
                                         unset($id);
