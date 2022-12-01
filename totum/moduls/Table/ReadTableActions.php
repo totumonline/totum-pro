@@ -276,7 +276,7 @@ class ReadTableActions extends Actions
             $loadFilteredRows = $this->Table->loadFilteredRows('web', [$data['rowId']]);
             if ($loadFilteredRows && $row = ($this->Table->getTbl()['rows'][$data['rowId']] ?? null)) {
                 $val = $row[$field['name']];
-            }else{
+            } else {
                 throw new errorException($this->translate('The row %s does not exist or is not available for your role.'));
             }
         } else {
@@ -1984,7 +1984,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         }
         $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description']);
 
-        if ($tableRow['actual'] === 'refresh') {
+        if (in_array($tableRow['actual'], ['refresh', 'disablerefresh'])) {
             $_tableRow['__autorefresh'] = true;
         }
 
