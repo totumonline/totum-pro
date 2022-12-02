@@ -677,7 +677,7 @@ SQL;
         $data = $this->Table->getTbl()['params'];
 
         $channel = 'web';
-
+        $whereParams = [];
         foreach ($this->Table->getSortedFields()['filter'] ?? [] as $fName => $field) {
             if (!$this->Table->isField('filterable', $channel, $field) || in_array($fName, $exclude)) {
                 continue;
@@ -722,7 +722,7 @@ SQL;
                     ) {
                         $param['value'] = "";
                     }
-                    $params[] = $param;
+                    $whereParams[] = $param;
                 }
             }
         }
@@ -731,7 +731,7 @@ SQL;
         }
         return $this->Table->getByParams(
             [
-                'where' => $params, 'field' => 'id'
+                'where' => $whereParams, 'field' => 'id'
             ],
             'list'
         );
