@@ -443,6 +443,11 @@ class RU implements LangInterface
 
         'Crypto.key file not exists' => 'Файл Crypto.key не существует',
 
+        /*Services*/
+        'Service does not accept more than 10 files' => 'Сервис не принимает больше 10 файлов',
+        'Number of elements %s and %s do not match' => 'Количество элементов %s и %s не совпадает',
+        'PDF printing for this table is switched off' => 'PDF печать для этой таблицы выключена',
+
         /**PRO**/
         'The code for the specified button is not found. Try again.' => 'Код указанной кнопки не наден. Попробуйте еще раз.',
         'Check that the ttm__search field type in table %s is data' => 'Проверьте, что тип поля ttm__search  в таблице %s - данные',
