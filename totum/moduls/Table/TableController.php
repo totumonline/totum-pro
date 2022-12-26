@@ -916,8 +916,9 @@ class TableController extends interfaceController
                     $filename,
                     $matches);
                 /*Проверка не скормили ли неверный путь*/
+
                 if ($matches['table'] !== (string)$this->Table->getTableRow()['id']
-                    || ($this->Table->getTableRow()['type'] === 'calcs' && $matches[2] !== (string)$this->Table->getCycle()->getId())
+                    || ($this->Table->getTableRow()['type'] === 'calcs' && (int)$matches[2] !== (int)$this->Table->getCycle()->getId())
                 ) {
                     $error = $this->translate('The file path is not formed correctly.');
                 } elseif (!($field = $this->Table->getFields()[$fieldName])) {
