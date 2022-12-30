@@ -1034,6 +1034,18 @@ class CalculateAction extends Calculate
         }
     }
 
+    protected function funcProLinkToBuffer($params)
+    {
+        $params = $this->getParamsArray($params);
+        $text = $params['text'] ?? '';
+        if ($text !== '') {
+            $this->Table->getTotum()->addToInterfaceDatas(
+                'buffer',
+                ['text' => $text]
+            );
+        }
+    }
+
 
     protected function funcEncriptedFormParams($params)
     {
