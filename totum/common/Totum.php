@@ -214,7 +214,7 @@ class Totum
             $TableRow = $this->getTableRow($name);
             if ($TableRow['type'] != 'tmp' && $TableRow['type'] != 'calcs') {
                 $Table = $this->getTable($TableRow);
-                if (key_exists('ttm_search', $Table->getFields())) {
+                if (key_exists('ttm_search', $Table->getFields()) && $this->getTable('ttm__search_settings')->getByParams(['field'=>'h_get_updates'])) {
                     $searchTables = $searchTables ?? $this->getTable('ttm__search_settings')->getByParams(
                             ['field' => 'table_id'],
                             'list'
