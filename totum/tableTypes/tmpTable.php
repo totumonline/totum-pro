@@ -158,8 +158,6 @@ class tmpTable extends JsonTables
             $this->savedUpdated = $this->updated;
             $this->setIsTableDataChanged(false);
             $this->onSaveTable($this->tbl, $saved);
-
-            $this->Totum->tableChanged($this->tableRow['name']);
         }
         return true;
     }
