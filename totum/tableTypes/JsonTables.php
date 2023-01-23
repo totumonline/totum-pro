@@ -1120,7 +1120,13 @@ abstract class JsonTables extends aTable
                         );
                     }
                     if ($field['type'] === 'file' && $this->tableRow['deleting'] !== 'hide') {
-                        File::deleteFilesOnCommit($Oldrow[$field['name']]['v'],
+                        File::deleteFilesOnCommit(
+                            Field::init($field,
+                                $this)->filterDuplicatedFiled(
+                                $Oldrow[$field['name']]['v'] ?? [],
+                                $Oldrow['id']
+                            )
+                            ,
                             $this->getTotum()->getConfig(),
                             $field);
                     }
