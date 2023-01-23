@@ -2,7 +2,6 @@
 
 namespace totum\common;
 
-use totum\common\calculates\CalculateAction;
 use totum\common\configs\TablesModelsTrait;
 use totum\common\Lang\RU;
 use totum\common\logs\ActionsLog;
@@ -28,7 +27,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '4.8.52.0-3.4';
+    public const VERSION = '4.8.52.1-3.4';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -108,7 +107,7 @@ class Totum
         $this->orderFieldCodeErrors[$Table->getTableRow()['name']][$nameVar] = 1;
     }
 
-
+    
     public function getMessenger()
     {
         return $this->Messenger = $this->Messenger ?? new TotumMessenger();
@@ -187,11 +186,6 @@ class Totum
     public function tableChanged(string $tableName)
     {
         $this->changedTables[$tableName] = true;
-        if (count($this->changedTables) === 1) {
-            $this->Config->getSql()->addOnCommit(function () {
-                $this->searchIndexUpdate();
-            });
-        }
     }
 
     /**
@@ -200,91 +194,6 @@ class Totum
     public function isAnyChages()
     {
         return !!$this->changedTables;
-    }
-
-    protected function searchIndexUpdate()
-    {
-        $updates = [];
-        $deletes = [];
-
-        $searchTables = null;
-
-
-        foreach ($this->changedTables as $name => $_) {
-            $TableRow = $this->getTableRow($name);
-            if ($TableRow['type'] != 'tmp' && $TableRow['type'] != 'calcs') {
-                $Table = $this->getTable($TableRow);
-                if (key_exists('ttm_search', $Table->getFields()) && $this->getTable('ttm__search_settings')->getByParams(['field'=>'h_get_updates'])) {
-                    $searchTables = $searchTables ?? $this->getTable('ttm__search_settings')->getByParams(
-                            ['field' => 'table_id'],
-                            'list'
-                        );
-                    $tableId = $TableRow['id'];
-                    if (in_array($tableId, $searchTables)) {
-
-                        $pkCreate = function ($id) use ($tableId) {
-                            return $tableId . '-' . $id;
-                        };
-
-                        $changedIds = $Table->getChangeIds();
-                        foreach (['restored',
-                                     'added',
-                                     'changed'] as $operation) {
-                            foreach (array_keys($changedIds[$operation]) as $id) {
-                                if (empty($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
-                                    $deletes[] = $pkCreate($id);
-                                } else {
-                                    if (!is_array($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
-                                        errorException::criticalException($this->translate('Check that the ttm__search field type in table %s is data',
-                                            $Table->getTableRow()['name']),
-                                            $this);
-                                    }
-                                    $updates[] = array_merge(
-                                        $Table->getTbl()['rows'][$id]['ttm_search']['v'],
-                                        ['pk' => $pkCreate($id), 'table' => (string)$tableId]
-                                    );
-                                }
-                            }
-                        }
-
-                        foreach (array_keys($changedIds['deleted']) as $id) {
-                            $deletes[] = $pkCreate($id);
-                        }
-                    }
-                }
-            }
-        }
-        if ($updates || $deletes) {
-            $SearchTable = $this->getTable('ttm__search_settings');
-            $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/"+$#path`)');
-            if ($updates) {
-                $Calc->execAction('KOD',
-                    $SearchTable->getTbl()['params'],
-                    $SearchTable->getTbl()['params'],
-                    $SearchTable->getTbl(),
-                    $SearchTable->getTbl(),
-                    $SearchTable,
-                    'exec',
-                    [
-                        'posts' => json_encode($updates, JSON_UNESCAPED_UNICODE),
-                        'path' => 'documents'
-                    ]);
-            }
-            if ($deletes) {
-
-                $Calc->execAction('KOD',
-                    $SearchTable->getTbl()['params'],
-                    $SearchTable->getTbl()['params'],
-                    $SearchTable->getTbl(),
-                    $SearchTable->getTbl(),
-                    $SearchTable,
-                    'exec',
-                    [
-                        'posts' => json_encode($deletes, JSON_UNESCAPED_UNICODE),
-                        'path' => 'documents/delete-batch'
-                    ]);
-            }
-        }
     }
 
 
@@ -529,28 +438,4 @@ class Totum
     {
         return $this->getLangObj()->translate($str, $vars);
     }
-
-
-    protected array $hashes = [];
-
-    function hashValue($type, $hash = null, $value = '*GET*')
-    {
-        if (!is_null($hash)) {
-            $hash = (string)$hash;
-        }
-
-        if ($value === '*GET*') {
-            return $this->hashes[$type][$hash] ?? null;
-        }
-
-        if (is_null($hash)) {
-            do {
-                $hash = "h" . substr((float)microtime(), 2, 5);
-            } while (key_exists($hash, $this->hashes[$type] ?? []));
-        }
-        $this->hashes[$type][$hash] = $value;
-
-        return $hash;
-    }
-
 }

@@ -1497,20 +1497,15 @@ abstract class RealTables extends aTable
             foreach ($_level as $cond) {
                 if (key_exists('operator', $cond)) {
                     if (($cond['right']['type'] ?? '') !== 'fieldName') {
-                        $pw_res = $this->processFieldWhere(
+                        list($_cond, $_params) = $this->processFieldWhere(
                             $cond['left']['value'],
                             $cond['operator'],
                             $cond['right']['value']
                         );
-                        if (!$pw_res) {
-                            $whereConds[] = 'FALSE';
-                        } else {
-                            list($_cond, $_params) = $pw_res;
-                            if ($_cond) {
-                                $_cond = '(' . implode(' AND ', $_cond) . ')';
-                                array_push($params, ...$_params);
-                                $whereConds[] = $_cond;
-                            }
+                        if ($_cond) {
+                            $_cond = '(' . implode(' AND ', $_cond) . ')';
+                            array_push($params, ...$_params);
+                            $whereConds[] = $_cond;
                         }
                     } else {
                         if ($cond['operator'] === '=') {
@@ -1551,18 +1546,12 @@ abstract class RealTables extends aTable
                     $withoutDeleted = false;
                 }
 
-                if ($pw_res = $this->processFieldWhere($wI['field'],
+                list($_where, $_params) = $this->processFieldWhere($wI['field'],
                     $wI['operator'],
-                    $wI['value'])) {
+                    $wI['value']);
 
-                    list($_where, $_params) = $pw_res;
-
-
-                    array_push($where, ...$_where);
-                    array_push($params, ...$_params);
-                } else {
-                    return ['FALSE', []];
-                }
+                array_push($where, ...$_where);
+                array_push($params, ...$_params);
             }
         }
 
@@ -1579,7 +1568,7 @@ abstract class RealTables extends aTable
         return [$whereStr, $params];
     }
 
-    protected function processFieldWhere($fieldName, string $operator, mixed $value): false|array
+    protected function processFieldWhere($fieldName, string $operator, mixed $value): array
     {
         if ((array)$value === ['*ALL*']) {
             return [[], []];
@@ -1612,7 +1601,12 @@ abstract class RealTables extends aTable
                         unset($value[$i]);
                         $isRemovedValues = true;
                     } else {
-                        return false;
+                        return match ($operator) {
+                            '=', '==' => [['FALSE'], []],
+                            '!=', '!==' => [['TRUE'], []],
+                            default => throw new errorException($this->translate('Comparing not numeric string or lists with number field'))
+                        };
+
                     }
                 }
             }
