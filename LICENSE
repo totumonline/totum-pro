@@ -1,1 +1,71 @@
-PRO
+# Totum Pro license
+
+
+## Terms and definitions:
+
+"Software" means the Totum Pro Software and associated documentation files.
+
+"Use" means any action taken with the Software distributed under the terms of this License. 
+
+"Licensor" means the Totum Pro team that holds the exclusive right to the Software.
+
+"User" means an individual or entity that is a licensee and acquires the right to use the Software under the terms of this License.
+
+"Intellectual Rights" means patents, trademarks, service marks and similar rights.
+
+
+## Acceptance:
+
+By using the software, you agree to all of the terms and conditions below
+
+## Totum Pro Copyright License:
+
+lines of source code from the https://github.com/totumonline/totum-pro repository that are not contained in the MIT version of the Totum repository located in the https://github.com/totumonline/totum-mit repository are licensed under the Totum Pro license, subject to the terms listed below. 
+
+All third party components included in the Totum Pro Software are licensed under the original license provided by the owner of the relevant component. 
+The right to use components of the Totum Software other than Totum Pro is granted under the terms of the MIT open license, which can be found at https://github.com/totumonline/totum-mit.
+
+By using the Software, the User agrees to all of the terms and conditions below. 
+The licensor grants User a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to use, copy, distribute, make available, and prepare derivative works of the software, in each case subject to the limitations below.
+
+
+## Limitations:
+
+User may use or modify the Software only for Users internal business purposes or for personal use.
+
+User may not distribute or provide the Software to others. 
+
+User may not modify, delete or conceal any licensing, copyright or other notices from the Licensor in the Software. 
+
+Any use of the licensor's Intellectual Rights is subject to applicable law.
+
+
+## Terms of Use:
+
+User agrees that when User places modifications and/or patches created by User with the Software in Licensor's main repository, Totum Pro and/or its licensors (as applicable) retain all right, title and interest in and to all such modifications and/or patches. 
+
+Notwithstanding the foregoing, User may copy and modify the Software for development and testing purposes without placing it in Licensor's main repository. 
+These terms do not imply any licenses other than those expressly granted in these terms.
+
+
+## No Liability:
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For all third party components incorporated into the Totum Pro Software, those components are licensed under the original license provided by the owner of the applicable component.
+
+
+## Other terms and conditions:
+
+These terms do not imply any licenses other than those expressly granted in these terms.
+
+If the User use the Software in violation of these terms and conditions, such use is not licensed and Users license automatically terminates.
+
+As far as the law allows, the software comes as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim.
+
+
+## Validity of the License:
+
+This license is valid in all countries of the world in the latest revision posted in the public domain at https://github.com/totumonline/totum-pro/blob/pro/LICENSE. 
+
+This license is valid for the entire term of the User's use of the Software, and as to the obligations and restrictions of the User - indefinitely.
