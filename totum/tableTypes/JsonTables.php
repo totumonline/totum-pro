@@ -1233,15 +1233,6 @@ abstract class JsonTables extends aTable
                     throw new errorException($this->translate('The [[%s]] field is not found in the [[%s]] table.',
                         [$field, $this->tableRow['title']]));
                 }
-
-                if ($field === 'id' || $field === 'n' || $this->sortedFields['column'][$field]['type'] === 'number') {
-                    foreach ((array)$value as $v) {
-                        if (is_array($v) || ($v !== '' && !is_null($v) && !is_numeric((string)$v))) {
-                            /*not numeric string in searching in number*/
-                            throw new errorException($this->translate('Searching not numeric string or lists in numbers'));
-                        }
-                    }
-                }
             };
 
             /**
@@ -1349,6 +1340,9 @@ abstract class JsonTables extends aTable
                             case '=':
                                 $value = (array)$value;
                                 foreach ($value as &$val) {
+                                    if(is_array($val)){
+                                        throw new errorException($this->translate('An invalid value for id filtering was passed to the select function.'));
+                                    }
                                     $val = strval($val);
                                 }
                                 unset($val);
