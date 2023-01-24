@@ -63,6 +63,7 @@ abstract class ConfParent
     protected $dbConnectData;
 
     private $settingsCache;
+    protected $settingsLDAPCache;
     protected $hostName;
     /**
      * @var string
@@ -558,6 +559,40 @@ abstract class ConfParent
         }
     }
 
+    public function getLDAPSettings(string $name)
+    {
+        if (!$this->settingsLDAPCache) {
+            $settings = json_decode(
+                $this->getTableRow('ttm__ldap_settings')['header'],
+                true
+            );
+            $this->settingsLDAPCache = [];
+            foreach ($settings as $s_key => $s_value) {
+                if (is_array($s_value) && key_exists('v', $s_value)) {
+                    $this->settingsLDAPCache[$s_key] = $s_value['v'];
+                }
+            }
+        }
+
+        if ($name === 'connection') {
+            if (empty($this->settingsLDAPCache['connection'])) {
+                $host = $this->settingsLDAPCache['h_host'];
+                if (empty($host)) {
+                    throw new errorException($this->translate('Set the host in the LDAP settings table'));
+                }
+
+                $port = $this->settingsLDAPCache['h_host'];
+
+                if (empty($port)) {
+                    throw new errorException($this->translate('Set the port in the LDAP settings table'));
+                }
+                $this->settingsLDAPCache['connection'] = ldap_connect($host, $port);
+            }
+
+        }
+
+        return $this->settingsCache[$name] ?? null;
+    }
 
     /**
      * Load and Cache settings from table "settings"
