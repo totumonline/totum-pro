@@ -10,29 +10,14 @@ trait FuncLDAPTrait
     protected function funcPROLDAPgetUsers($params)
     {
 
-        if (!extension_loaded("ldap")) {
-            die('LDAP extension php not enabled');
-        }
-
-        $bindFormat = $this->Table->getTotum()->getConfig()->getLDAPSettings('h_bind_format');
-        if (empty($bindFormat)) {
-            throw new errorException($this->translate('Set the binding format in the LDAP settings table'));
-        }
         $connection = $this->Table->getTotum()->getConfig()->getLDAPSettings('connection');
 
         $params = $this->getParamsArray($params, [], [], []);
         $this->__checkNotEmptyParams($params, ['basedn', 'filter', 'domain']);
 
-        $Conf = $this->Table->getTotum()->getConfig();
-        $settings = $Conf->getLDAPSettings('h_version');
-        $settings['LDAP_OPT_PROTOCOL_VERSION'] = (int)($settings['LDAP_OPT_PROTOCOL_VERSION'] ?? 3);
-        foreach ($settings as $name => $val) {
-            ldap_set_option($connection, constant($name), $val);
-        }
-
 
         if ($params['user'] ?? null) {
-            $login = match ($bindFormat) {
+            $login = match ($this->Table->getTotum()->getConfig()->getLDAPSettings('h_bind_format')) {
                 'at' => $params['user'] . '@' . $params['domain'],
                 'dn' => $params['user'],
                 default => throw new \Exception('Не поддерживаемый формат бинда ')

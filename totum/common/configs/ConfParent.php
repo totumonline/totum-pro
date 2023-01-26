@@ -562,6 +562,11 @@ abstract class ConfParent
     public function getLDAPSettings(string $name)
     {
         if (!$this->settingsLDAPCache) {
+            if (!extension_loaded("ldap")) {
+                die('LDAP extension php not enabled');
+            }
+
+
             $settings = json_decode(
                 $this->getTableRow('ttm__ldap_settings')['header'],
                 true
@@ -573,21 +578,34 @@ abstract class ConfParent
                 }
             }
         }
-        if ($name === 'connection') {
-            if (empty($this->settingsLDAPCache['connection'])) {
-                $host = $this->settingsLDAPCache['h_host'];
-                if (empty($host)) {
-                    throw new errorException($this->translate('Set the host in the LDAP settings table'));
+        switch ($name) {
+            case 'connection':
+                if (empty($this->settingsLDAPCache['connection'])) {
+                    $host = $this->settingsLDAPCache['h_host'];
+                    if (empty($host)) {
+                        throw new errorException($this->translate('Set the host in the LDAP settings table'));
+                    }
+
+                    $port = $this->settingsLDAPCache['h_port'];
+
+                    if (empty($port)) {
+                        throw new errorException($this->translate('Set the port in the LDAP settings table'));
+                    }
+                    $this->settingsLDAPCache['connection'] = ldap_connect($host, $port);
+
+                    $settings = $this->settingsLDAPCache['h_version'];
+                    $settings['LDAP_OPT_PROTOCOL_VERSION'] = (int)($settings['LDAP_OPT_PROTOCOL_VERSION'] ?? 3);
+                    foreach ($settings as $name => $val) {
+                        ldap_set_option($this->settingsLDAPCache['connection'], constant($name), $val);
+                    }
+
                 }
-
-                $port = $this->settingsLDAPCache['h_port'];
-
-                if (empty($port)) {
-                    throw new errorException($this->translate('Set the port in the LDAP settings table'));
+                break;
+            case 'h_bind_format':
+                if (empty($this->settingsLDAPCache['h_bind_format'])) {
+                    throw new errorException($this->translate('Set the binding format in the LDAP settings table'));
                 }
-                $this->settingsLDAPCache['connection'] = ldap_connect($host, $port);
-            }
-
+                break;
         }
 
         return $this->settingsLDAPCache[$name];

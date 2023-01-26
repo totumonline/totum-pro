@@ -123,11 +123,14 @@ class Auth
         }
     }
 
-    public static function getUserRowWithServiceRestriction($login, Conf $Config, $interface = 'web')
+    public static function getUserRowWithServiceRestriction($login, Conf $Config, $interface = 'web', $is_del = false)
     {
         /*block the ability to log in with service logins*/
         if ($login !== 'cron' && $login !== 'service') {
-            $where = ['on_off' => true, 'is_del' => false, 'interface' => $interface];
+            $where = ['on_off' => true, 'interface' => $interface];
+            if ($is_del !== '*ALL*') {
+                $where['is_del'] = $is_del;
+            }
 
             if (str_contains($login, '@')) {
                 $where['email'] = strtolower($login);

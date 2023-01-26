@@ -20,7 +20,8 @@ use totum\config\Conf;
         input.error {
             border-color: red;
         }
-        body{
+
+        body {
             background: url(/imgs/mailttm.png) no-repeat center center fixed;
             background-size: cover;
         }
@@ -31,16 +32,36 @@ use totum\config\Conf;
     <div class="center-block">
         <form method="post"
               id='form'>
-            <div class="form-group"><label><?=$this->translate('Login/Email')?>:</label><input type="text"
-                                                                      name="login"
-                                                                      value=""
-                                                                      class="form-control"
+            <div class="form-group"><label><?= $this->translate('Login/Email') ?>:</label><input type="text"
+                                                                                                 name="login"
+                                                                                                 value=""
+                                                                                                 class="form-control"
                 /></div>
-            <div class="form-group"><label><?=$this->translate('Password')?>:</label><input type="password"
-                                                                 name="pass"
-                                                                 class="form-control"/></div>
+            <div class="form-group"><label><?= $this->translate('Password') ?>:</label><input type="password"
+                                                                                              name="pass"
+                                                                                              class="form-control"/>
+            </div>
+            <?php
+            if ($this->Config->getLDAPSettings('h_ldap_on') && $this->Config->getLDAPSettings('h_domain_selector') && $this->Config->getLDAPSettings('h_domains_settings')) {
+                ?>
+                <div class="form-group"><label><?= $this->translate('Authorization type') ?>:</label>
+                    <select name="type" class="form-control selectpicker">
+                        <option>Totum</option>
+                        <?php
+                        if ($this->Config->getLDAPSettings('h_domain_selector') === 'ldap') {
+                            echo '<option value="1">LDAP</option>';
+                        } else {
+                            foreach ($this->Config->getLDAPSettings('h_domains_settings') as $domain => $_) {
+                                echo '<option value="' . $domain . '">' . $domain . '</option>';
+                            }
+                        } ?>
+                    </select>
+                </div>
+                <?php
+            } ?>
+
             <div class="form-group"><input type="submit"
-                                           value="<?=$this->translate('Log in')?>"
+                                           value="<?= $this->translate('Log in') ?>"
                                            style="width: 79px;margin-top:4px;"
                                            id="login"
                                            class="form-control"/>
@@ -52,7 +73,7 @@ use totum\config\Conf;
             <button
                     style=";margin-top:4px;"
                     id="recover"
-                    class="form-control btn btn-default"><?=$this->translate('Send new password to email')?>
+                    class="form-control btn btn-default"><?= $this->translate('Send new password to email') ?>
             </button>
             <?php
         } ?>
