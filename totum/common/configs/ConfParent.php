@@ -573,7 +573,6 @@ abstract class ConfParent
                 }
             }
         }
-
         if ($name === 'connection') {
             if (empty($this->settingsLDAPCache['connection'])) {
                 $host = $this->settingsLDAPCache['h_host'];
@@ -581,7 +580,7 @@ abstract class ConfParent
                     throw new errorException($this->translate('Set the host in the LDAP settings table'));
                 }
 
-                $port = $this->settingsLDAPCache['h_host'];
+                $port = $this->settingsLDAPCache['h_port'];
 
                 if (empty($port)) {
                     throw new errorException($this->translate('Set the port in the LDAP settings table'));
@@ -591,7 +590,7 @@ abstract class ConfParent
 
         }
 
-        return $this->settingsCache[$name] ?? null;
+        return $this->settingsLDAPCache[$name];
     }
 
     /**
