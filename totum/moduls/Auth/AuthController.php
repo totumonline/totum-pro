@@ -208,6 +208,7 @@ class AuthController extends interfaceController
                 'status',
                 'id desc'
             );
+            $count = 0;
             foreach ($statuses as $st) {
                 if ($st["status"] != 1) {
                     break;

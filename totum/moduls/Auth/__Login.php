@@ -46,7 +46,7 @@ use totum\config\Conf;
                 ?>
                 <div class="form-group"><label><?= $this->translate('Authorization type') ?>:</label>
                     <select name="type" class="form-control selectpicker">
-                        <option>Totum</option>
+                        <option value="">Totum</option>
                         <?php
                         if ($this->Config->getLDAPSettings('h_domain_selector') === 'ldap') {
                             echo '<option value="1">LDAP</option>';
