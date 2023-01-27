@@ -27,6 +27,7 @@ trait FuncLDAPTrait
                 throw new errorException(ldap_error($connection));
             }
         }
+        $Conf = $this->Table->getTotum()->getConfig();
         $r = @ldap_search($connection, $params['basedn'], $params['filter'][0],
             [$Conf->getLDAPSettings('h_login_param'), $Conf->getLDAPSettings('h_fio_param'), $Conf->getLDAPSettings('h_email_param')]
         );
