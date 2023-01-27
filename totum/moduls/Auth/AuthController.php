@@ -10,8 +10,10 @@ namespace totum\moduls\Auth;
 
 use Exception;
 use Psr\Http\Message\ServerRequestInterface;
+use totum\common\calculates\CalculateAction;
 use totum\common\controllers\interfaceController;
 use totum\common\Auth;
+use totum\common\errorException;
 use totum\common\Lang\RU;
 use totum\common\Totum;
 
@@ -82,17 +84,22 @@ class AuthController extends interfaceController
                 if (empty($post['pass'])) {
                     return ['error' => $this->translate('Fill in the Password field')];
                 }
-                switch (Auth::passwordCheckingAndProtection($post['login'],
-                    $post['pass'],
-                    $userRow,
-                    $this->Config,
-                    'web')) {
+
+                switch ($this->passwordCheckingAndProtectionWithLDAP($post,
+                        $userRow) ?? Auth::passwordCheckingAndProtection($post['login'],
+                        $post['pass'],
+                        $userRow,
+                        $this->Config,
+                        'web')) {
                     case Auth::$AuthStatuses['OK']:
                         Auth::webInterfaceSetAuth($userRow['id']);
 
                         $baseDir = $this->Config->getBaseDir();
-                        $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
-                        `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+
+                        if (in_array(1, $userRow['roles'])) {
+                            $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
+                            `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+                        }
 
                         $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : Auth::getUserById($this->Config,
                             $userRow['id'])->getUserStartPath(),
@@ -109,6 +116,11 @@ class AuthController extends interfaceController
                 }
 
                 if ($userRow = $userRow ?? Auth::getUserRowWithServiceRestriction($post['login'], $this->Config)) {
+
+                    if ($userRow['ttm__auth_type']) {
+                        return ['error' => $this->translate('Password recovering is not possible for users with special auth types')];
+                    }
+
                     $email = $userRow['email'];
                     if (empty($email)) {
                         return ['error' => $this->translate('Email for this login is not set')];
@@ -163,4 +175,152 @@ class AuthController extends interfaceController
         die;
     }
 
+    protected function passwordCheckingAndProtectionWithLDAP(array $post, &$userRow): ?int
+    {
+        /*LDAP Off*/
+        if (!$this->Config->getLDAPSettings('h_ldap_on')) {
+            return null;
+        }
+        /*It's TOTUM auth*/
+        if ($this->Config->getLDAPSettings('h_domain_selector') && empty($post['type'])) {
+            return null;
+        }
+
+        $Config = $this->Config;
+        $ip = ($_SERVER['REMOTE_ADDR'] ?? null);
+        $now_date = date_create();
+
+        if (($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
+            $BlockDate = date_create()->modify('-' . $block_time . 'minutes');
+            $block_date = $BlockDate->format('Y-m-d H:i');
+        }
+
+        if ($block_time && $Config->getModel('auth_log')->get(['user_ip' => $ip, 'login' => $post['login'], 'datetime->>\'v\'>=\'' . $block_date . '\'', 'status' => 2])) {
+            return Auth::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION'];
+        }
+
+        $getWrongStatus = function () use ($post, $error_count, $block_time, $block_date, $ip, $Config) {
+            if (!$block_time || !$error_count) {
+                return Auth::$AuthStatuses['WRONG_PASSWORD'];
+            }
+            $statuses = $Config->getModel('auth_log')->getAll(
+                ['user_ip' => $ip, 'login' => $post['login'], 'datetime->>\'v\'>=\'' . $block_date . '\''],
+                'status',
+                'id desc'
+            );
+            foreach ($statuses as $st) {
+                if ($st["status"] != 1) {
+                    break;
+                } else {
+                    $count++;
+                }
+            }
+
+            if ($count >= $error_count) {
+                return Auth::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION'];
+            } else {
+                return Auth::$AuthStatuses['WRONG_PASSWORD'];
+            }
+        };
+        $checkLDAPBind = function ($loginIn, $password, $domain, &$userRow) {
+            $connection = $this->Config->getLDAPSettings('connection');
+            $login = match ($this->Config->getLDAPSettings('h_bind_format')) {
+                'at' => $loginIn . '@' . $domain,
+                'dn' => $loginIn,
+                default => throw new \Exception('Не поддерживаемый формат бинда ')
+            };
+
+
+            $r = @ldap_bind($connection, $login, $password);
+            if (!$r) {
+                return Auth::$AuthStatuses['WRONG_PASSWORD'];
+            }
+
+            /*Update User params*/
+            $Totum = $this->Totum ?? new Totum($this->Config,
+                    Auth::loadAuthUserByLogin($this->Config, 'service', false));
+            $LDAPSettingsTable = $Totum->getTable('ttm__ldap_settings');
+            $CalcAction = new CalculateAction("=: exec(code: 'h_import_users'; var: 'onLogin' = $#loginJson)");
+            $userRow = $CalcAction->execAction('CODE', [],
+                [],
+                $LDAPSettingsTable->getTbl(),
+                $LDAPSettingsTable->getTbl(),
+                $LDAPSettingsTable,
+                'exec',
+                ['loginJson' => ['login' => $loginIn, 'domain' => $domain]]
+            );
+            return Auth::$AuthStatuses['OK'];
+        };
+
+        if (str_contains($post['login'], '@')) {
+            /*check is email with switched off users - he may be switched on by LDAP*/
+            if ($userRow = Auth::getUserRowWithServiceRestriction($post['login'], $this->Config, 'web', '*ALL*')) {
+                if ($userRow['ttm__auth_type'] === 'LDAP') {
+                    $status = $checkLDAPBind($userRow['ttm__extparams']['login'],
+                        $post['pass'],
+                        $userRow['ttm__extparams']['domain'],
+                        $userRow);
+                } /*if this totum user was switched off*/
+                elseif (!$userRow['is_del']) {
+                    $status = Auth::$AuthStatuses['WRONG_PASSWORD'];
+                } else {
+                    /*This is totum-user check it common way*/
+                    return null;
+                }
+            } else {
+                list($login, $domain) = explode('@', $post['login']);
+                $status = $checkLDAPBind($login,
+                    $post['pass'],
+                    $domain,
+                    $userRow);
+            }
+
+        } else {
+            if (!$this->Config->getLDAPSettings('h_domain_selector')) {
+                if ($userRow = Auth::getUserRowWithServiceRestriction($post['login'], $this->Config, 'web')) {
+                    /*This is totum-user check it common way*/
+                    return null;
+                } else {
+                    if (!is_array($this->Config->getLDAPSettings('h_domains_settings')) || count($this->Config->getLDAPSettings('h_domains_settings')) != 1) {
+                        /*If domain number is not 1 then check only totum-user here*/
+                        return Auth::$AuthStatuses['WRONG_PASSWORD'];
+                    } else {
+                        $status = $checkLDAPBind($post['login'],
+                            $post['pass'],
+                            array_key_first($this->Config->getLDAPSettings('h_domains_settings')),
+                            $userRow);
+                    }
+                }
+            } elseif (empty($post['type'])) {
+                /*Its totum-user. Check it common way*/
+                return null;
+            } else {
+                $status = $checkLDAPBind($post['login'],
+                    $post['pass'],
+                    $post['type'],
+                    $userRow);
+            }
+        }
+
+        if (is_null($status ?? null)) {
+            die('logic error');
+        }
+
+        if ($status !== Auth::$AuthStatuses['OK']) {
+            $status = $getWrongStatus();
+        }
+
+        $Config->getSql()->insert(
+            'auth_log',
+            [
+                'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
+                , 'user_ip' => json_encode(['v' => $ip])
+                , 'login' => json_encode(['v' => $post['login']])
+                , 'status' => json_encode(['v' => strval($status)])
+            ],
+            false
+        );
+        return $status;
+
+    }
 }
