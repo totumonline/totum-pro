@@ -190,7 +190,7 @@ class Auth
             } elseif (!$block_time || !$error_count) {
                 $status = static::$AuthStatuses['WRONG_PASSWORD'];
             } else {
-                $count = static::$AuthStatuses['WRONG_PASSWORD'];
+                $count = 0;
                 $statuses = $Config->getModel('auth_log')->getAll(
                     ['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\''],
                     'status',

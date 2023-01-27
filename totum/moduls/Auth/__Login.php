@@ -45,7 +45,7 @@ use totum\config\Conf;
             if ($this->Config->getLDAPSettings('h_ldap_on') && $this->Config->getLDAPSettings('h_domain_selector') && $this->Config->getLDAPSettings('h_domains_settings')) {
                 ?>
                 <div class="form-group"><label><?= $this->translate('Authorization type') ?>:</label>
-                    <select name="type" class="form-control selectpicker">
+                    <select name="type" class="form-control selectpicker" id="auth_type_select">
                         <option value="">Totum</option>
                         <?php
                         if ($this->Config->getLDAPSettings('h_domain_selector') === 'ldap') {
@@ -56,6 +56,17 @@ use totum\config\Conf;
                             }
                         } ?>
                     </select>
+                    <script>
+                        let storageName = "ttmAuthTypeSelect";
+                        let select = $('#auth_type_select');
+                        if (localStorage.getItem(storageName)) {
+                            select.val(localStorage.getItem(storageName))
+                        }
+                        select.on("change", () => {
+                            localStorage.setItem(storageName, select.val())
+                        })
+
+                    </script>
                 </div>
                 <?php
             } ?>

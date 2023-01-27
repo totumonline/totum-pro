@@ -296,6 +296,17 @@ class AuthController extends interfaceController
                 /*Its totum-user. Check it common way*/
                 return null;
             } else {
+                if ($post['type'] === "1") {
+                    if ($this->Config->getLDAPSettings('h_domain_selector') === "ldap") {
+                        if (count($this->Config->getLDAPSettings('h_domains_settings')) != 1) {
+                            die("wrong ldap settings");
+                        }
+                        $post['type'] = array_key_first($this->Config->getLDAPSettings('h_domains_settings'));
+                    } else {
+                        die("wrong ldap settings");
+                    }
+                }
+
                 $status = $checkLDAPBind($post['login'],
                     $post['pass'],
                     $post['type'],
