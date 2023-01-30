@@ -27,6 +27,8 @@ class CalculateAction extends Calculate
 {
     protected $allStartSections = [];
 
+    use FuncLDAPTrait;
+
     protected function formStartSections()
     {
         foreach ($this->code as $k => $v) {

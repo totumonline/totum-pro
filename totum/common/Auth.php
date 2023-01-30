@@ -83,7 +83,7 @@ class Auth
         }
         $r = $Config->getModel('users')->preparedSimple(
             "select id, fio->>'v' as fio from users where interface->>'v'='web'" .
-            " AND on_off->>'v'='true' AND login->>'v' NOT IN ('service', 'cron', 'anonim') " .
+            " AND on_off->>'v'='true' AND (login->>'v' NOT IN ('service', 'cron', 'anonim') OR login->>'v' is null) " .
             " AND $_id AND $_roles " .
             " AND is_del = false"
         );
@@ -123,11 +123,14 @@ class Auth
         }
     }
 
-    public static function getUserRowWithServiceRestriction($login, Conf $Config, $interface = 'web')
+    public static function getUserRowWithServiceRestriction($login, Conf $Config, $interface = 'web', $is_del = false)
     {
         /*block the ability to log in with service logins*/
         if ($login !== 'cron' && $login !== 'service') {
-            $where = ['on_off' => true, 'is_del' => false, 'interface' => $interface];
+            $where = ['on_off' => true, 'interface' => $interface];
+            if ($is_del !== '*ALL*') {
+                $where['is_del'] = $is_del;
+            }
 
             if (str_contains($login, '@')) {
                 $where['email'] = strtolower($login);
@@ -187,7 +190,7 @@ class Auth
             } elseif (!$block_time || !$error_count) {
                 $status = static::$AuthStatuses['WRONG_PASSWORD'];
             } else {
-                $count = static::$AuthStatuses['WRONG_PASSWORD'];
+                $count = 0;
                 $statuses = $Config->getModel('auth_log')->getAll(
                     ['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\''],
                     'status',
