@@ -246,7 +246,7 @@ class TableController extends interfaceController
             array_multisort($ords, $tree);
         }
 
-        if ($this->Cycle) {
+        if ($this->Cycle && key_exists($this->Cycle->getCyclesTableId(), $this->User->getTreeTables())) {
             $cyclesTableId = $this->Cycle->getCyclesTableId();
             $idHref = 'Cycle' . $this->Cycle->getId();
             $CyclesTable = $this->Cycle->getCyclesTable();
