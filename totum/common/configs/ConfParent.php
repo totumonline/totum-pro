@@ -600,6 +600,22 @@ abstract class ConfParent
                     }
 
                     if ($this->getLDAPSettings('h_ssl')) {
+                        if ($this->getLDAPSettings('h_cert_file')) {
+                            $filesField = $this->getModel('tables_fields')->getField('data',
+                                ['table_name' => 'ttm__ldap_settings', 'name' => 'h_cert_file']);
+                            $filesField = json_decode($filesField, true);
+                            foreach ($this->getLDAPSettings('h_cert_file') as $file) {
+                                $filePath = File::getFilePath($file['name'], $this, $filesField);
+                                switch ($file['ext']) {
+                                    case 'crt':
+                                        ldap_set_option(null, LDAP_OPT_X_TLS_CERTFILE, $filePath);
+                                        break;
+                                    case 'key':
+                                        ldap_set_option(null, LDAP_OPT_X_TLS_KEYFILE, $filePath);
+                                        break;
+                                }
+                            }
+                        }
                         ldap_start_tls($this->settingsLDAPCache['connection']);
                     }
 
