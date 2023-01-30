@@ -599,6 +599,10 @@ abstract class ConfParent
                         ldap_set_option($this->settingsLDAPCache['connection'], constant($_name), $val);
                     }
 
+                    if ($this->getLDAPSettings('h_ssl')) {
+                        ldap_start_tls($this->settingsLDAPCache['connection']);
+                    }
+
                 }
                 break;
             case 'h_bind_format':
