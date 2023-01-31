@@ -223,14 +223,35 @@ class AuthController extends interfaceController
                 return Auth::$AuthStatuses['WRONG_PASSWORD'];
             }
         };
+
+
         $checkLDAPBind = function ($loginIn, $password, $domain, &$userRow) {
             $connection = $this->Config->getLDAPSettings('connection');
+
+            $getDnForUser = function () use ($domain, $loginIn, $userRow) {
+                if ($userRow) {
+                    return $userRow['ttm__extparams']['dn'];
+                }
+                $where = new \stdClass();
+                $where->whereStr = 'ttm__auth_type->>\'v\' = \'LDAP\' AND is_del = false AND interface->>\'v\' = \'web\' AND ttm__extparams->\'v\'->>\'logindomain\' = ?';
+                $where->params = [$loginIn . '@' . $domain];
+                $params = $this->Config->getModel('users')->getPrepared($where, 'ttm__extparams->\'v\'->>\'dn\' as dn');
+                if($params){
+                    return $params['dn'];
+                }
+                return null;
+            };
+
+
             $login = match ($this->Config->getLDAPSettings('h_bind_format')) {
                 'at' => $loginIn . '@' . $domain,
-                'dn' => $loginIn,
+                'dn' => $getDnForUser(),
                 default => throw new \Exception('Не поддерживаемый формат бинда ')
             };
 
+            if(!$login){
+                return Auth::$AuthStatuses['WRONG_PASSWORD'];
+            }
 
             $r = @ldap_bind($connection, $login, $password);
             if (!$r) {
