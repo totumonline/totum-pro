@@ -562,10 +562,6 @@ abstract class ConfParent
     public function getLDAPSettings(string $name)
     {
         if (!$this->settingsLDAPCache) {
-            if (!extension_loaded("ldap")) {
-                die('LDAP extension php not enabled');
-            }
-
 
             $settings = json_decode(
                 $this->getTableRow('ttm__ldap_settings')['header'],
@@ -581,6 +577,11 @@ abstract class ConfParent
         switch ($name) {
             case 'connection':
                 if (empty($this->settingsLDAPCache['connection'])) {
+
+                    if (!extension_loaded("ldap")) {
+                        die('LDAP extension php not enabled');
+                    }
+
                     $host = $this->settingsLDAPCache['h_host'];
                     if (empty($host)) {
                         throw new errorException($this->translate('Set the host in the LDAP settings table'));
