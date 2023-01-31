@@ -629,7 +629,7 @@ abstract class ConfParent
                 break;
         }
 
-        return $this->settingsLDAPCache[$name];
+        return $this->settingsLDAPCache[$name] ?? null;
     }
 
     /**
