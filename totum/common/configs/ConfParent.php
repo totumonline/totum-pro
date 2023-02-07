@@ -597,7 +597,12 @@ abstract class ConfParent
                     $settings = $this->settingsLDAPCache['h_version'];
                     $settings['LDAP_OPT_PROTOCOL_VERSION'] = (int)($settings['LDAP_OPT_PROTOCOL_VERSION'] ?? 3);
                     foreach ($settings as $_name => $val) {
-                        ldap_set_option($this->settingsLDAPCache['connection'], constant($_name), $val);
+                        if(str_starts_with($_name, 'G_')){
+                            $_name = substr($_name, 2);
+                            ldap_set_option(null, constant($_name), $val);
+                        }else{
+                            ldap_set_option($this->settingsLDAPCache['connection'], constant($_name), $val);
+                        }
                     }
 
                     if ($this->getLDAPSettings('h_ssl')) {
