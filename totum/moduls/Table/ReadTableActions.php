@@ -1723,11 +1723,11 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             $data['params'] = $clearFields;
 
             $vars = [];
-            if($data['setValuesToDefaults'] ?? false){
+            if ($data['setValuesToDefaults'] ?? false) {
                 unset($data['setValuesToDefaults']);
                 $vars['setValuesToDefaults'] = $data;
-            }else{
-                $vars['modify']=$data;
+            } else {
+                $vars['modify'] = $data;
             }
             return $this->modify($vars);
         }
@@ -2416,10 +2416,10 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                             }
                         }
 
-                        if ($TreeBranchesFilter) {
+                        if ($TreeBranchesFilter && count($result['rows']) && key_exists('tree', $result['rows'][0])) {
                             $rowIds = [];
-                            foreach ($result['rows'] as $row) {
-                                $rowIds[$row['tree']['v']] = true;
+                                foreach ($result['rows'] as $row) {
+                                    $rowIds[$row['tree']['v']] = true;
                             }
 
                             $treeBranches = [];

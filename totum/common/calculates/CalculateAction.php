@@ -1572,6 +1572,9 @@ class CalculateAction extends Calculate
                 if (!empty($params['log'])) {
                     $table->setWithALogTrue($params['log']);
                 }
+                if (!empty($params['force'])) {
+                    $table->setDeleteForce();
+                }
                 $table->actionDelete($where, 1);
             }
         );
@@ -1663,6 +1666,9 @@ class CalculateAction extends Calculate
                 $where = $params['where'] ?? [];
                 if (!empty($params['log'])) {
                     $table->setWithALogTrue($params['log']);
+                }
+                if (!empty($params['force'])) {
+                    $table->setDeleteForce();
                 }
                 $table->actionDelete($where, null);
             }

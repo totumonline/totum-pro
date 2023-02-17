@@ -1282,6 +1282,10 @@ CONF;
                 }
             }
 
+            if (is_null($cat)) {
+                return null;
+            }
+
             throw new errorException($this->translate('Category [[%s]] not found for replacement.', $cat));
         };
     }
