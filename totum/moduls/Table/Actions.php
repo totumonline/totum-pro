@@ -115,7 +115,7 @@ class Actions
         }
 
 
-        return ['default' => !$DocsTable->getTbl()['params']['h_turn_off_system_links']['v'], 'userLinks' => $links];
+        return ['default' => !($DocsTable->getTbl()['params']['h_turn_off_system_links']['v'] ?? false), 'userLinks' => $links];
     }
 
     public function seachUserTables()
