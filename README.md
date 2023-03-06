@@ -43,6 +43,14 @@ Let's go to the folder with the keys:
 cd ~/.ssh
 ```
 
+If you will see message `No such file or directory` you have to create this folder:
+
+╔
+```
+cd ~ && mkdir .ssh && cd ~/.ssh
+```
+╚
+
 Create an SSH key (replace `EMAIL_IN_GITHUB`):
 
 ```
