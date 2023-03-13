@@ -853,6 +853,7 @@ class TableController extends interfaceController
         if (!is_callable([$Actions, $method])) {
             throw new errorException($error);
         }
+        $Actions->unblockServices();
         return $Actions;
     }
 
