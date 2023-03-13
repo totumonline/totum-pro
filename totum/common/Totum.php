@@ -108,7 +108,7 @@ class Totum
         $this->orderFieldCodeErrors[$Table->getTableRow()['name']][$nameVar] = 1;
     }
 
-    
+
     public function getMessenger()
     {
         return $this->Messenger = $this->Messenger ?? new TotumMessenger();
@@ -436,9 +436,9 @@ class Totum
         $this->interfaceLinks[] = ['uri' => $uri, 'target' => $target, 'title' => $title, 'postData' => $postData, 'width' => $width, 'refresh' => $refresh, 'elseData' => $elseData];
     }
 
-    public function addLinkPanel($link, $id, $field, $refresh)
+    public function addLinkPanel($link, $id, $field, $refresh, $fields = [])
     {
-        $this->panelLinks[] = ['uri' => $link, 'id' => $id, 'field' => $field, 'refresh' => $refresh];
+        $this->panelLinks[] = ['uri' => $link, 'id' => $id, 'field' => $field, 'refresh' => $refresh, 'fields' => $fields];
     }
 
     /* Сюда можно будет поставить общую систему кешей */
