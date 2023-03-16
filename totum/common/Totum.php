@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '4.9.52.4-4.0';
+    public const VERSION = '4.9.52.5-4.0';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -436,9 +436,9 @@ class Totum
         $this->interfaceLinks[] = ['uri' => $uri, 'target' => $target, 'title' => $title, 'postData' => $postData, 'width' => $width, 'refresh' => $refresh, 'elseData' => $elseData];
     }
 
-    public function addLinkPanel($link, $id, $field, $refresh, $fields = [])
+    public function addLinkPanel($link, $id, $field, $refresh, $fields = [], $columns = null)
     {
-        $this->panelLinks[] = ['uri' => $link, 'id' => $id, 'field' => $field, 'refresh' => $refresh, 'fields' => $fields];
+        $this->panelLinks[] = ['uri' => $link, 'id' => $id, 'field' => $field, 'refresh' => $refresh, 'fields' => $fields, 'columns' => $columns];
     }
 
     /* Сюда можно будет поставить общую систему кешей */
