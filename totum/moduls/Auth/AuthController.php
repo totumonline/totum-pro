@@ -105,6 +105,8 @@ class AuthController extends interfaceController
                             $userRow['id'])->getUserStartPath(),
                             !key_exists('from', $_GET));
                         break;
+                    case Auth::$AuthStatuses['LDAP_LOAD_CRASH']:
+                        return ['error' => $this->translate('User is switched off or does not have access rights')];
                     case Auth::$AuthStatuses['WRONG_PASSWORD']:
                         return ['error' => $this->translate('Password is not correct')];
                     case Auth::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION']:
@@ -236,7 +238,7 @@ class AuthController extends interfaceController
                 $where->whereStr = 'ttm__auth_type->>\'v\' = \'LDAP\' AND is_del = false AND interface->>\'v\' = \'web\' AND ttm__extparams->\'v\'->>\'logindomain\' = ?';
                 $where->params = [$loginIn . '@' . $domain];
                 $params = $this->Config->getModel('users')->getPrepared($where, 'ttm__extparams->\'v\'->>\'dn\' as dn');
-                if($params){
+                if ($params) {
                     return $params['dn'];
                 }
                 return null;
@@ -249,7 +251,7 @@ class AuthController extends interfaceController
                 default => throw new \Exception('Не поддерживаемый формат бинда ')
             };
 
-            if(!$login){
+            if (!$login) {
                 return Auth::$AuthStatuses['WRONG_PASSWORD'];
             }
 
@@ -271,6 +273,10 @@ class AuthController extends interfaceController
                 'exec',
                 ['loginJson' => ['login' => $loginIn, 'domain' => $domain]]
             );
+
+            if (!$userRow || !$userRow['on_off']) {
+                return Auth::$AuthStatuses['LDAP_LOAD_CRASH'];
+            }
             return Auth::$AuthStatuses['OK'];
         };
 
