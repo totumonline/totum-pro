@@ -346,6 +346,9 @@ class AuthController extends interfaceController
         }
 
         if ($status !== Auth::$AuthStatuses['OK']) {
+            if ($status === Auth::$AuthStatuses['LDAP_LOAD_CRASH']) {
+                return Auth::$AuthStatuses['LDAP_LOAD_CRASH'];
+            }
             $status = $getWrongStatus();
         }
 
