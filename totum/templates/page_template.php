@@ -7,7 +7,7 @@
     <script src="/js/libs.js?v=50d05f1"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=f5c3726">
+          href="/css/main.css?v=2b234bb">
 
     <?php
     if ($isCreatorView ?? null) { ?>
@@ -18,8 +18,8 @@
         <?php
     } ?>
 
-    <script src="/js/main.js?v=f5a2778"></script>
-    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?7"></script>
+    <script src="/js/main.js?v=cb2ebe6"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?8"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
 
