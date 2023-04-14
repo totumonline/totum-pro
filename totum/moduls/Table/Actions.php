@@ -657,6 +657,16 @@ class Actions
         die;
     }
 
+    public function setThemeClass()
+    {
+        if (is_string($this->post['class'] ?? false)) {
+            session_start();
+            $_SESSION['theme-class'] = htmlspecialchars($this->post['class'] ?? '');
+            session_write_close();
+        }
+        return ['ok' => 1];
+    }
+
     protected function loadEnvirement(array $data): array
     {
         $Table = $this->Totum->getTable($data['env']['table'], $data['env']['extra'] ?? null);

@@ -13,12 +13,12 @@
     if ($isCreatorView ?? null) { ?>
         <script src="/js/functions.js?v=7175840"></script>
         <?php
-           echo '<script>App.functions=App.functions.concat(' . $this->Config->getExtFunctionsTemplates() . ')</script>';
+        echo '<script>App.functions=App.functions.concat(' . $this->Config->getExtFunctionsTemplates() . ')</script>';
         ?>
         <?php
     } ?>
 
-    <script src="/js/main.js?v=afaa3e2"></script>
+    <script src="/js/main.js?v=6a43041"></script>
     <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?8"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
@@ -30,11 +30,11 @@
     ?>
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1">
 
-    <?=$this->Config->getThemesCss()?>
+    <?= $this->Config->getThemesCss() ?>
 
 </head>
 <body id="pk"
-      class="lock">
+      class="lock <?= $_SESSION['theme-class'] ?? '' ?>">
 <noscript>
     <?= $this->translate('To work with the system you need to enable JavaScript in your browser settings') ?>
 </noscript>
