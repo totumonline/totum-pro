@@ -268,6 +268,8 @@ class ReadTableActions extends Actions
         if (empty($data['fieldName'])) {
             throw new errorException($this->translate('The name of the field is not set.'));
         }
+
+
         if (empty($field = ($this->Table->getVisibleFields('web')[$data['fieldName']] ?? null))) {
             throw new errorException($this->translate('Access to the field is denied'));
         }
@@ -275,20 +277,30 @@ class ReadTableActions extends Actions
             throw new errorException($this->translate('Fill in the parameter [[%s]].', 'rowId'));
         }
 
+        list($fieldName, $dynamic) = explode('/', $data['fieldName'] . '/');
+        if ($dynamic) {
+            $field = $this->Table->getFields()[$fieldName];
+        }
+
         if (!empty($data['rowId'])) {
             $loadFilteredRows = $this->Table->loadFilteredRows('web', [$data['rowId']]);
             if ($loadFilteredRows && $row = ($this->Table->getTbl()['rows'][$data['rowId']] ?? null)) {
-                $val = $row[$field['name']];
+                $val = $row[$fieldName];
             } else {
                 throw new errorException($this->translate('The row %s does not exist or is not available for your role.'));
             }
         } else {
             $row = $this->Table->getTbl()['params'];
-            $val = $row[$field['name']] ?? null;
+            $val = $row[$fieldName] ?? null;
+
         }
 
         if (is_string($val)) {
             $val = json_decode($val, true);
+        }
+
+        if ($dynamic && is_array($val['v'])) {
+            $val = ['v' => $val['v'][$dynamic] ?? null];
         }
 
         return ['value' => Field::init($field, $this->Table)->getFullValue($val['v'], $data['rowId'] ?? null)];
@@ -1447,7 +1459,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $result['params'] = [];
         $result['type'] = $this->Table->getTableRow()['type'];
 
-        $visibleFields = $this->Table->getVisibleFields("web");
+        $visibleFields = $this->Table->getVisibleFields('web');
         if ($onlyFields) {
             $visibleFields = array_intersect_key($visibleFields, array_flip($onlyFields));
         }
@@ -2102,6 +2114,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             false,
             ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
         );
+
+        list($field, $dynamic) = explode('/', $field . '/');
+        $vars['nfd'] = $dynamic;
 
         if ($field && key_exists(
                 $field,
