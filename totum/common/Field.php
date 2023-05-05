@@ -20,6 +20,7 @@ use totum\fieldTypes\Date;
 use totum\fieldTypes\FieldParams;
 use totum\fieldTypes\fieldParamsResult;
 use totum\fieldTypes\File;
+use totum\fieldTypes\FileVersioned;
 use totum\fieldTypes\ListRow;
 use totum\fieldTypes\Number;
 use totum\fieldTypes\Password;
@@ -171,7 +172,11 @@ class Field
                         $model = fieldParamsResult::class;
                         break;
                     case 'file':
-                        $model = File::class;
+                        if($fieldData['versioned']??false){
+                            $model = FileVersioned::class;
+                        }else{
+                            $model = File::class;
+                        }
                         break;
                     case 'listRow':
                         $model = ListRow::class;

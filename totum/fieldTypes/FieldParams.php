@@ -131,8 +131,13 @@ class FieldParams extends Field
             throw new criticalErrorException($this->translate('Max value of %s is %s.', ['dectimalPlaces', '10']));
         } elseif (!$isCheck && $val['type']['Val'] === 'number' && ($val['dectimalPlaces']['Val'] ?? 0) < 0) {
             throw new criticalErrorException($this->translate('Min value of %s is %s.', ['dectimalPlaces', '0']));
-        }elseif (!$isCheck && $val['type']['Val'] === 'file' && ($val['secureFile']['Val'] ?? false) && !($val['fileDuplicateOnCopy']['Val']??false)) {
-            throw new criticalErrorException($this->translate('The fileDuplicateOnCopy option must be enabled for secure files.'));
+        }elseif (!$isCheck && $val['type']['Val'] === 'file') {
+            if(($val['secureFile']['Val'] ?? false) && !($val['fileDuplicateOnCopy']['Val']??false)){
+                throw new criticalErrorException($this->translate('The fileDuplicateOnCopy option must be enabled for secure files.'));
+            }
+            if(($val['versioned']['Val'] ?? false) && !($val['fileDuplicateOnCopy']['Val']??false)){
+                throw new criticalErrorException($this->translate('The fileDuplicateOnCopy option must be enabled for versioned files.'));
+            }
         }
 
         if ($row['name']['v'] === 'tree' && $row['category']['v'] === 'column' && ($val['treeViewType']['isOn'] ?? false) === true && $val['type']['Val'] === 'tree') {
