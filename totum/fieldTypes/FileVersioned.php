@@ -25,7 +25,6 @@ class FileVersioned extends File
     {
         parent::__construct($fieldData, $table);
         $this->data['removeVersionsRoles'] = $this->data['removeVersionsRoles'] ?? [];
-        $this->data['removeVersionsRoles'][] = 1;
     }
 
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
@@ -36,19 +35,24 @@ class FileVersioned extends File
                 if (!empty($valArray['e'])) {
                     $valArray['v'] = [];
                 }
-                $superUser = in_array($this->table->getUser()->getId(), $this->data['removeVersionsRoles']);
-                foreach ($valArray['v'] as &$file) {
-                    if ($this->table->getUser()->getId() == $file['versions'][0]['user'] ?? false) {
-                        $file['version_remove'] = true;
+                $superUser = empty($this->data['removeVersionsRoles']) || in_array($this->table->getUser()->getId(), $this->data['removeVersionsRoles']);
+                if (is_array($valArray['v'])) {
+                    foreach ($valArray['v'] as &$file) {
+                        if ($this->table->getUser()->getId() == $file['versions'][0]['user'] ?? false) {
+                            $file['version_remove'] = true;
+                        }
+                        if ($superUser) {
+                            $file['file_remove'] = true;
+                        }
+                        $file['versions_count'] = !empty($file['versions']) ? count($file['versions']) - 1 : 0;
+                        $file['version_comment'] = $file['versions'][0]['comment'] ?? '';
+                        unset($file['versions']);
                     }
-                    if ($superUser) {
-                        $file['file_remove'] = true;
-                    }
-                    $file['versions_count'] = !empty($file['versions']) ? count($file['versions']) - 1 : 0;
-                    $file['version_comment'] = $file['versions'][0]['comment'] ?? '';
-                    unset($file['versions']);
+                    unset($file);
+                } else {
+                    $valArray['v'] = [];
+                    $valArray['e'] = "format error";
                 }
-                unset($file);
                 break;
             default:
                 parent::addViewValues($viewType, $valArray, $row, $tbl);
@@ -59,7 +63,7 @@ class FileVersioned extends File
     protected static function deleteFile($fullFileName)
     {
         parent::deleteFile($fullFileName);
-        array_map( "unlink", glob( "{$fullFileName}__V*" ) );
+        array_map("unlink", glob("{$fullFileName}__V*"));
     }
 
     public function modify($channel, $changeFlag, $newVal, $oldRow, $row = [], $oldTbl = [], $tbl = [], $isCheck = false)
@@ -92,7 +96,7 @@ class FileVersioned extends File
             $deletedFiles = [];
             $checkRemoveLastVersion = function (&$file) use ($channel) {
                 if (!empty($file['remove_last_version'])) {
-                    if ($channel !== 'inner' && ($file['versions'][0]['user'] ?? 0) !== $this->table->getUser()->getId() && !in_array($this->table->getUser()->getId(),
+                    if ($channel !== 'inner' && ($file['versions'][0]['user'] ?? 0) !== $this->table->getUser()->getId() && !empty($this->data['removeVersionsRoles']) && !in_array($this->table->getUser()->getId(),
                             $this->data['removeVersionsRoles'])) {
                         unset($file['remove_last_version']);
                     }
@@ -100,7 +104,7 @@ class FileVersioned extends File
             };
             $checkComment = function (&$file) use ($channel) {
                 if (key_exists('comment', $file)) {
-                    if ($channel !== 'inner' && ($file['versions'][0]['user'] ?? 0) !== $this->table->getUser()->getId() && !in_array($this->table->getUser()->getId(),
+                    if ($channel !== 'inner' && ($file['versions'][0]['user'] ?? 0) !== $this->table->getUser()->getId() && !empty($this->data['removeVersionsRoles']) && !in_array($this->table->getUser()->getId(),
                             $this->data['removeVersionsRoles'])) {
                         unset($file['comment']);
                     } else {
