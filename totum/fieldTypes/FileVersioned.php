@@ -59,7 +59,7 @@ class FileVersioned extends File
     protected static function deleteFile($fullFileName)
     {
         parent::deleteFile($fullFileName);
-        `rm {$fullFileName}__V*`;
+        array_map( "unlink", glob( "{$fullFileName}__V*" ) );
     }
 
     public function modify($channel, $changeFlag, $newVal, $oldRow, $row = [], $oldTbl = [], $tbl = [], $isCheck = false)

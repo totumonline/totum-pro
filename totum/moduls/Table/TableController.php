@@ -979,6 +979,7 @@ class TableController extends interfaceController
 
                 if (empty($error)) {
                     header('Content-type: application/pdf');
+                    header('Content-Disposition: inline; filename="'.addslashes($request->getQueryParams()['title']).'"');
                     readfile($filepath);
                     die;
                 }

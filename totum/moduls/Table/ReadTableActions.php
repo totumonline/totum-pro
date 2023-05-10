@@ -1989,6 +1989,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 $fields['data_src']['jsonFields']['fieldSettings']['editRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['addRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['logRoles']['values']
+                    = $fields['data_src']['jsonFields']['fieldSettings']['removeVersionsRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['webRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['xmlRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['xmlEditRoles']['values']
@@ -2093,17 +2094,6 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 $this->Table,
                 'exec',
                 ['name' => $this->post['title'] . '.xlsx', 'data' => $data]);
-
-        } else {
-            throw new errorException('The function is not available');
-        }
-    }
-
-    public function filePreview()
-    {
-        if ($this->isTableServiceOn('pdfdocpreview') && !$this->isServicesBlocked) {
-            $data = json_decode($this->post['data'], true);
-
 
         } else {
             throw new errorException('The function is not available');
@@ -2681,12 +2671,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         return null;
     }
 
-    public function isTableServiceOn($name)
+    public function isTableServiceOn($name): bool
     {
         $data = $this->Totum->getModel('ttm__services')->get(['name' => $name], 'tables, exclusions');
-        if(empty($data)){
+        if (!$data) {
             return false;
         }
+
         foreach ($data as &$v) {
             $v = json_decode($v, true);
         }
