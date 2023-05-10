@@ -35,7 +35,8 @@ class FileVersioned extends File
                 if (!empty($valArray['e'])) {
                     $valArray['v'] = [];
                 }
-                $superUser = empty($this->data['removeVersionsRoles']) || in_array($this->table->getUser()->getId(), $this->data['removeVersionsRoles']);
+                $superUser = empty($this->data['removeVersionsRoles']) || in_array($this->table->getUser()->getId(),
+                        $this->data['removeVersionsRoles']);
                 if (is_array($valArray['v'])) {
                     foreach ($valArray['v'] as &$file) {
                         if ($this->table->getUser()->getId() == $file['versions'][0]['user'] ?? false) {
@@ -244,7 +245,8 @@ class FileVersioned extends File
             }
             $file['tmpfile'] = preg_replace('`^.*/([^/]+)$`', '$1', $ftmpname);
 
-            static::checkAndCreateThumb($ftmpname, $file['name']);
+            static::checkAndCreateThumb($ftmpname,
+                $file['name'] ?? $file['file'] ?? throw new criticalErrorException($this->translate('The data format is not correct for the File field.')));
         };
 
         /*Добавление через filestring и filestringbase64 */
