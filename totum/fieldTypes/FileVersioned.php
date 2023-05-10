@@ -190,7 +190,7 @@ class FileVersioned extends File
                         unset($file['versions']);
                     }
 
-                    if (is_array($fOld) && str_starts_with($fOld['file'] ?? '',
+                    if (is_array($fOld) && str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $fOld['file'] ?? ''),
                             $this->_getFprefix($row['id'] ?? null))) {
                         $deletedFiles[] = $fOld;
                     }
@@ -266,14 +266,23 @@ class FileVersioned extends File
         if (!$isCheck && ($this->data['category'] !== 'column' || $row['id'] ?? null)) {
             $fPrefix = $this->_getFprefix($row['id'] ?? null);
 
-            $funcGetFname = function ($ext) use ($fPrefix) {
+            $folder = '';
+            if (!empty($this->data['customFileFolder'])) {
+                $folder = $this->data['customFileFolder'] . '/';
+                if (!is_dir($dir = $this->table->getTotum()->getConfig()->getSecureFilesDir() . $folder)) {
+                    mkdir($dir, 0755, true);
+                }
+            }
+
+            $funcGetFname = function ($ext) use ($fPrefix, $folder) {
                 $fnum = 0;
 
                 do {
                     $unlinked = false;
 
                     $fname = static::getFilePath(
-                        $fPrefix
+                        $folder
+                        . $fPrefix
                         . ($fnum ? '_' . $fnum : '') //Номер
                         . (!empty($this->data['nameWithHash']) ? '_' . md5(microtime(1) . $this->data['name']) : '') //хэш
                         . '.' . $ext,
@@ -374,7 +383,9 @@ class FileVersioned extends File
                     }
 
                     array_unshift($file['versions'], [
-                        'file' => preg_replace('/^.*\/([^\/]+)$/', '$1', $fname),
+                        'file' => $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
+                            '$1',
+                            $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname),
                         'size' => filesize($ftmpname),
                         'user' => $this->table->getUser()->getId(),
                         'dt' => date('Y-m-d H:i'),
@@ -406,7 +417,9 @@ class FileVersioned extends File
 
                     $fl['size'] = filesize($ftmpname);
                     $fl['ext'] = $file['ext'];
-                    $fl['file'] = preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
+                    $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
+                        '$1',
+                        $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
                 } elseif (!empty($file['file'])) {
 
                     $filepath = static::getFilePath($file['file'],
@@ -445,7 +458,8 @@ class FileVersioned extends File
                         $file['size'] = 0;
                         $fl['e'] = 'Файл не найден';
                     } else {
-                        if (!str_starts_with($file['file'], $fPrefix) && !empty($this->data['fileDuplicateOnCopy'])) {
+                        if (!str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $file['file'] ?? ''),
+                                $fPrefix) && !empty($this->data['fileDuplicateOnCopy'])) {
                             $fname = $funcGetFname($file['ext']);
 
                             $otherfname = static::getFilePath($file['file'],
@@ -468,7 +482,9 @@ class FileVersioned extends File
                                 }
                                 unset(static::$transactionCommits[$fname]);
                             });
-                            $fl['file'] = preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
+                            $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
+                                '$1',
+                                $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
                         }
                         if (!$file['size']) {
                             $file['size'] = filesize($filepath);

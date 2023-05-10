@@ -979,7 +979,7 @@ class TableController extends interfaceController
 
                 if (empty($error)) {
                     header('Content-type: application/pdf');
-                    header('Content-Disposition: inline; filename="'.addslashes($request->getQueryParams()['title']).'"');
+                    header('Content-Disposition: inline; filename="' . addslashes($request->getQueryParams()['title']) . '"');
                     readfile($filepath);
                     die;
                 }
@@ -1000,12 +1000,23 @@ class TableController extends interfaceController
             if (!$this->Table) {
                 $error = $this->translate('The file table was not found.');
             } else {
+                $folder = '';
+                if (str_contains($filename, '/')) {
+                    preg_match('~(^.*?/)([^/]+)$~', $filename, $_matches);
+                    $folder = $_matches[1] ?? '';
+                    $filename = $_matches[2] ?? '';
+                    if (empty($filename)) {
+                        $error = $this->translate('The file path is not formed correctly.');
+                    }
+                }
+
                 preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>' . $fieldName . ')(?<hash>_[a-z_0-9]{32,32})?/',
                     $filename,
                     $matches);
                 /*Проверка не скормили ли неверный путь*/
 
-                if ($matches['table'] !== (string)$this->Table->getTableRow()['id']
+                if (!empty($error)) ;
+                elseif ($matches['table'] !== (string)$this->Table->getTableRow()['id']
                     || ($this->Table->getTableRow()['type'] === 'calcs' && (int)$matches[2] !== (int)$this->Table->getCycle()->getId())
                 ) {
                     $error = $this->translate('The file path is not formed correctly.');
@@ -1025,7 +1036,7 @@ class TableController extends interfaceController
                                 $error = $this->translate('Access to the file row is denied or the row does not exist');
                             }
                         } else {
-                            $filepath = File::getFilePath($filename, $this->Config, $field);
+                            $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
                         }
                     }
                 }
