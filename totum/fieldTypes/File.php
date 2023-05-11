@@ -264,7 +264,7 @@ class File extends Field
                             continue 2;
                         }
                     }
-                    if (is_array($fOld) && str_starts_with($fOld['file'] ?? '',
+                    if (is_array($fOld) && str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $fOld['file'] ?? ''),
                             $this->_getFprefix($row['id'] ?? null))) {
                         $deletedFiles[] = $fOld;
                     }
@@ -277,6 +277,7 @@ class File extends Field
                     $this->table->getTotum()->getConfig(),
                     $this->data);
             }
+
         }
         return $modifyVal;
     }
@@ -331,6 +332,16 @@ class File extends Field
             $folder = '';
             if (!empty($this->data['customFileFolder'])) {
                 $folder = $this->data['customFileFolder'] . '/';
+
+                if (!empty($this->data['fileIdDivider']) && !empty($row['id'])) {
+                    $folder_id = ($row['id'] - ($row['id'] % $this->data['fileIdDivider'])) / $this->data['fileIdDivider'];
+                    $folder_id = str_pad($folder_id, 7, "0", STR_PAD_LEFT);
+                    $folder .= $folder_id . '/';
+                    unset($folder_id);
+                }
+            }
+
+            if ($folder) {
                 if (!is_dir($dir = $this->table->getTotum()->getConfig()->getSecureFilesDir() . $folder)) {
                     mkdir($dir, 0755, true);
                 }

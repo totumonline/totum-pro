@@ -1043,7 +1043,7 @@ class TableController extends interfaceController
                         if ($field['category'] === 'column') {
                             $rowId = $this->Table->getTableRow()['type'] === 'calcs' ? (int)$matches[3] : (int)$matches[2];
                             if ($this->Table->loadFilteredRows('web', [$rowId])) {
-                                $filepath = File::getFilePath($filename, $this->Config, $field);
+                                $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
                             } else {
                                 $error = $this->translate('Access to the file row is denied or the row does not exist');
                             }

@@ -39,7 +39,7 @@ class FileVersioned extends File
                         $this->data['removeVersionsRoles']);
                 if (is_array($valArray['v'])) {
                     foreach ($valArray['v'] as &$file) {
-                        if ($this->table->getUser()->getId() == $file['versions'][0]['user'] ?? false) {
+                        if ($this->table->getUser()->getId() == ($file['versions'][0]['user'] ?? false)) {
                             $file['version_remove'] = true;
                         }
                         if ($superUser) {
@@ -52,7 +52,6 @@ class FileVersioned extends File
                     unset($file);
                 } else {
                     $valArray['v'] = [];
-                    $valArray['e'] = "format error";
                 }
                 break;
             default:
@@ -88,7 +87,7 @@ class FileVersioned extends File
 
     protected function modifyValue($modifyVal, $oldVal, $isCheck, $row)
     {
-        if (is_object($modifyVal) && $modifyVal->channel ?? false) {
+        if (is_object($modifyVal) && ($modifyVal->channel ?? false)) {
             $channel = $modifyVal->channel;
             $modifyVal = $modifyVal->value;
         }
@@ -150,7 +149,7 @@ class FileVersioned extends File
                     if (key_exists('file', $modifyVal->val)) {
                         $found = false;
                         foreach ($oldVal as &$file) {
-                            if ($file['file'] === $modifyVal->val['file'] ?? false) {
+                            if ($file['file'] === ($modifyVal->val['file'] ?? false)) {
                                 $found = true;
                                 if (key_exists('filestring', $modifyVal->val)) {
                                     $file['filestring'] = $modifyVal->val['filestring'];
@@ -264,12 +263,22 @@ class FileVersioned extends File
 
         /*----------------*/
 
-        if (!$isCheck && ($this->data['category'] !== 'column' || $row['id'] ?? null)) {
+        if (!$isCheck && ($this->data['category'] !== 'column' || ($row['id'] ?? null))) {
             $fPrefix = $this->_getFprefix($row['id'] ?? null);
 
             $folder = '';
             if (!empty($this->data['customFileFolder'])) {
                 $folder = $this->data['customFileFolder'] . '/';
+
+                if (!empty($this->data['fileIdDivider']) && !empty($row['id'])) {
+                    $folder_id = ($row['id'] - ($row['id'] % $this->data['fileIdDivider'])) / $this->data['fileIdDivider'];
+                    $folder_id = str_pad($folder_id, 7, "0", STR_PAD_LEFT);
+                    $folder .= $folder_id . '/';
+                    unset($folder_id);
+                }
+            }
+
+            if ($folder) {
                 if (!is_dir($dir = $this->table->getTotum()->getConfig()->getSecureFilesDir() . $folder)) {
                     mkdir($dir, 0755, true);
                 }
