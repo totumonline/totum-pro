@@ -400,6 +400,11 @@ class FileVersioned extends File
                             if (!rename($fname, $fVersionName)) {
                                 die(json_encode(['error' => $this->translate('Failed to move file to version.')]));
                             }
+                            if (is_file($fname . '_thumb.jpg')) {
+                                rename($fname . '_thumb.jpg', $fVersionName . '_thumb.jpg');
+                            } elseif (is_file($fname . File::DOC_PREVIEW_POSTFIX)) {
+                                rename($fname . File::DOC_PREVIEW_POSTFIX, $fVersionName . File::DOC_PREVIEW_POSTFIX);
+                            }
                         }
                         if (!copy($ftmpname, $fname)) {
                             die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
