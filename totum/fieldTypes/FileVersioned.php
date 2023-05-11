@@ -196,6 +196,7 @@ class FileVersioned extends File
                     }
                     unset($file);
                 }
+                unset($file);
             }
             foreach ($modifyVal as $i => $file) {
                 if (($file['remove_last_version'] ?? false) && count($file['versions'] ?? []) < 2 && !(key_exists('filestring',

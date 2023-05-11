@@ -928,6 +928,17 @@ class TableController extends interfaceController
             if (!$this->Table) {
                 $error = $this->translate('The file table was not found.');
             } else {
+
+                $folder = '';
+                if (str_contains($filename, '/')) {
+                    preg_match('~(^.*?/)([^/]+)$~', $filename, $_matches);
+                    $folder = $_matches[1] ?? '';
+                    $filename = $_matches[2] ?? '';
+                    if (empty($filename)) {
+                        $error = $this->translate('The file path is not formed correctly.');
+                    }
+                }
+
                 preg_match('/^(?<table>\d+)_(\d+_)?(\d+_)?(?<field>' . $fieldName . ')(?<hash>_[a-z_0-9]{32,32})?/',
                     $filename,
                     $matches);
@@ -940,7 +951,7 @@ class TableController extends interfaceController
                 } elseif (!($field = $this->Table->getFields()[$fieldName])) {
                     $error = $this->translate('The file field was not found');
                 } else {
-                    $filepath = File::getFilePath($filename, $this->Config, $field);
+                    $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
                 }
             }
             if (!empty($filepath)) {
@@ -961,9 +972,10 @@ class TableController extends interfaceController
                             'type' => $ext[1],
                             'comment' => 'doc file preview'
                         ];
-                        $connector->sendRequest('pdf', $hash, $data);
-                        $hashes[] = $hash;
                         try {
+                            $connector->sendRequest('pdf', $hash, $data);
+                            $hashes[] = $hash;
+
                             $executes = $Config->getServicesVarObject()->waitVarValues($hashes, true);
                             if ($executes[$hash]) {
                                 $filepath = $filepath . File::DOC_PREVIEW_POSTFIX;

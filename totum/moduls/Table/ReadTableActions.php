@@ -441,6 +441,79 @@ class ReadTableActions extends Actions
         return ['ok' => 1];
     }
 
+    public function fileVersions()
+    {
+        $field = $this->Table->getFields()[$this->post['fieldName'] ?? ''] ?? '';
+
+        if (!$field || !$this->Table->isField('visible', 'web', $field)) {
+            $error = $this->translate('Access to the file field is denied');
+        } elseif (empty($field['secureFile'])) {
+            $error = $this->translate('The file is not protected');
+        } else {
+            if ($field['category'] === 'column') {
+                if (empty($this->post['rowId']) || !$this->Table->loadFilteredRows('web', [$this->post['rowId']])) {
+                    $error = $this->translate('Access to the file row is denied or the row does not exist');
+                } else {
+                    $val = $this->Table->getTbl()['rows'][$this->post['rowId']][$field['name']];
+                }
+            } else {
+                $val = $this->Table->getTbl()['params'][$field['name']];
+            }
+        }
+
+        if (empty($error)) {
+            if (empty($val)) {
+                $error = $this->translate('File [[%s]] is not found.', $field['title']);
+            } else {
+                $file = null;
+                foreach ($val['v'] as $_file) {
+                    if ($this->post['fileName'] === $_file['file'] ?? '') {
+                        $file = $_file;
+                    }
+                }
+
+                if (!$file) {
+                    $error = $this->translate('File [[%s]] is not found.', $this->post['fileName']);
+                } else {
+                    $rows = [];
+                    $getLink = function ($_v) use ($file, $field, &$getLink) {
+                        return $_SERVER['REQUEST_URI'] . (str_contains($_SERVER['REQUEST_URI'],
+                                '?') ? '&' : '?') . 'field=' . $field['name'] . '&file=' . urlencode($_v['file']) . '&rand=' . rand(1,
+                                2000);
+                    };
+
+                    foreach ($file['versions'] ?? [] as $_v) {
+                        $rows[] = [
+                            'date_time' => $_v['dt'],
+                            'v_user' => $_v['user'],
+                            'link' => $getLink($_v)
+                        ];
+                    }
+                    krsort($rows);
+
+                    $params['data'] = [
+                        'ext' => $file['ext'],
+                        'sOn' => $this->isTableServiceOn('pdfdocpreview')
+                    ];
+
+                    $Calc = new CalculateAction('=: linkToDataTable(table: \'ttm__file_versions\'; title: "' . $this->translate('File %s versions',
+                            $file['name']) . '"; data: $#data; params:$#params; width: 800; height: "80vh"; refresh: false; header: true; footer: true)');
+                    $Calc->execAction('KOD',
+                        [],
+                        [],
+                        [],
+                        [],
+                        $this->Totum->getTable('tables'),
+                        'exec',
+                        ['data' => $rows, 'params' => $params]);
+                }
+            }
+        }
+        if (!empty($error)) {
+            return ['error' => $error];
+        }
+    }
+
     public function filesUpload()
     {
         $model = $this->Totum->getModel('_tmp_tables', true);
@@ -1681,6 +1754,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
         return $this->getTableClientChangedData([]);
     }
+
 
     protected function clickToButton($fieldParams, $row, $vars, $type = 'exec')
     {
