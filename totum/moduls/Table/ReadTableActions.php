@@ -486,7 +486,8 @@ class ReadTableActions extends Actions
                         $rows[] = [
                             'date_time' => $_v['dt'],
                             'v_user' => $_v['user'],
-                            'link' => $getLink($_v)
+                            'link' => $getLink($_v),
+                            'comment' => $_v['comment']??''
                         ];
                     }
                     krsort($rows);
@@ -2146,6 +2147,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $_tableRow['__withPDF'] = $this->isTableServiceOn('pdf') && !$this->isServicesBlocked;
         $_tableRow['__xlsx'] = $this->isTableServiceOn('xlsx') && !$this->isServicesBlocked;
         $_tableRow['__withDocPreviews'] = $this->isTableServiceOn('pdfdocpreview') && !$this->isServicesBlocked;
+
+        foreach ($this->Table->getVisibleFields('web') as $field){
+            if($field['type']==='file' && !empty($field['versioned'])){
+                $_tableRow['__withVersionsLink'] = $this->User->getTables()[$this->Totum->getTableRow('ttm__file_versions')['id']]??false;
+                break;
+            }
+        }
 
         if (in_array($tableRow['actual'], ['refresh', 'disablerefresh'])) {
             $_tableRow['__autorefresh'] = true;
