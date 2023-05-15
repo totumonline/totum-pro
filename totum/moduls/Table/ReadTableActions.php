@@ -476,17 +476,12 @@ class ReadTableActions extends Actions
                     $error = $this->translate('File [[%s]] is not found.', $this->post['fileName']);
                 } else {
                     $rows = [];
-                    $getLink = function ($_v) use ($file, $field, &$getLink) {
-                        return $_SERVER['REQUEST_URI'] . (str_contains($_SERVER['REQUEST_URI'],
-                                '?') ? '&' : '?') . 'field=' . $field['name'] . '&file=' . urlencode($_v['file']) . '&rand=' . rand(1,
-                                2000);
-                    };
 
                     foreach ($file['versions'] ?? [] as $_v) {
                         $rows[] = [
                             'date_time' => $_v['dt'],
                             'v_user' => $_v['user'],
-                            'link' => $getLink($_v),
+                            'link' => $_v['file'],
                             'comment' => $_v['comment']??''
                         ];
                     }
@@ -494,11 +489,15 @@ class ReadTableActions extends Actions
 
                     $params['data'] = [
                         'ext' => $file['ext'],
-                        'sOn' => $this->isTableServiceOn('pdfdocpreview')
+                        'name' => $file['name'],
+                        'sOn' => $this->isTableServiceOn('pdfdocpreview'),
+                        'uri'=>$_SERVER['REQUEST_URI'] . (str_contains($_SERVER['REQUEST_URI'],
+                                '?') ? '&' : '?') . 'field=' . $field['name'].'&rand='.rand(1,
+                                2000)
                     ];
 
                     $Calc = new CalculateAction('=: linkToDataTable(table: \'ttm__file_versions\'; title: "' . $this->translate('File %s versions',
-                            $file['name']) . '"; data: $#data; params:$#params; width: 800; height: "80vh"; refresh: false; header: true; footer: true)');
+                            $file['name']) . '"; data: $#data; params:$#params; width: 940; height: "80vh"; refresh: false; topbuttons: false; header: true; footer: true)');
                     $Calc->execAction('KOD',
                         [],
                         [],
