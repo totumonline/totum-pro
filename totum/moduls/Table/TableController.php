@@ -972,6 +972,7 @@ class TableController extends interfaceController
                             'type' => $ext[1],
                             'comment' => 'doc file preview'
                         ];
+
                         try {
                             $connector->sendRequest('pdf', $hash, $data);
                             $hashes[] = $hash;
