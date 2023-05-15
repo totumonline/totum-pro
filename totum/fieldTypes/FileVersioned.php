@@ -44,6 +44,7 @@ class FileVersioned extends File
                                 if (($file['versions'][0]['dt'] ?? false)) {
                                     $versionDt = date_create($file['versions'][0]['dt']);
                                     $versionDt->modify('+' . (int)$this->data['versionsTimer'] . ' minutes');
+
                                     if ($versionDt->format('Y-m-d H:i') > date('Y-m-d H:i')) {
                                         $file['version_timer'] = true;
                                         $file['version_remove'] = true;
@@ -57,7 +58,7 @@ class FileVersioned extends File
                         if ($superUser) {
                             $file['file_remove'] = true;
                         }
-                        $file['versions_count'] = !empty($file['versions']) ? count($file['versions']) - 1 : 0;
+                        $file['versions_count'] = !empty($file['versions']) && count($file['versions']) >= 2 ? count($file['versions']) : 0;
                         $file['version_comment'] = $file['versions'][0]['comment'] ?? '';
                         unset($file['versions']);
                     }
@@ -109,11 +110,13 @@ class FileVersioned extends File
             $checkRemoveLastVersion = function (&$file) use ($channel) {
                 if (!empty($file['remove_last_version'])) {
                     if ($channel !== 'inner') {
-                        if (($file['versions'][0]['user'] ?? 0) === $this->table->getUser()->getId()) {
+                        if (empty($this->data['removeVersionsRoles']) || in_array($this->table->getUser()->getId(),
+                                $this->data['removeVersionsRoles'])) ;
+                        elseif (($file['versions'][0]['user'] ?? 0) === $this->table->getUser()->getId()) {
                             if ($this->data['versionsTimer'] ?? false) {
                                 if (($file['versions'][0]['dt'] ?? false)) {
                                     $versionDt = date_create($file['versions'][0]['dt']);
-                                    $versionDt->modify('+' . (2*(int)$this->data['versionsTimer']) . ' minutes');
+                                    $versionDt->modify('+' . (2 * (int)$this->data['versionsTimer']) . ' minutes');
                                     if ($versionDt->format('Y-m-d H:i') <= date('Y-m-d H:i')) {
                                         throw new errorException($this->translate('The time to delete/replace the last file version has expired'));
                                     }
@@ -121,8 +124,7 @@ class FileVersioned extends File
                                     unset($file['remove_last_version']);
                                 }
                             }
-                        } elseif (!empty($this->data['removeVersionsRoles']) && !in_array($this->table->getUser()->getId(),
-                                $this->data['removeVersionsRoles'])) {
+                        } else {
                             unset($file['remove_last_version']);
                         }
                     }
