@@ -2149,7 +2149,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
         foreach ($this->Table->getVisibleFields('web') as $field){
             if($field['type']==='file' && !empty($field['versioned'])){
-                $_tableRow['__withVersionsLink'] = $this->User->getTables()[$this->Totum->getTableRow('ttm__file_versions')['id']]??false;
+                $_tableRow['__withVersionsLink'] = key_exists($this->Totum->getTableRow('ttm__file_versions')['id'], $this->User->getTables());
                 break;
             }
         }
