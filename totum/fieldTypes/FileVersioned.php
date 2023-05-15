@@ -298,8 +298,10 @@ class FileVersioned extends File
             if (!empty($this->data['customFileFolder'])) {
                 $folder = $this->data['customFileFolder'] . '/';
 
-                if (!empty($this->data['fileIdDivider']) && !empty($row['id'])) {
-                    $folder_id = ($row['id'] - ($row['id'] % $this->data['fileIdDivider'])) / $this->data['fileIdDivider'];
+                if (!empty($this->data['fileIdDivider'])) {
+                    $id = $this->table->getCycle()?->getId() ?? $row['id'] ?? 0;
+
+                    $folder_id = ($id - ($id % $this->data['fileIdDivider'])) / $this->data['fileIdDivider'];
                     $folder_id = str_pad($folder_id, 7, "0", STR_PAD_LEFT);
                     $folder .= $folder_id . '/';
                     unset($folder_id);
