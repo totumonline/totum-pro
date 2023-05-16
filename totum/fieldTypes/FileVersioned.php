@@ -27,6 +27,13 @@ class FileVersioned extends File
         $this->data['removeVersionsRoles'] = $this->data['removeVersionsRoles'] ?? [];
     }
 
+    public function getFullValue($val, $rowId = null)
+    {
+        $valArray = ['v' => $val];
+        static::addViewValues('edit', $valArray, []);
+        return $valArray['v'];
+    }
+
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
         switch ($viewType) {
@@ -206,28 +213,35 @@ class FileVersioned extends File
                 }
 
             } elseif (!empty($oldVal) && is_array($oldVal)) {
-                foreach ($oldVal as $fOld) {
-                    foreach ($modifyVal as &$file) {
-                        if (is_array($fOld) && $fOld['file'] === ($file['file'] ?? null)) {
-                            $file['versions'] = $fOld['versions'] ?? [];
-                            $checkRemoveLastVersion($file);
-                            $checkComment($file);
-                            continue 2;
-                        }
-                        unset($file['versions']);
-                    }
-
-                    if (is_array($fOld) && str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $fOld['file'] ?? ''),
-                            $this->_getFprefix($row['id'] ?? null))) {
-                        $deletedFiles[] = $fOld;
-                    }
-                    unset($file);
+                foreach ($modifyVal as &$file) {
+                    unset($file['versions']);
                 }
                 unset($file);
+
+                foreach ($oldVal as $fOld) {
+                    if (is_array($fOld)) {
+                        foreach ($modifyVal as &$file) {
+                            if ($fOld['file'] === ($file['file'] ?? null)) {
+                                $file['versions'] = $fOld['versions'] ?? [];
+                                $checkRemoveLastVersion($file);
+                                $checkComment($file);
+                                unset($file);
+                                continue 2;
+                            }
+                        }
+                        unset($file);
+                        if (str_starts_with(preg_replace('~^.*?([^/]+$)~',
+                            '$1',
+                            $fOld['file'] ?? ''),
+                            $this->_getFprefix($row['id'] ?? null))) {
+                            $deletedFiles[] = $fOld;
+                        }
+                    }
+                }
             }
             foreach ($modifyVal as $i => $file) {
                 if (($file['remove_last_version'] ?? false) && count($file['versions'] ?? []) < 2 && !(key_exists('filestring',
-                            $file) || key_exists('filestringbase64', $file))) {
+                            $file) || key_exists('filestringbase64', $file) || key_exists('tmpfile', $file))) {
                     unset($modifyVal[$i]);
                     if (str_starts_with($file['file'] ?? '',
                         $this->_getFprefix($row['id'] ?? null))) {
