@@ -441,6 +441,79 @@ class ReadTableActions extends Actions
         return ['ok' => 1];
     }
 
+    public function fileVersions()
+    {
+        $field = $this->Table->getFields()[$this->post['fieldName'] ?? ''] ?? '';
+
+        if (!$field || !$this->Table->isField('visible', 'web', $field)) {
+            $error = $this->translate('Access to the file field is denied');
+        } elseif (empty($field['secureFile'])) {
+            $error = $this->translate('The file is not protected');
+        } else {
+            if ($field['category'] === 'column') {
+                if (empty($this->post['rowId']) || !$this->Table->loadFilteredRows('web', [$this->post['rowId']])) {
+                    $error = $this->translate('Access to the file row is denied or the row does not exist');
+                } else {
+                    $val = $this->Table->getTbl()['rows'][$this->post['rowId']][$field['name']];
+                }
+            } else {
+                $val = $this->Table->getTbl()['params'][$field['name']];
+            }
+        }
+
+        if (empty($error)) {
+            if (empty($val)) {
+                $error = $this->translate('File [[%s]] is not found.', $field['title']);
+            } else {
+                $file = null;
+                foreach ($val['v'] as $_file) {
+                    if ($this->post['fileName'] === $_file['file'] ?? '') {
+                        $file = $_file;
+                    }
+                }
+
+                if (!$file) {
+                    $error = $this->translate('File [[%s]] is not found.', $this->post['fileName']);
+                } else {
+                    $rows = [];
+
+                    foreach ($file['versions'] ?? [] as $_v) {
+                        $rows[] = [
+                            'date_time' => $_v['dt'],
+                            'v_user' => $_v['user'],
+                            'link' => $_v['file'],
+                            'comment' => $_v['comment']??''
+                        ];
+                    }
+                    krsort($rows);
+
+                    $params['data'] = [
+                        'ext' => $file['ext'],
+                        'name' => $file['name'],
+                        'sOn' => $this->isTableServiceOn('pdfdocpreview'),
+                        'uri'=>$_SERVER['REQUEST_URI'] . (str_contains($_SERVER['REQUEST_URI'],
+                                '?') ? '&' : '?') . 'field=' . $field['name'].'&rand='.rand(1,
+                                2000)
+                    ];
+
+                    $Calc = new CalculateAction('=: linkToDataTable(table: \'ttm__file_versions\'; title: "' . $this->translate('File %s versions',
+                            $file['name']) . '"; data: $#data; params:$#params; width: 940; height: "80vh"; refresh: false; topbuttons: false; header: true; footer: true)');
+                    $Calc->execAction('KOD',
+                        [],
+                        [],
+                        [],
+                        [],
+                        $this->Totum->getTable('tables'),
+                        'exec',
+                        ['data' => $rows, 'params' => $params]);
+                }
+            }
+        }
+        if (!empty($error)) {
+            return ['error' => $error];
+        }
+    }
+
     public function filesUpload()
     {
         $model = $this->Totum->getModel('_tmp_tables', true);
@@ -1151,7 +1224,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         );
 
         if ($settings['pdf'] ?? false) {
-            if (!$this->isTableWithPDF() || $this->isServicesBlocked) {
+            if (!$this->isTableServiceOn('pdf') || $this->isServicesBlocked) {
                 throw new errorException($this->translate('PDF printing for this table is switched off'));
             }
             $data = [
@@ -1682,6 +1755,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         return $this->getTableClientChangedData([]);
     }
 
+
     protected function clickToButton($fieldParams, $row, $vars, $type = 'exec')
     {
         $Log = $this->Table->calcLog(['name' => 'CLICK']);
@@ -1989,6 +2063,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 $fields['data_src']['jsonFields']['fieldSettings']['editRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['addRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['logRoles']['values']
+                    = $fields['data_src']['jsonFields']['fieldSettings']['removeVersionsRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['webRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['xmlRoles']['values']
                     = $fields['data_src']['jsonFields']['fieldSettings']['xmlEditRoles']['values']
@@ -2068,8 +2143,16 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
         }
         $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description']);
-        $_tableRow['__withPDF'] = $this->isTableWithPDF() && !$this->isServicesBlocked;
-        $_tableRow['__xlsx'] = $this->isTableWithXlsxExport() && !$this->isServicesBlocked;
+        $_tableRow['__withPDF'] = $this->isTableServiceOn('pdf') && !$this->isServicesBlocked;
+        $_tableRow['__xlsx'] = $this->isTableServiceOn('xlsx') && !$this->isServicesBlocked;
+        $_tableRow['__withDocPreviews'] = $this->isTableServiceOn('pdfdocpreview') && !$this->isServicesBlocked;
+
+        foreach ($this->Table->getVisibleFields('web') as $field){
+            if($field['type']==='file' && !empty($field['versioned'])){
+                $_tableRow['__withVersionsLink'] = key_exists($this->Totum->getTableRow('ttm__file_versions')['id'], $this->User->getTables());
+                break;
+            }
+        }
 
         if (in_array($tableRow['actual'], ['refresh', 'disablerefresh'])) {
             $_tableRow['__autorefresh'] = true;
@@ -2081,7 +2164,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
     public function excelExport()
     {
-        if ($this->isTableWithXlsxExport() && !$this->isServicesBlocked) {
+        if ($this->isTableServiceOn('xlsx') && !$this->isServicesBlocked) {
             $data = json_decode($this->post['data'], true);
             $Calc = new CalculateAction('=: linkToFileDownload(file: json`{"filestring": $serv,"name": $#name, "type": "application/xlsx"}`)' . "\n" . 'serv: ServiceXlsxGenerator(template: "*NEW*"; data: $#data)');
             $filestring = $Calc->execAction('CODE',
@@ -2669,27 +2752,13 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         return null;
     }
 
-    protected function isTableWithPDF()
+    public function isTableServiceOn($name): bool
     {
-        $data = $this->Totum->getModel('ttm__services')->get(['name' => 'pdf'], 'tables, exclusions');
-        foreach ($data as &$v) {
-            $v = json_decode($v, true);
+        $data = $this->Totum->getModel('ttm__services')->get(['name' => $name], 'tables, exclusions');
+        if (!$data) {
+            return false;
         }
-        if (is_array($data['tables'])) {
-            if (in_array('*ALL*', $data['tables'])) {
-                if (!in_array($this->Table->getTableRow()['name'], $data['exclusions'])) {
-                    return true;
-                }
-            } elseif (in_array($this->Table->getTableRow()['name'], $data['tables'])) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    protected function isTableWithXlsxExport()
-    {
-        $data = $this->Totum->getModel('ttm__services')->get(['name' => 'xlsx'], 'tables, exclusions');
         foreach ($data as &$v) {
             $v = json_decode($v, true);
         }

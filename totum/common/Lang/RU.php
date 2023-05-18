@@ -417,6 +417,10 @@ class RU implements LangInterface
   'Min value of %s is %s.' => 'Минимальное значение %s - %s.',
   'User is switched off or does not have access rights' => 'Пользователь отключен или не имеет прав доступа',
   'The parameter [[%s]] should be of type row.' => 'Параметр [[%s]] должен быть типа row.',
+  'The fileDuplicateOnCopy option must be enabled for versioned files.' => 'Параметр fileDuplicateOnCopy должен быть включен для файлов с версиями.',
+  'Version adding error - file for version not found' => 'Ошибка добавления версии — файл для версии не найден',
+  'The time to delete/replace the last file version has expired' => 'Время удаления/замены последней версии файла истекло',
+  'File %s versions' => 'Версии файла %s',
 );
 	/**
      * Возвращает сумму прописью
@@ -478,7 +482,7 @@ class RU implements LangInterface
             $s,
             [
 			'ß'=>'ss', 'ä'=>'a', 'ü'=>'u', 'ö'=>'o', 
-			
+			'ñ'=>'ny',
 			'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd', 'е' => 'e', 'ё' => 'e', 'ж' => 'j', 'з' => 'z', 'и' => 'i', 'й' => 'y', 'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n', 'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 's', 'т' => 't', 'у' => 'u', 'ф' => 'f', 'х' => 'h', 'ц' => 'c', 'ч' => 'ch', 'ш' => 'sh', 'щ' => 'shch', 'ы' => 'y', 'э' => 'e', 'ю' => 'yu', 'я' => 'ya', 'ъ' => '', 'ь' => '']
         );
     }

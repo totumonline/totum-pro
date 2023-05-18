@@ -20,6 +20,7 @@ use totum\models\CalcsTableCycleVersion;
 class File extends Field
 {
     protected static $transactionCommits = [];
+    public const DOC_PREVIEW_POSTFIX = '!docpreview!.pdf';
 
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
@@ -79,10 +80,16 @@ class File extends Field
         if (is_file($preview = $fullFileName . '_thumb.jpg')) {
             unlink($preview);
         }
+        if (is_file($preview = $fullFileName . File::DOC_PREVIEW_POSTFIX)) {
+            unlink($preview);
+        }
     }
 
     public static function getFilePath($file_name, Conf $Config, $fileData = null): string
     {
+        if (str_contains($file_name, '/')) {
+            return $Config->getSecureFilesDir() . $file_name;
+        }
         if (is_null($fileData)) {
             if (file_exists($Config->getFilesDir() . $file_name) || !file_exists($Config->getSecureFilesDir() . $file_name)) {
                 return $Config->getFilesDir() . $file_name;
@@ -257,7 +264,7 @@ class File extends Field
                             continue 2;
                         }
                     }
-                    if (is_array($fOld) && str_starts_with($fOld['file'] ?? '',
+                    if (is_array($fOld) && str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $fOld['file'] ?? ''),
                             $this->_getFprefix($row['id'] ?? null))) {
                         $deletedFiles[] = $fOld;
                     }
@@ -270,6 +277,7 @@ class File extends Field
                     $this->table->getTotum()->getConfig(),
                     $this->data);
             }
+
         }
         return $modifyVal;
     }
@@ -286,45 +294,33 @@ class File extends Field
         }
 
 
+        $createTmpFile = function ($fileString, &$file) {
+            $ftmpname = tempnam(
+                $this->table->getTotum()->getConfig()->getTmpDir(),
+                $this->table->getTotum()->getConfig()->getSchema() . '.' . $this->table->getUser()->getId() . '.'
+            );
+            file_put_contents($ftmpname, $fileString);
+
+            if (!empty($file['gz'])) {
+                `gzip $ftmpname`;
+                $ftmpname .= '.gz';
+                unset($file['gz']);
+                $file['name'] .= '.gz';
+            }
+            $file['size'] = filesize($ftmpname);
+            $file['tmpfile'] = preg_replace('`^.*/([^/]+)$`', '$1', $ftmpname);
+
+            static::checkAndCreateThumb($ftmpname, $file['name']);
+        };
+
         /*Добавление через filestring и filestringbase64 */
         foreach ($val as &$file) {
             if (!empty($file['filestring'])) {
-                $ftmpname = tempnam(
-                    $this->table->getTotum()->getConfig()->getTmpDir(),
-                    $this->table->getTotum()->getConfig()->getSchema() . '.' . $this->table->getUser()->getId() . '.'
-                );
-                file_put_contents($ftmpname, $file['filestring']);
-
-                if (!empty($file['gz'])) {
-                    `gzip $ftmpname`;
-                    $ftmpname .= '.gz';
-                    unset($file['gz']);
-                    $file['name'] .= '.gz';
-                }
-                $file['size'] = filesize($ftmpname);
-
+                $createTmpFile($file['filestring'], $file);
                 unset($file['filestring']);
-                static::checkAndCreateThumb($ftmpname, $file['name']);
-                $file['tmpfile'] = preg_replace('`^.*/([^/]+)$`', '$1', $ftmpname);
             } elseif (!empty($file['filestringbase64'])) {
-                $ftmpname = tempnam(
-                    $this->table->getTotum()->getConfig()->getTmpDir(),
-                    $this->table->getTotum()->getConfig()->getSchema() . '.' . $this->table->getUser()->getId() . '.'
-                );
-
-                file_put_contents($ftmpname, base64_decode($file['filestringbase64']));
-
-                if (!empty($file['gz'])) {
-                    `gzip $ftmpname`;
-                    $ftmpname .= '.gz';
-                    unset($file['gz']);
-                    $file['name'] .= '.gz';
-                }
-                $file['size'] = filesize($ftmpname);
-
-                static::checkAndCreateThumb($ftmpname, $file['name']);
+                $createTmpFile(base64_decode($file['filestringbase64']), $file);
                 unset($file['filestringbase64']);
-                $file['tmpfile'] = preg_replace('`^.*/([^/]+)$`', '$1', $ftmpname);
             }
         }
         unset($file);
@@ -333,21 +329,39 @@ class File extends Field
         if (!$isCheck && ($this->data['category'] !== 'column' || $row['id'] ?? null)) {
             $fPrefix = $this->_getFprefix($row['id'] ?? null);
 
-            $funcGetFname = function ($ext) use ($fPrefix) {
+            $folder = '';
+            if (!empty($this->data['customFileFolder'])) {
+                $folder = $this->data['customFileFolder'] . '/';
+
+                if (!empty($this->data['fileIdDivider']) && !empty($row['id'])) {
+                    $folder_id = ($row['id'] - ($row['id'] % $this->data['fileIdDivider'])) / $this->data['fileIdDivider'];
+                    $folder_id = str_pad($folder_id, 7, "0", STR_PAD_LEFT);
+                    $folder .= $folder_id . '/';
+                    unset($folder_id);
+                }
+            }
+
+            if ($folder) {
+                if (!is_dir($dir = $this->table->getTotum()->getConfig()->getSecureFilesDir() . $folder)) {
+                    mkdir($dir, 0755, true);
+                }
+            }
+
+            $funcGetFname = function ($ext) use ($fPrefix, $folder) {
                 $fnum = 0;
 
                 do {
                     $unlinked = false;
 
                     $fname = static::getFilePath(
-                        $fPrefix
+                        $folder
+                        . $fPrefix
                         . ($fnum ? '_' . $fnum : '') //Номер
                         . (!empty($this->data['nameWithHash']) ? '_' . md5(microtime(1) . $this->data['name']) : '') //хэш
                         . '.' . $ext,
                         $this->table->getTotum()->getConfig(),
                         $this->data
                     );
-
                     if (!$this->data['multiple'] && $this->table->getTableRow()['type'] !== 'tmp') {
                         break;
                     }
@@ -416,13 +430,17 @@ class File extends Field
                                 die(json_encode(['error' => $this->translate('Failed to copy preview.')],
                                     JSON_UNESCAPED_UNICODE));
                             }
+                        } elseif (is_file($fname . File::DOC_PREVIEW_POSTFIX)) {
+                            unlink($fname . File::DOC_PREVIEW_POSTFIX);
                         }
                         unset(static::$transactionCommits[$fname]);
                     });
 
                     $fl['size'] = filesize($ftmpname);
                     $fl['ext'] = $file['ext'];
-                    $fl['file'] = preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
+                    $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
+                        '$1',
+                        $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
                 } elseif (!empty($file['file'])) {
                     $filepath = static::getFilePath($file['file'],
                         $this->table->getTotum()->getConfig(),
@@ -436,7 +454,8 @@ class File extends Field
                         $file['size'] = 0;
                         $fl['e'] = 'Файл не найден';
                     } else {
-                        if (!str_starts_with($file['file'], $fPrefix) && !empty($this->data['fileDuplicateOnCopy'])) {
+                        if (!str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $file['file'] ?? ''),
+                                $fPrefix) && !empty($this->data['fileDuplicateOnCopy'])) {
                             $fname = $funcGetFname($file['ext']);
 
                             $otherfname = static::getFilePath($file['file'],
@@ -452,10 +471,14 @@ class File extends Field
                                 }
                                 if (is_file($otherfname . '_thumb.jpg')) {
                                     copy($otherfname . '_thumb.jpg', $fname . '_thumb.jpg');
+                                } elseif (is_file($fname . File::DOC_PREVIEW_POSTFIX)) {
+                                    unlink($fname . File::DOC_PREVIEW_POSTFIX);
                                 }
                                 unset(static::$transactionCommits[$fname]);
                             });
-                            $fl['file'] = preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
+                            $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
+                                '$1',
+                                $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
                         }
                         if (!$file['size']) {
                             $file['size'] = filesize($filepath);

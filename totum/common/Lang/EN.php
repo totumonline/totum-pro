@@ -10,6 +10,7 @@ class EN implements LangInterface
     use SearchTrait;
 
     public const TRANSLATES = array (
+  'Version adding error - file for version not found' => 'Version adding error — file for version not found',
 );
 	public function dateFormat(DateTime $date, $fStr): string
     {
@@ -81,7 +82,7 @@ class EN implements LangInterface
             $s,
             [
 			'ß'=>'ss', 'ä'=>'a', 'ü'=>'u', 'ö'=>'o', 
-			
+			'ñ'=>'ny',
 			'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd', 'е' => 'e', 'ё' => 'e', 'ж' => 'j', 'з' => 'z', 'и' => 'i', 'й' => 'y', 'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n', 'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 's', 'т' => 't', 'у' => 'u', 'ф' => 'f', 'х' => 'h', 'ц' => 'c', 'ч' => 'ch', 'ш' => 'sh', 'щ' => 'shch', 'ы' => 'y', 'э' => 'e', 'ю' => 'yu', 'я' => 'ya', 'ъ' => '', 'ь' => '']
         );
     }

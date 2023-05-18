@@ -28,11 +28,11 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '4.9.53.3-4.0';
+    public const VERSION = '4.10.54.1-4.1';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
-    public const FIELD_ROLES_PARAMS = ['addRoles', 'logRoles', 'webRoles', 'xmlRoles', 'editRoles', 'xmlEditRoles'];
+    public const FIELD_ROLES_PARAMS = ['addRoles', 'logRoles', 'webRoles', 'xmlRoles', 'editRoles', 'xmlEditRoles', 'removeVersionsRoles'];
     public const FIELD_CODE_PARAMS = ['code', 'codeSelect', 'codeAction', 'format'];
     public const TABLE_ROLES_PARAMS = [
         'csv_edit_roles',
