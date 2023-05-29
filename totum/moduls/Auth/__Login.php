@@ -73,7 +73,7 @@ use totum\config\Conf;
 
             <div class="form-group"><input type="submit"
                                            value="<?= $this->translate('Log in') ?>"
-                                           style="width: 79px;margin-top:4px;"
+                                           style="width: auto; padding: 0px 22px;margin-top:4px;"
                                            id="login"
                                            class="form-control"/>
 
