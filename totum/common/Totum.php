@@ -214,11 +214,11 @@ class Totum
             $TableRow = $this->getTableRow($name);
             if ($TableRow['type'] != 'tmp' && $TableRow['type'] != 'calcs') {
                 $Table = $this->getTable($TableRow);
-                if (key_exists('ttm_search', $Table->getFields()) && $this->getTable('ttm__search_settings')->getByParams(['field'=>'h_get_updates'])) {
+                if (key_exists('ttm_search', $Table->getFields()) && $this->getTable('ttm__search_settings')->getByParams(['field' => 'h_get_updates'])) {
                     $searchTables = $searchTables ?? $this->getTable('ttm__search_settings')->getByParams(
-                            ['field' => 'table_id'],
-                            'list'
-                        );
+                        ['field' => 'table_id'],
+                        'list'
+                    );
                     $tableId = $TableRow['id'];
                     if (in_array($tableId, $searchTables)) {
 
@@ -436,9 +436,9 @@ class Totum
         $this->interfaceLinks[] = ['uri' => $uri, 'target' => $target, 'title' => $title, 'postData' => $postData, 'width' => $width, 'refresh' => $refresh, 'elseData' => $elseData];
     }
 
-    public function addLinkPanel($link, $id, $field, $refresh, $fields = [], $columns = null, $titles = [])
+    public function addLinkPanel($link, $id, $field, $refresh, $fields = [], $columns = null, $titles = [], $settings = [])
     {
-        $this->panelLinks[] = ['uri' => $link, 'id' => $id, 'field' => $field, 'refresh' => $refresh, 'fields' => $fields, 'columns' => $columns, 'titles' => $titles];
+        $this->panelLinks[] = ['uri' => $link, 'id' => $id, 'field' => $field, 'refresh' => $refresh, 'fields' => $fields, 'columns' => $columns, 'titles' => $titles, 'settings' => $settings];
     }
 
     /* Сюда можно будет поставить общую систему кешей */
