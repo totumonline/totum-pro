@@ -539,6 +539,10 @@ class TableController extends interfaceController
 
     public function actionTable(ServerRequestInterface $request)
     {
+        if ($this->Config->getSettings('bfl')) {
+            $this->Totum->addCreatorWarnings('BFL-log is on');
+        }
+
         try {
             $this->checkTableByUri($request, true);
         } catch (criticalErrorException $e) {
@@ -896,6 +900,11 @@ class TableController extends interfaceController
                 }
                 return ['text' => $text, 'icon' => 'fa fa-exclamation-triangle'];
             };
+            $addCreatorWarnings = function (array $warnings, &$FullLogs) {
+                foreach ($warnings as $text => $_) {
+                    $FullLogs[] = ['text' => $this->translate('Creator warnings') . ': ' . $this->translate($text), 'icon' => 'fa fa-exclamation-triangle'];
+                }
+            };
 
             if ($types = $this->Totum->getCalculateLog()->getTypes()) {
                 if (in_array('flds', $types) && $this->CalculateLog) {
@@ -913,9 +922,17 @@ class TableController extends interfaceController
                     if ($orderCodeErrors = $this->Totum->getOrderFieldCodeErrors()) {
                         $result['FullLOGS'][] = $addOrderErrors($orderCodeErrors);
                     }
+                    if ($creatorWarnings = $this->Totum->getCreatorWarnings()) {
+                        $addCreatorWarnings($creatorWarnings, $result['FullLOGS']);
+                    }
                 }
-            } elseif ($orderCodeErrors = $this->Totum->getOrderFieldCodeErrors()) {
-                $result['FullLOGS'][] = $addOrderErrors($orderCodeErrors);
+            } else {
+                if ($orderCodeErrors = $this->Totum->getOrderFieldCodeErrors()) {
+                    $result['FullLOGS'][] = $addOrderErrors($orderCodeErrors);
+                }
+                if ($creatorWarnings = $this->Totum->getCreatorWarnings()) {
+                    $addCreatorWarnings($creatorWarnings, $result['FullLOGS']);
+                }
             }
         }
     }

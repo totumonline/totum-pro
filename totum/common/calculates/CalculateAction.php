@@ -115,9 +115,9 @@ class CalculateAction extends Calculate
                     $eml = '<style>' . $template['styles'] . '</style>' . $template['body'];
 
                     $toBfl = $params['bfl'] ?? in_array(
-                            'email',
-                            $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
-                        );
+                        'email',
+                        $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
+                    );
 
                     try {
                         foreach ($emails as $email) {
@@ -674,9 +674,9 @@ class CalculateAction extends Calculate
         }
 
         $toBfl = $params['bfl'] ?? in_array(
-                'email',
-                $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
-            );
+            'email',
+            $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
+        );
 
         try {
             $r = $this->Table->getTotum()->getConfig()->sendMail(
@@ -736,9 +736,9 @@ class CalculateAction extends Calculate
 
 
         $toBfl = $params['bfl'] ?? in_array(
-                'soap',
-                $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
-            );
+            'soap',
+            $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
+        );
         try {
             $soapClient = new SoapClient(
                 $params['wsdl'] ?? null,
@@ -904,7 +904,7 @@ class CalculateAction extends Calculate
 
     protected function funcLinkToPanel($params)
     {
-        $params = $this->getParamsArray($params, ['field'], ['field'], ['bfield']);
+        $params = $this->getParamsArray($params, ['field', 'fields'], ['field'], ['bfield']);
         $tableRow = $this->__checkTableIdOrName($params['table'], 'table');
         $link = '/Table/';
 
@@ -970,9 +970,54 @@ class CalculateAction extends Calculate
                 }
             }
         }
+        $settings = [];
+        if (!empty($params['fieldsettings'])) {
+            $this->__checkListParam($params['fieldsettings'], 'fieldsettings');
+            foreach ($params['fieldsettings'] as $k => $_) {
+                $v = array_intersect_key($_, ['view' => 1, 'columns' => 1, 'title' => 1, 'checkbox'=>1]);
+
+                $v['titleClass'] = match ($v['title'] ?? null) {
+                    'top', 'bottom', 'left' => 'label-' . $v['title'],
+                    default => 'label-right'
+                };
+                unset($v['title']);
+
+                $v['checkboxClass'] = match ($v['checkbox'] ?? null) {
+                    'center', 'right', 'left' => 'checkbox-' . $v['checkbox'],
+                    default => 'checkbox-center'
+                };
+                unset($v['checkbox']);
+
+                if (!empty($v['columns'])) {
+                    if (is_numeric($v['columns'])) {
+                        $v['columns'] = str_repeat('1fr ', $v['columns']);
+                    } elseif (is_array($v['columns'])) {
+                        foreach ($v['columns'] as $_a) {
+                            if (is_array($_a)) {
+                                throw new errorException($this->translate('None of the elements of the %s parameter array must be a list.', 'fieldsettings:columns'));
+                            }
+                        }
+                        $v['columns'] = implode(' ', $v['columns']);
+                    }
+                }
+
+                if (key_exists('name', $v) && is_string($v['name']) && key_exists('title', $v)) {
+                    $settings[$v['name']] = $v;
+                    unset($settings[$v['name']]['name']);
+                } else {
+                    $settings[$k] = $v;
+                }
+            }
+        };
+
+        if (!empty($params['fields'])) {
+            $fieldsKeys = array_flip($params['fields']);
+            $settings = array_intersect_key($settings, $fieldsKeys);
+            $titles = array_intersect_key($titles, $fieldsKeys);
+        }
 
 
-        $addLinkToPanel = function ($link, $id, $field) use ($titles, $columns, $params) {
+        $addLinkToPanel = function ($link, $id, $field) use ($titles, $columns, $params, $settings) {
             $this->Table->getTotum()->addLinkPanel(
                 $link,
                 $id,
@@ -980,7 +1025,8 @@ class CalculateAction extends Calculate
                 $params['refresh'] ?? false,
                 (array)($params['fields'] ?? []),
                 columns: $columns,
-                titles: $titles
+                titles: $titles,
+                settings: $settings
             );
         };
 
