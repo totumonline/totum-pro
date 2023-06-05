@@ -36,16 +36,41 @@ trait ListUnsubscribeTrait
         return true;
     }
 
-    protected function addListUnsubscribeHeader(PHPMailer $mail, $to, $title)
+    protected function addListUnsubscribeHeader(PHPMailer $mail, $to, $title, &$body)
     {
 
         $encriptedData = Crypt::getCrypted(
-           json_encode( [
+            json_encode([
                 $to, substr($title, 0, 10)
             ], JSON_UNESCAPED_UNICODE),
             $this->getCryptSolt()
         );
-        $mail->AddCustomHeader("List-Unsubscribe: <https://" . $this->getFullHostName() . "/unSubcribe.php?d=" . $encriptedData . ">");
+        $mail->AddCustomHeader("List-Unsubscribe: <https://" . $this->getFullHostName() . "/unSubcribe.php?d=" . urlencode($encriptedData) . ">");
+
+        $body .= '<div style="text-align: center; font-size: 10px; margin-top: 30px;"><a style="color: #ddd;" href="https://' . $this->getFullHostName() . '/unSubcribe.php?d=' . urlencode($encriptedData) . '">Unsubscribe</a></div>';
+    }
+
+    public function unsubscribe($encrypted): bool
+    {
+        if (!empty($encrypted)) {
+            $decriptedData = Crypt::getDeCrypted(
+                $encrypted,
+                $this->getCryptSolt()
+            );
+            if ($decriptedData && $decriptedData = json_decode($decriptedData, true)) {
+                list($email, $title) = $decriptedData;
+                if (!$this->checkMailReceivers($email, [])) {
+                    /** @var Sql $Sql */
+                    $Sql = $this->getSql();
+
+                    $r = $Sql->getPrepared('insert into ttm__list_unsubscribe (email, title) VALUES (?,?)');
+                    $r->execute([$email, $title]);
+                }
+                return true;
+            }
+
+        }
+        return false;
     }
 
 }

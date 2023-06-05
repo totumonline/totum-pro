@@ -21,7 +21,7 @@ trait WithPhpMailerSmtpTrait
         try {
             $mail = new PHPMailer(true);
 
-            $this->addListUnsubscribeHeader($mail, $to, $title);
+            $this->addListUnsubscribeHeader($mail, $to, $title, $body);
 
 
             $mail->SMTPDebug = $this->env !== static::ENV_LEVELS["production"];
