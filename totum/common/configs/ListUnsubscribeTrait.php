@@ -90,7 +90,7 @@ trait ListUnsubscribeTrait
                 $this->getCryptSolt()
             );
             if ($this->listUnsubscribeSettings['header']) {
-                $mail->AddCustomHeader("List-Unsubscribe: <https://" . $this->getFullHostName() . "/unSubcribe.php?d=" . urlencode($encriptedData) . ">");
+                $mail->AddCustomHeader("List-Unsubscribe: <https://" . $this->getFullHostName() . "/unSubcribe.php?d=" . urlencode($encriptedData) . "&ok=1>");
             }
             if ($this->listUnsubscribeSettings['link']) {
                 if (!str_contains($body, '</body>')) {
