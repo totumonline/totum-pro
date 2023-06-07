@@ -33,9 +33,9 @@ trait ListUnsubscribeTrait
                 /** @var Sql $Sql */
                 $Sql = $this->getSql();
                 $settings = json_decode($Sql->get('select header from tables where name->>\'v\' = \'ttm__list_unsubscribe\'')['header'], true);
-                $this->listUnsubscribeSettings['enabled'] = $settings['h_enable'] ?? false;
-                $this->listUnsubscribeSettings['link'] = $settings['h_link'] ?? false;
-                $this->listUnsubscribeSettings['header'] = $settings['h_header'] ?? false;
+               $this->listUnsubscribeSettings['enabled'] = $settings['h_enable']['v'] ?? false;
+                $this->listUnsubscribeSettings['link'] = $settings['h_link']['v'] ?? false;
+                $this->listUnsubscribeSettings['header'] = $settings['h_header']['v'] ?? false;
                 $this->listUnsubscribeSettings['blockhiddencopy'] = false;
             }
         }
