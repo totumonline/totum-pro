@@ -21,6 +21,9 @@ trait ListUnsubscribeTrait
                     if ($this->listUnsubscribeSettings['enabled'] = $this->SmtpData['enablelistunsubscride']) {
                         $this->listUnsubscribeSettings['header'] = true;
                         $this->listUnsubscribeSettings['link'] = true;
+                    }else{
+                        $this->listUnsubscribeSettings['header'] = false;
+                        $this->listUnsubscribeSettings['link'] = false;
                     }
                 }
                 $this->listUnsubscribeSettings['blockhiddencopy'] = $this->SmtpData['blockhiddencopy'] ?? false;
