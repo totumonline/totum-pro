@@ -74,6 +74,7 @@ trait ListUnsubscribeTrait
                     foreach ($hcopy as $i => $_e) {
                         if ($_e === $email) {
                             unset($hcopy[$i]);
+                            break;
                         }
                     }
                     $hcopy = array_values($hcopy);
