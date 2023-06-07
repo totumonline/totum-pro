@@ -18,9 +18,10 @@ trait ListUnsubscribeTrait
         if (!key_exists('enabled', $this->listUnsubscribeSettings)) {
             if (property_exists($this, 'SmtpData')) {
                 if (key_exists('enablelistunsubscride', $this->SmtpData)) {
-                    $this->listUnsubscribeSettings['enabled'] = $this->SmtpData['enablelistunsubscride'];
-                    $this->listUnsubscribeSettings['header'] = true;
-                    $this->listUnsubscribeSettings['link'] = true;
+                    if ($this->listUnsubscribeSettings['enabled'] = $this->SmtpData['enablelistunsubscride']) {
+                        $this->listUnsubscribeSettings['header'] = true;
+                        $this->listUnsubscribeSettings['link'] = true;
+                    }
                 }
                 $this->listUnsubscribeSettings['blockhiddencopy'] = $this->SmtpData['blockhiddencopy'] ?? false;
             }
