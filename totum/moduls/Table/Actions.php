@@ -80,10 +80,10 @@ class Actions
 
     protected function chechPostData($post)
     {
-        foreach (['onPage', 'pageCount'] as $param){
+        foreach (['onPage', 'pageCount'] as $param) {
             if (key_exists($param, $post) && $post[$param]) {
-                if(!ctype_digit($post[$param])){
-                    throw new errorException('Front error message with parametr '.$param);
+                if (!ctype_digit($post[$param])) {
+                    throw new errorException('Front error message with parametr ' . $param);
                 }
             }
         }
@@ -137,6 +137,11 @@ class Actions
 
 
         return ['default' => !($DocsTable->getTbl()['params']['h_turn_off_system_links']['v'] ?? false), 'userLinks' => $links];
+    }
+
+    public function getSchemaFormats()
+    {
+        return ['formats' => ['date' => $this->Totum->getConfig()->getSettings('dates_format') ?? 'd.m.Y'] + $this->Totum->getConfig()->getSettings('numbers_format') ?? []];
     }
 
     public

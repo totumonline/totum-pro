@@ -7,14 +7,22 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 trait WithPhpMailerTrait
 {
+    use ListUnsubscribeTrait;
+
     abstract protected function getDefaultSender();
 
     public function sendMail($to, $title, $body, $attachments = [], $from = null, $replyTo = null, $hcopy = null)
     {
+        if(!$this->checkMailReceivers($to, $hcopy)){
+            return ;
+        }
+
         list($body, $attachments) = $this->mailBodyAttachments($body, $attachments);
 
         try {
             $mail = new PHPMailer(true);
+
+            $this->addListUnsubscribeHeader($mail, $to, $title, $body);
 
             $mail->SMTPDebug = $this->env !== static::ENV_LEVELS['production'];
             $mail->CharSet = 'utf-8';
