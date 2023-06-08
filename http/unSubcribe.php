@@ -13,7 +13,7 @@ if ($check = $Config->unsubscribe($_GET['d'] ?? '', true)) {
     if ($check === 'not in base') {
         $Config->getLangObj()->translate('list-ubsubscribe-Blocked-from-sending');
     } else {
-        if ($_GET['ok'] ?? false) {
+        if (!($_GET['ok'] ?? false)) {
             $unsubscribeText = $Config->getLangObj()->translate('list-ubsubscribe-link-text');
             echo <<<html
 <html><body><form><input type="hidden" name="d" value="{$_GET['d']}"><button name="ok" value="1">{$unsubscribeText}</button></form></body></html>
