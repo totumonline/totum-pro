@@ -90,7 +90,7 @@ trait ListUnsubscribeTrait
         if ($this->listUnsubscribeSettings['link'] || $this->listUnsubscribeSettings['header']) {
             $encriptedData = Crypt::getCrypted(
                 json_encode([
-                    $to, substr($title, 0, 10)
+                    $to, substr($title, 0, 100)
                 ], JSON_UNESCAPED_UNICODE),
                 $this->getCryptSolt()
             );
