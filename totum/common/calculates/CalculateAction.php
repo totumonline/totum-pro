@@ -544,7 +544,7 @@ class CalculateAction extends Calculate
             'input',
             array_intersect_key(
                 $params,
-                ['value' => 1, 'title' => 1, 'html' => 1, 'height' => 1, 'hash' => 1, 'refresh' => 1, 'button' => 1, 'close' => 1, 'type' => 1, 'multiple' => 1]
+                ['value' => 1, 'title' => 1, 'html' => 1, 'height' => 1, 'hash' => 1, 'refresh' => 1, 'button' => 1, 'close' => 1, 'type' => 1, 'multiple' => 1, 'selectAndSave' => 1]
             )
         );
     }
@@ -554,6 +554,10 @@ class CalculateAction extends Calculate
         $params = $this->getParamsArray($params, ['var'], [], ['var']);
         $params['type'] = 'select';
         $this->__checkNotEmptyParams($params, ['codeselect']);
+        if (($params['multiple'] ?? false) === 'force') {
+            $params['multiple'] = false;
+            $params['selectAndSave'] = true;
+        }
         $this->funcLinkToInput($params);
     }
 
@@ -2044,7 +2048,10 @@ class CalculateAction extends Calculate
                             'modify' => $modify,
                             'remove' => $remove,
                             'add' => $add,
-
+                            'channel' => match ($params['channel']) {
+                                'web', 'xml' => $params['channel'],
+                                default => 'inner'
+                            }
                         ]
                     );
                 }

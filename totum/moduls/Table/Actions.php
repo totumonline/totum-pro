@@ -106,6 +106,10 @@ class Actions
         return ['ok' => 1];
     }
 
+    public function isCreatorView(){
+        return $this->User->isCreator();
+    }
+
     #[ArrayShape(['default' => "bool", 'userLinks' => "array"])]
     public function getUserHelpLinks()
     {
