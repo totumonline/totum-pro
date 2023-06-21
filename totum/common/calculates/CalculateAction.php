@@ -908,7 +908,7 @@ class CalculateAction extends Calculate
 
     protected function funcLinkToPanel($params)
     {
-        $params = $this->getParamsArray($params, ['field', 'fields'], ['field'], ['bfield']);
+        $params = $this->getParamsArray($params, ['field'], ['field'], ['bfield']);
         $tableRow = $this->__checkTableIdOrName($params['table'], 'table');
         $link = '/Table/';
 
@@ -978,7 +978,7 @@ class CalculateAction extends Calculate
         if (!empty($params['fieldsettings'])) {
             $this->__checkListParam($params['fieldsettings'], 'fieldsettings');
             foreach ($params['fieldsettings'] as $k => $_) {
-                $v = array_intersect_key($_, ['view' => 1, 'columns' => 1, 'title' => 1, 'checkbox'=>1]);
+                $v = array_intersect_key($_, ['view' => 1, 'columns' => 1, 'title' => 1, 'checkbox' => 1]);
 
                 $v['titleClass'] = match ($v['title'] ?? null) {
                     'top', 'bottom', 'left' => 'label-' . $v['title'],
@@ -1015,6 +1015,7 @@ class CalculateAction extends Calculate
         };
 
         if (!empty($params['fields'])) {
+            $params['fields'] = (array)$params['fields'];
             $fieldsKeys = array_flip($params['fields']);
             $settings = array_intersect_key($settings, $fieldsKeys);
             $titles = array_intersect_key($titles, $fieldsKeys);
