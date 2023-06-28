@@ -4,10 +4,10 @@
     <link rel="stylesheet"
           type="text/css"
           href="/css/libs.css?v=3710809">
-    <script src="/js/libs.js?v=50d05f1"></script>
+    <script src="/js/libs.js?v=63416c5"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=54a599c">
+          href="/css/main.css?v=5506b05">
 
     <?php
     if ($isCreatorView ?? null) { ?>
@@ -18,7 +18,7 @@
         <?php
     } ?>
 
-    <script src="/js/main.js?v=2928988"></script>
+    <script src="/js/main.js?v=63f1f18"></script>
     <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?4"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
