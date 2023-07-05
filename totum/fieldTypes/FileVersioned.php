@@ -255,6 +255,18 @@ class FileVersioned extends File
                     $this->table->getTotum()->getConfig(),
                     $this->data);
             }
+        } else {
+            $files = [];
+            foreach ($oldVal as $val) {
+                $files[$val['file']] = $val;
+            }
+            foreach ($modifyVal as &$file) {
+                $file = array_intersect_key($file, array_flip(["name", 'file', 'tmpfile', 'size', 'ext', 'tmpfileName', 'tmpfileSize', 'remove_last_version', 'comment']));
+                if ($file['file']) {
+                    $file['versions'] = $files[$file['file']]['versions'];
+                }
+            }
+            unset($file);
         }
         return $modifyVal;
     }
