@@ -95,17 +95,20 @@ class AdminTableActions extends WriteTableActions
             $result = $this->Totum->getNamedModel(TablesFields::class)->getAllPrepared(
                 (object)['whereStr' => 'data->\'v\'->>\'codeOnlyInAdd\' = \'true\' AND is_del = false AND (' . implode(' OR ',
                         $where) . ')', 'params' => $params],
-                'name, table_name, title',
+                'name, table_name, title, ord',
                 'table_name');
 
             $tables = [];
             foreach ($result as $field) {
-                $tables[$field['table_name']][$field['name']] = ['name' => $field['table_name'] . '-' . $field['name'], 'title' => $field['title']];
+                $tables[$field['table_name']][$field['name']] = ['name' => $field['table_name'] . '-' . $field['name'], 'title' => $field['title'], 'ord' => $field['ord']];
             }
             foreach ($tables as &$table) {
                 $table = array_values($table);
+                $ord = array_column($table, 'ord');
+                array_multisort($ord, $table);
             }
             unset($table);
+
             return ['tables' => $tables];
 
 
@@ -146,9 +149,9 @@ class AdminTableActions extends WriteTableActions
                 }
                 foreach ($tables as $inTableRow) {
                     $CalcsTable = $Cycle->getTable($inTableRow);
-                    if(!empty($tables_fields[$inTableRow['name']])){
-                        $CalcsTable->reCalculateFromOvers(['inAddRecalc'=>$tables_fields[$inTableRow['name']]]);
-                    }else{
+                    if (!empty($tables_fields[$inTableRow['name']])) {
+                        $CalcsTable->reCalculateFromOvers(['inAddRecalc' => $tables_fields[$inTableRow['name']]]);
+                    } else {
                         $CalcsTable->reCalculateFromOvers();
                     }
                 }
