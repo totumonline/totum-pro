@@ -500,7 +500,7 @@ class ReadTableActions extends Actions
                             'date_time' => $_v['dt'],
                             'v_user' => $_v['user'],
                             'link' => $_v['file'],
-                            'comment' => $_v['comment']??''
+                            'comment' => $_v['comment'] ?? ''
                         ];
                     }
                     krsort($rows);
@@ -509,8 +509,8 @@ class ReadTableActions extends Actions
                         'ext' => $file['ext'],
                         'name' => $file['name'],
                         'sOn' => $this->isTableServiceOn('pdfdocpreview'),
-                        'uri'=>$_SERVER['REQUEST_URI'] . (str_contains($_SERVER['REQUEST_URI'],
-                                '?') ? '&' : '?') . 'field=' . $field['name'].'&rand='.rand(1,
+                        'uri' => $_SERVER['REQUEST_URI'] . (str_contains($_SERVER['REQUEST_URI'],
+                                '?') ? '&' : '?') . 'field=' . $field['name'] . '&rand=' . rand(1,
                                 2000)
                     ];
 
@@ -1866,6 +1866,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 unset($data['setValuesToDefaults']);
                 $vars['setValuesToDefaults'] = $data;
             } else {
+
                 $vars['modify'] = $data;
             }
             return $this->modify($vars);
@@ -2186,8 +2187,8 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $_tableRow['__xlsx_import'] = is_a($this, WriteTableActions::class) && $this->isTableServiceOn('xlsximport') && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']) && !$this->isServicesBlocked && key_exists($this->Totum->getTableRow('ttm__prepared_data_import')['id'], $this->User->getTables());
         $_tableRow['__withDocPreviews'] = $this->isTableServiceOn('pdfdocpreview') && !$this->isServicesBlocked && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']);
 
-        foreach ($this->Table->getVisibleFields('web') as $field){
-            if($field['type']==='file' && !empty($field['versioned'])){
+        foreach ($this->Table->getVisibleFields('web') as $field) {
+            if ($field['type'] === 'file' && !empty($field['versioned'])) {
                 $_tableRow['__withVersionsLink'] = key_exists($this->Totum->getTableRow('ttm__file_versions')['id'], $this->User->getTables());
                 break;
             }
@@ -2394,7 +2395,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                                             $changes
                                         );
                                     foreach ($changes as $k => $_) {
-                                        if (is_array($return['chdata']['rows'][$id][$k])) {
+                                        if (is_array($return['chdata']['rows'][$id][$k] ?? null)) {
                                             $return['chdata']['rows'][$id][$k]['changed'] = true;
                                         }
                                     }

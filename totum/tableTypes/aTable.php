@@ -242,6 +242,8 @@ abstract class aTable
             $setData
         );
 
+        $this->processDynamicFields($data, $loadData);
+
         $this->reCalculate(['channel' => 'web', 'add' => [$data], 'isCheck' => true]);
 
 
@@ -846,8 +848,6 @@ abstract class aTable
                                 $dField = $field;
                                 $dField['name'] = $dName;
                                 $dField['title'] = $t;
-                                $dField['editable'] = false;
-                                $dField['insertable'] = false;
                                 $dField['dynamic'] = 'dynamic';
                                 $dField['__dynamic'] = $field['name'];
                                 $dField['__dynamic_key'] = $k;

@@ -137,11 +137,13 @@ trait WebInterfaceTrait
             }
         }
 
+
         $inVars['channel'] = $data['channel'] ?? 'web';
 
         $inVars['setValuesToDefaults'] = $data['setValuesToDefaults'] ?? [];
 
         $inVars['modify'] = $data['modify'] ?? [];
+
         $inVars['remove'] = $remove;
         $inVars['restore'] = $restore;
 
@@ -192,6 +194,7 @@ trait WebInterfaceTrait
                     $v = $v['v'];
                 }
             }
+            $this->processDynamicFields($editData, $itemId);
         }
         unset($editData);
 
@@ -210,6 +213,30 @@ trait WebInterfaceTrait
             $this->calcLog($Log, 'result', $result !== false ? ['changed', $result] : 'not changed');
         });
         $this->calcLog($Log, 'result', $isUpdated !== false ? ['changed', $isUpdated] : 'not changed');
+    }
+
+    protected function processDynamicFields(&$data, $id)
+    {
+
+        $dynamicData = null;
+        foreach ($data as $k => $v) {
+            if (str_contains($k, '/')) {
+                list($field, $dynamic) = explode('/', $k);
+                $dynamicData[$field][$dynamic] = $v;
+                unset($data[$k]);
+            }
+        }
+        if ($dynamicData) {
+            if (is_array($id) || $this->loadFilteredRows('web', [$id])) {
+                $row = is_array($id) ? $id : $this->tbl['rows'][$id];
+                foreach ($dynamicData as $fieldName => $dynamicValues) {
+                    $data[$fieldName] = $row[$fieldName]['v'] ?? (is_array($id) ? $row[$fieldName] : null) ?? [];
+                    foreach ($dynamicValues as $k => $v) {
+                        $data[$fieldName][$k] = $v;
+                    }
+                }
+            }
+        }
     }
 
     public function checkEditRow($editData, $tableData = null)
@@ -232,6 +259,8 @@ trait WebInterfaceTrait
         }
         $id = $editData['id'] ?? 0;
         $this->checkIsUserCanViewIds('web', [$id]);
+        $this->processDynamicFields($data, $id);
+
         $this->reCalculate(['channel' => 'web', 'modify' => [$id => $data], 'setValuesToDefaults' => [$id => $dataSetToDefault], 'isCheck' => true]);
 
         if (empty($this->tbl['rows'][$id])) {
