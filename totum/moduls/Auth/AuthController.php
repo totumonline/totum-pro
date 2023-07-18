@@ -52,18 +52,18 @@ class AuthController extends interfaceController
         }
 
         if (!$data) {
-            die('Token is not exists or is expired');
+            die($this->translate('Token is not exists or is expired'));
         }
         if (empty($_SESSION['userId'])) {
             $user = Auth::getUserById($this->Config, $data['user']);
             if (in_array(1, $user->getRoles())) {
-                //   die('User have Creator role. He/she can not be authorized by token');
+                   die($this->translate('This user have Creator role. He cannot be authorized by a token'));
             }
             if (in_array($user->login, ['service', 'cron', 'anonym'])) {
-                die('This is a service user. It can not be authorized by token');
+                die($this->translate('This is a service user. He cannot be authorized by a token'));
             }
             if ($user->interface != 'web') {
-                die('This is not web user. It can not be authorized by token');
+                die($this->translate('This is not web user. He cannot be authorized by a token'));
             }
         } else {
             $user = Auth::getUserById($this->Config, $_SESSION['userId']);
