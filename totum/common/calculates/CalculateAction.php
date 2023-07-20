@@ -1124,6 +1124,87 @@ class CalculateAction extends Calculate
         }
     }
 
+    protected function funcProGetAuthorizationLink($params)
+    {
+        $params = $this->getParamsArray($params, ['filter']);
+        $this->__checkNotArrayParams($params, ['type', 'user', 'timeout', 'table']);
+        $this->__checkNotEmptyParams($params, ['user', 'timeout']);
+        $this->__checkNumericParam($params['user'], 'user');
+
+        $data = [];
+        $data['target'] = [];
+        if ($params['table'] ?? false) {
+            $table = $this->__checkTableIdOrName($params['table'], 'table')['id'];
+            $data['target'] = ['t' => $table];
+            if ($params['filter'] ?? []) {
+                foreach ($params['filter'] as $f) {
+                    $data['target']['f'][$f['field']] = $f['value'];
+                }
+            }
+            if($params['cycle'] ?? false){
+                $this->__checkNumericParam($params['cycle'], 'cycle');
+                $data['target']['c'] = $params['cycle'];
+            }
+        }
+
+        $token = null;
+        switch ($params['type'] ?? 'single') {
+            case 'single':
+                if (method_exists($this->Table->getTotum()->getConfig(), 'singleAuthToken') && is_numeric($params['timeout']) && $params['timeout'] < 3600) {
+                    $token = $this->Table->getTotum()->getConfig()->singleAuthToken([
+                        'user' => $params['user'],
+                        'timeout' => $params['timeout'],
+                        'target' => $data['target']
+                    ]);
+                } else {
+                    $prefix = 's-';
+                    $data['multiple'] = false;
+                }
+                break;
+            case 'multiple':
+                $prefix = 'm-';
+                $data['multiple'] = true;
+                break;
+            default:
+                throw new errorException($this->translate('The %s should be here.', 'single/multiple'));
+        }
+
+        if (!$token) {
+            $data['auth_user'] = $params['user'];
+            if (strpos($params['timeout'], '-')) {
+                $Date = date_create($params['timeout']);
+            } elseif (is_numeric($params['timeout'])) {
+                $Date = date_create();
+            } else {
+                throw new errorException($this->translate('The [[%s]] parameter is not correct.', 'timeout'));
+            }
+
+            $Date->modify($params['timeout'] . ' seconds');
+            $date = $Date->format('Y-m-d H:i:s');
+
+            $data['expire'] = $date;
+
+
+            $i = 0;
+            do {
+                try {
+                    $token = $prefix . md5(microtime(true));
+                    $table = $this->Table->getTotum()->getTable('ttm__auth_tokens');
+                    $data['token'] = $token;
+                    $table->reCalculateFromOvers([
+                        'add' => [
+                            $data
+                        ]
+                    ]);
+                    break;
+                } catch (errorException) {
+                }
+            } while ($i++ < 10);
+        }
+
+        return 'https://' . $this->Table->getTotum()->getConfig()->getFullHostName() . '/Auth/Token/' . $token;
+    }
+
     protected function funcProLinkToBuffer($params)
     {
         $params = $this->getParamsArray($params);

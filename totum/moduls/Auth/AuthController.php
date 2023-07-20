@@ -13,7 +13,9 @@ use Psr\Http\Message\ServerRequestInterface;
 use totum\common\calculates\CalculateAction;
 use totum\common\controllers\interfaceController;
 use totum\common\Auth;
+use totum\common\Crypt;
 use totum\common\errorException;
+use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\Totum;
 
@@ -22,6 +24,92 @@ class AuthController extends interfaceController
     public function action(ServerRequestInterface $request)
     {
         die('Path is not available');
+    }
+
+    public function actionToken(ServerRequestInterface $request)
+    {
+
+        $this->Config->setSessionCookieParams();
+        session_start();
+
+        list($_, $_, $_, $token) = explode('/', $request->getUri()->getPath() . '/');
+        $data = null;
+        if (method_exists($this->Config, 'singleAuthToken')) {
+            $data = $this->Config->singleAuthToken($token);
+        }
+
+        $this->Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
+
+        if (empty($data) && $data !== false) {
+            $tokenTable = $this->Totum->getTable('ttm__auth_tokens');
+            if ($data = $tokenTable->getByParams((new FormatParamsForSelectFromTable())
+                ->field('auth_user')->field('multiple')->field('target')->field('id')
+                ->where('token', $token)
+                ->where('disabled', false)
+                ->where('expire', date('Y-m-d H:i:s'), '>')->params(), 'row')) {
+                $data['user'] = $data['auth_user'];
+            }
+        }
+
+        if (!$data) {
+            die($this->translate('Token is not exists or is expired'));
+        }
+        if (empty($_SESSION['userId'])) {
+            $user = Auth::getUserById($this->Config, $data['user']);
+            if (in_array(1, $user->getRoles())) {
+                   die($this->translate('This user have Creator role. He cannot be authorized by a token'));
+            }
+            if (in_array($user->login, ['service', 'cron', 'anonym'])) {
+                die($this->translate('This is a service user. He cannot be authorized by a token'));
+            }
+            if ($user->interface != 'web') {
+                die($this->translate('This is not web user. He cannot be authorized by a token'));
+            }
+        } else {
+            $user = Auth::getUserById($this->Config, $_SESSION['userId']);
+        }
+
+        $this->Totum = new Totum($this->Config, $user);
+        $link = '/';
+        if ($data['target']['t'] ?? false) {
+            $targetTableRow = $this->Totum->getTableRow($data['target']['t']);
+            $link = '/Table/';
+            if ($targetTableRow['type'] === 'calcs') {$data['target']['c']=0;
+                $targetTable = $this->Totum->getTable($targetTableRow, $data['target']['c'] ?? 0);
+                $tree_node_id = $this->Totum->getTableRow($targetTable->getTableRow()['tree_node_id'])['tree_node_id'];
+                $link .= $tree_node_id . '/' . $targetTable->getTableRow()['tree_node_id'] . '/' . $data['target']['c'] . '/' . $targetTable->getTableRow()['id'] . '/';
+            } else {
+                $targetTable = $this->Totum->getTable($targetTableRow);
+                $tree_node_id = $targetTable->getTableRow()['tree_node_id'];
+                $link .= $tree_node_id . '/';
+                $link .= $targetTable->getTableRow()['id'] . '/';
+            }
+
+
+            if ($data['target']['f'] ?? false) {
+                $cripted = Crypt::getCrypted(json_encode($data['target']['f'], JSON_UNESCAPED_UNICODE));
+                $q_params['f'] = $cripted;
+                $link .= '?' . http_build_query($q_params, '', '&', PHP_QUERY_RFC1738);
+            }
+
+        }
+
+
+        if ($tokenTable) {
+            $modify = [
+                'last_used_at' => date('Y-m-d H:i')
+            ];
+            if (!$data['multiple']) {
+                $modify['disabled'] = true;
+            }
+            $tokenTable->reCalculateFromOvers([
+                'modify' => [$data['id'] => $modify]
+            ]);
+        }
+        Auth::webInterfaceSetAuth($user->id);
+        $this->location($link);
+        die;
+
     }
 
     public function actionLogin(ServerRequestInterface $request)
@@ -86,11 +174,11 @@ class AuthController extends interfaceController
                 }
 
                 switch ($this->passwordCheckingAndProtectionWithLDAP($post,
-                        $userRow) ?? Auth::passwordCheckingAndProtection($post['login'],
-                        $post['pass'],
-                        $userRow,
-                        $this->Config,
-                        'web')) {
+                    $userRow) ?? Auth::passwordCheckingAndProtection($post['login'],
+                    $post['pass'],
+                    $userRow,
+                    $this->Config,
+                    'web')) {
                     case Auth::$AuthStatuses['OK']:
                         Auth::webInterfaceSetAuth($userRow['id']);
 
@@ -262,7 +350,7 @@ class AuthController extends interfaceController
 
             /*Update User params*/
             $Totum = $this->Totum ?? new Totum($this->Config,
-                    Auth::loadAuthUserByLogin($this->Config, 'service', false));
+                Auth::loadAuthUserByLogin($this->Config, 'service', false));
             $LDAPSettingsTable = $Totum->getTable('ttm__ldap_settings');
             $CalcAction = new CalculateAction("=: exec(code: 'h_import_users'; var: 'onLogin' = $#loginJson)");
             $userRow = $CalcAction->execAction('CODE', [],
