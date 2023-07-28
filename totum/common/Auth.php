@@ -80,7 +80,7 @@ class Auth
         $_id = 'true';
         $_q = 'true';
         $params = [];
-        $limitNum = 1;
+        $limitNum = 10;
         $limit = 'ORDER By id limit ' . $limitNum;
 
         if ($id) {
