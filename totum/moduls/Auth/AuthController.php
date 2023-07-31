@@ -65,6 +65,30 @@ class AuthController extends interfaceController
             if ($user->interface != 'web') {
                 die($this->translate('This is not web user. He cannot be authorized by a token'));
             }
+
+            if (!empty($tokenTable)) {
+                $modify = [
+                    'last_used_at' => date('Y-m-d H:i')
+                ];
+                if (!$data['multiple']) {
+                    $modify['disabled'] = true;
+                }
+                $tokenTable->reCalculateFromOvers([
+                    'modify' => [$data['id'] => $modify]
+                ]);
+            }
+
+            $this->Config->getSql()->insert(
+                'auth_log',
+                [
+                    'datetime' => json_encode(['v' => date_create()->format('Y-m-d H:i')])
+                    , 'user_ip' => json_encode(['v' => ($_SERVER['REMOTE_ADDR'] ?? null)])
+                    , 'login' => json_encode(['v' => $user->login])
+                    , 'status' => json_encode(['v' => strval(3)])
+                ],
+                false
+            );
+
         } else {
             $user = Auth::getUserById($this->Config, $_SESSION['userId']);
         }
@@ -94,18 +118,6 @@ class AuthController extends interfaceController
 
         }
 
-
-        if ($tokenTable) {
-            $modify = [
-                'last_used_at' => date('Y-m-d H:i')
-            ];
-            if (!$data['multiple']) {
-                $modify['disabled'] = true;
-            }
-            $tokenTable->reCalculateFromOvers([
-                'modify' => [$data['id'] => $modify]
-            ]);
-        }
         Auth::webInterfaceSetAuth($user->id);
         $this->location($link);
         die;
