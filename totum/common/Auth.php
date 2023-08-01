@@ -13,7 +13,8 @@ class Auth
         'OK' => 0,
         'WRONG_PASSWORD' => 1,
         'BLOCKED_BY_CRACKING_PROTECTION' => 2,
-        'LDAP_LOAD_CRASH' => 3
+        'TOKEN_AUTH' => 3,
+        'LDAP_LOAD_CRASH' => 4
     ];
     public static $userManageRoles = [-1];
     public static $userManageTables = ['users', 'auth_log', 'ttm__users_online'];
@@ -113,7 +114,7 @@ class Auth
         $getQuery = function ($fields) use ($_q, $_roles, $_id) {
             return <<<SQL
 select $fields from users where interface->>'v'='web' 
-AND on_off->>'v'='true' AND (login->>'v' NOT IN ('service', 'cron', 'anonim') OR login->>'v' is null)  
+AND on_off->>'v'='true' AND is_del = false AND (login->>'v' NOT IN ('service', 'cron', 'anonim') OR login->>'v' is null)  
 AND $_id AND $_roles AND $_q  
 
 SQL;
