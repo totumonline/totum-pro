@@ -57,7 +57,7 @@ class AuthController extends interfaceController
         if (empty($_SESSION['userId'])) {
             $user = Auth::getUserById($this->Config, $data['user']);
             if (in_array(1, $user->getRoles())) {
-                   die($this->translate('This user have Creator role. He cannot be authorized by a token'));
+                die($this->translate('This user have Creator role. He cannot be authorized by a token'));
             }
             if (in_array($user->login, ['service', 'cron', 'anonym'])) {
                 die($this->translate('This is a service user. He cannot be authorized by a token'));
@@ -84,7 +84,7 @@ class AuthController extends interfaceController
                     'datetime' => json_encode(['v' => date_create()->format('Y-m-d H:i')])
                     , 'user_ip' => json_encode(['v' => ($_SERVER['REMOTE_ADDR'] ?? null)])
                     , 'login' => json_encode(['v' => $user->login])
-                    , 'status' => json_encode(['v' => strval(3)])
+                    , 'status' => json_encode(['v' => strval(Auth::$AuthStatuses['TOKEN_AUTH'])])
                 ],
                 false
             );
@@ -98,7 +98,8 @@ class AuthController extends interfaceController
         if ($data['target']['t'] ?? false) {
             $targetTableRow = $this->Totum->getTableRow($data['target']['t']);
             $link = '/Table/';
-            if ($targetTableRow['type'] === 'calcs') {$data['target']['c']=0;
+            if ($targetTableRow['type'] === 'calcs') {
+                $data['target']['c'] = 0;
                 $targetTable = $this->Totum->getTable($targetTableRow, $data['target']['c'] ?? 0);
                 $tree_node_id = $this->Totum->getTableRow($targetTable->getTableRow()['tree_node_id'])['tree_node_id'];
                 $link .= $tree_node_id . '/' . $targetTable->getTableRow()['tree_node_id'] . '/' . $data['target']['c'] . '/' . $targetTable->getTableRow()['id'] . '/';

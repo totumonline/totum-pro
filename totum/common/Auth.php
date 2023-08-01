@@ -13,7 +13,8 @@ class Auth
         'OK' => 0,
         'WRONG_PASSWORD' => 1,
         'BLOCKED_BY_CRACKING_PROTECTION' => 2,
-        'LDAP_LOAD_CRASH' => 3
+        'TOKEN_AUTH' => 3,
+        'LDAP_LOAD_CRASH' => 4
     ];
     public static $userManageRoles = [-1];
     public static $userManageTables = ['users', 'auth_log', 'ttm__users_online'];
