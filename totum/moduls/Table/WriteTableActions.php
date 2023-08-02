@@ -330,4 +330,42 @@ CODE
         return $this->Table->checkEditRow($summData, $tableData);
     }
 
+    function editFile()
+    {
+        $data = is_string($this->post['data']) ? json_decode($this->post['data'], true) : $this->post['data'];
+        $data['fileName'] = str_replace('-', '/', $data['fileName']);
+        $field = $this->Table->getFields()[$data['fieldName']] ?? [];
+        switch ($field['category'] ?? null) {
+            case 'column':
+                if ($this->Table->getTableRow()['type'] === 'calcs') {
+                    list($_, $cycleId, $id) = explode('_', $data['fileName']);
+                } else {
+                    list($_, $id) = explode('_', $data['fileName']);
+                }
+                if ($this->Table->loadFilteredRows('web', [$id])) {
+                    $fileData = $this->Table->getTbl()['rows'][$id][$data['fieldName']]['v'];
+                }
+                break;
+            case null:
+                throw new errorException('WRONG DATA FORMAT');
+            default:
+                $id = 'params';
+                $fileData = $this->Table->getTbl()['params'][$data['fieldName']]['v'];
+        }
+
+        foreach ($fileData as &$file) {
+            if ($file['file'] === $data['fileName']) {
+                $file['filestring'] = $data['filestring'];
+                if (!($field['versioned'] ?? false)) {
+                    unset($file['file']);
+                    unset($file['size']);
+                }
+            }
+        }
+        unset($file);
+
+        $this->Table->reCalculateFromOvers(['channel' => 'web', 'modify' => [$id => [$field['name']=>$fileData]]]);
+        return ['error' => 0];
+    }
+
 }

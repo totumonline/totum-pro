@@ -2,6 +2,7 @@
 
 namespace totum\moduls\Table;
 
+use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\controllers\interfaceController;
 use totum\common\controllers\WithAuthTrait;
@@ -13,6 +14,7 @@ use totum\common\Auth;
 use totum\common\Field;
 use totum\common\Lang\RU;
 use totum\common\logs\CalculateLog;
+use totum\common\OnlyOfficeConnector;
 use totum\common\Services\ServicesConnector;
 use totum\common\WithPathMessTrait;
 use totum\common\sql\SqlException;
@@ -485,7 +487,7 @@ class TableController extends interfaceController
 
         $this->tabButton = $request->getQueryParams()['b'] ?? null;
 
-        if ($post['ajax'] ?? null) {
+        if ($post['ajax'] ?? null || !empty($_GET['OnlyOfficeAction'])) {
             $this->isAjax = true;
         }
         if ($requestTable || $this->isAjax) {
@@ -969,7 +971,7 @@ class TableController extends interfaceController
                 } elseif (!($field = $this->Table->getFields()[$fieldName])) {
                     $error = $this->translate('The file field was not found');
                 } else {
-                    $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
+                    $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                 }
             }
             if (!empty($filepath)) {
@@ -1062,12 +1064,12 @@ class TableController extends interfaceController
                         if ($field['category'] === 'column') {
                             $rowId = $this->Table->getTableRow()['type'] === 'calcs' ? (int)$matches[3] : (int)$matches[2];
                             if ($this->Table->loadFilteredRows('web', [$rowId])) {
-                                $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
+                                $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                             } else {
                                 $error = $this->translate('Access to the file row is denied or the row does not exist');
                             }
                         } else {
-                            $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
+                            $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                         }
                     }
                 }
@@ -1091,6 +1093,65 @@ class TableController extends interfaceController
                 echo $error;
             }
             die;
+        }
+    }
+
+    protected function __run($action, ServerRequestInterface $request)
+    {
+        if (!empty($_GET['OnlyOfficeAction'])) {
+            $logger = $this->Config->getLogger('onlyoffice', ['test']);
+            $error = 0;
+            $logger->log('test', file_get_contents('php://input'), ['ip' => $_SERVER['REMOTE_ADDR']]);
+            $data = json_decode(file_get_contents('php://input'), true);
+
+            if ($data['token'] ?? false) {
+                try {
+                    $dataToken = (new OnlyOfficeConnector($this->Config))->parseToken($data['token']);
+
+                    if ($dataToken->status === 6 && ($dataToken->actions[0]->type) === 2) {
+                        $this->User = Auth::loadAuthUser($this->Config, ($dataToken->actions[0]->userid), false);
+                        list($fieldName, $tableCode, $fileName) = explode('.', $dataToken->key, 3);
+
+                        $logger->log('test', 'error: ' . $error);
+                        if (empty($error)) {
+                            $fileString = file_get_contents($dataToken->url, true, stream_context_create([
+                                'http' => [
+                                    'header' => "User-Agent: TOTUM\r\nConnection: Close\r\n\r\n",
+                                    'method' => 'GET'
+                                ],
+                                'ssl' => [
+                                    'verify_peer' => false,
+                                    'verify_peer_name' => false,
+                                ],
+                            ]));
+
+                            $request = $request->withParsedBody([
+                                'method' => 'editFile',
+                                'data' => [
+                                    'fieldName' => $fieldName,
+                                    'fileName' => $fileName,
+                                    'filestring' => $fileString
+                                ]
+                            ]);
+                            $error = null;
+                        }
+                    }
+
+                } catch (\Exception $e) {
+                    $error = $e->getMessage();
+                }
+            }
+            if (!is_null($error)) {
+                echo json_encode(['error' => $error]);
+                die;
+            }
+        } else {
+            $this->User = Auth::webInterfaceSessionStart($this->Config);
+        }
+        if (!$this->User) {
+            $this->__UnauthorizedAnswer($request);
+        } else {
+            $this->__actionRun($action, $request);
         }
     }
 }
