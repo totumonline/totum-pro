@@ -577,7 +577,22 @@ class ReadTableActions extends Actions
                         } else {
                             $fileHttpPath = 'https://' . $this->Totum->getConfig()->getMainHostName() . '/fls/' . $file['file'];
                         }
-                        $result = (new OnlyOfficeConnector($this->Totum->getConfig()))->getConfig($this->Totum, $fileHttpPath, $this->post['rowId']??0, $field['name'], $file['ext'], $file['name'], $file['file'], json_decode($this->Table->getUpdatedJson())->code);
+                        $tableData = ['id' => $this->post['rowId'] ?? 0, 'field' => $field['name']];
+                        $tableData['tableId'] = $this->Table->getTableRow()['id'];
+                        $tableData['cycleId'] = $this->Table->getCycle()?->getId();
+
+                        if (!str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $file['file'] ?? ''),
+                            File::init($field, $this->Table)->_getFprefix($this->post['rowId'] ?? null))) {
+                            throw new errorException('Wrong file path');
+                        }
+
+                        $result = (new OnlyOfficeConnector($this->Totum->getConfig()))->getConfig($this->Totum,
+                            $fileHttpPath,
+                            $file['ext'],
+                            $file['name'],
+                            $file['file'],
+                            $tableData,
+                            $this->post['isCommon'] === 'true');
                     }
                 }
             }

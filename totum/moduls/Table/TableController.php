@@ -1104,35 +1104,29 @@ class TableController extends interfaceController
             $logger->log('test', file_get_contents('php://input'), ['ip' => $_SERVER['REMOTE_ADDR']]);
             $data = json_decode(file_get_contents('php://input'), true);
 
-            if ($data['token'] ?? false) {
+          if ($data['token'] ?? false) {
                 try {
-                    $dataToken = (new OnlyOfficeConnector($this->Config))->parseToken($data['token']);
+                    $onlyOfficeConnector = new OnlyOfficeConnector($this->Config);
+                    $dataToken = $onlyOfficeConnector->parseToken($data['token']);
 
-                    if ($dataToken->status === 6 && ($dataToken->actions[0]->type) === 2) {
-                        $this->User = Auth::loadAuthUser($this->Config, ($dataToken->actions[0]->userid), false);
-                        list($fieldName, $tableCode, $fileName) = explode('.', $dataToken->key, 3);
+                    if ($dataToken->status === 2 || $dataToken->status === 4) {
+                        $onlyOfficeConnector->removeKey($dataToken->key);
+                        $logger->log('test', 'removeKey: ' . $dataToken->key);
+                    } else if ($dataToken->status === 6) {
+                        $this->User = Auth::loadAuthUser($this->Config, ($dataToken->users[0]), false);
 
-                        $logger->log('test', 'error: ' . $error);
+                        $dataFromKey = $onlyOfficeConnector->getByKey($dataToken->key);
+                        $logger->log('test', '$dataFromKey: ' . json_encode((array)$dataFromKey));
                         if (empty($error)) {
-                            $fileString = file_get_contents($dataToken->url, true, stream_context_create([
-                                'http' => [
-                                    'header' => "User-Agent: TOTUM\r\nConnection: Close\r\n\r\n",
-                                    'method' => 'GET'
-                                ],
-                                'ssl' => [
-                                    'verify_peer' => false,
-                                    'verify_peer_name' => false,
-                                ],
-                            ]));
-
                             $request = $request->withParsedBody([
                                 'method' => 'editFile',
                                 'data' => [
-                                    'fieldName' => $fieldName,
-                                    'fileName' => $fileName,
-                                    'filestring' => $fileString
+                                    'fieldName' => $dataFromKey['field'],
+                                    'fileName' => $dataFromKey['file'],
+                                    'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
                                 ]
                             ]);
+
                             $error = null;
                         }
                     }

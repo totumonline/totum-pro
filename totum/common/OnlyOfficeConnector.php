@@ -5,9 +5,12 @@ namespace totum\common;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use totum\common\configs\ConfParent;
+use totum\common\sql\Sql;
 
 class OnlyOfficeConnector
 {
+    static $tableName = '_onlyofficedata';
+
     public function __construct(protected ConfParent $Config)
     {
     }
@@ -18,12 +21,14 @@ class OnlyOfficeConnector
         return !!($this->getSettings()['host'] ?? false);
     }
 
-    public function getConfig($Totum, $fileHttpPath, $id, $fieldName, $ext, $title, $fileName, $tableCode, $isShared = true)
+    public function getConfig(Totum $Totum, string $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true)
     {
+        $tableData['users'] = [$Totum->getUser()->id];
+
         $config = [
             "document" => [
                 "fileType" => $ext,
-                "key" => $fieldName . '.' . $tableCode . '.' . str_replace('/', '-', $fileName),
+                "key" => $this->getKey($fileName, $tableData, $isShared),
                 "title" => $title,
                 "url" => $fileHttpPath
             ],
@@ -35,7 +40,7 @@ class OnlyOfficeConnector
                 ],
                 'user' => [
                     'group' => 'Group1',
-                    'id' => $Totum->getUser()->id,
+                    'id' => (string)$Totum->getUser()->id,
                     'name' => $Totum->getUser()->fio
                 ],
                 'coediting' => [
@@ -55,7 +60,13 @@ class OnlyOfficeConnector
     }
 
 
-    public function dropLogoutUser($user)
+    public function userSesstionClosed()
+    {
+
+    }
+
+    public
+    function dropLogoutUser($user)
     {
         foreach ($this->getFileKeysByUser($user) as $key) {
             $this->sendCommand(['c' => 'drop',
@@ -67,7 +78,8 @@ class OnlyOfficeConnector
     /**
      * @throws errorException
      */
-    protected function getDocumentType($type): string
+    protected
+    function getDocumentType($type): string
     {
         return match ('.' . $type) {
             '.djvu', '.doc', '.docm', '.docx', '.docxf', '.dot', '.dotm', '.dotx', '.epub', '.fb2', '.fodt', '.htm', '.html', '.mht', '.mhtml', '.odt', '.oform', '.ott', '.oxps', '.pdf', '.rtf', '.stw', '.sxw', '.txt', '.wps', '.wpt', '.xml', '.xps' => 'word',
@@ -77,7 +89,8 @@ class OnlyOfficeConnector
         };
     }
 
-    protected function getSettings($key = null)
+    protected
+    function getSettings($key = null)
     {
         if ($key) {
             return $this->Config->getSettings('h_pro_olny_office')[$key] ?? false;
@@ -85,14 +98,127 @@ class OnlyOfficeConnector
         return $this->Config->getSettings('h_pro_olny_office');
     }
 
-    protected function getKey()
+    protected
+    function getKey($fileName, $tableData, $isShared = true): string
     {
+        $tableData['file'] = $fileName;
+        $tableData['shared'] = $isShared;
+        if (($data = $this->query('select * from ' . static::$tableName . ' where data->>\'file\'=? order by dt desc', [$fileName]))) {
+            foreach ($data as $_f) {
+                $_fData = json_decode($_f['data'], true);
+                $userConnected = in_array($tableData['users'][0], $_fData['users']);
+                if ($isShared && $_fData['shared']) {
+                    if (!$userConnected) {
+                        $_fData['users'][] = $tableData['users'][0];
+                        $this->query('update ' . static::$tableName . ' set data=? where key=?', [json_encode($_fData), $_f['key']], true);
+                    }
+                    return $_f['key'];
+                }
+                if (!$isShared && !$_fData['shared'] && $userConnected) {
+                    return $_f['key'];
+                }
+            }
+        }
+
+        $rowCount = 0;
+        while (!$rowCount) {
+            $key = bin2hex(random_bytes(10));
+            $rowCount = $this->query('insert into ' . static::$tableName . ' (key, data) values (?,?) on conflict do nothing', [$key, json_encode($tableData)],
+                isExec: true
+            );
+        }
+        return $key;
+    }
+
+    protected
+    function getSql($force = false): Sql
+    {
+        static $PDO;
+        if ($force) {
+            return $PDO = $this->Config->getSql(false);
+        }
+        return $PDO ?? ($PDO = $this->Config->getSql(false));
+    }
+
+    protected
+    function query($query, $params, $isExec = false, $afterError = false)
+    {
+        try {
+
+            $prepare = $this->getSql()->getPrepared($query);
+            $prepare->execute($params);
+            if ($isExec) {
+                return $prepare->rowCount();
+            }
+            return $prepare->fetchAll(\PDO::FETCH_ASSOC);
+
+        } catch (\PDOException $exception) {
+            if ($afterError || $exception->getCode() != '42P01') {
+                throw new criticalErrorException($exception->getMessage());
+            }
+
+            $this->getSql(true)->exec('CREATE TABLE ' . static::$tableName . '(
+  dt timestamp NOT NULL default NOW()::timestamp,
+  key text,
+  data jsonb
+)');
+            $this->getSql()->exec('create unique index ' . static::$tableName . '_key_uindex
+    on ' . static::$tableName . ' (key)');
+
+            return $this->query($query, $params, $isExec, true);
+        }
 
     }
 
-    protected function query()
+    public function getByKey($key): array
     {
+        $data = $this->query('select data from ' . static::$tableName . ' where key=?', [$key]);
+        if (!$data) {
+            throw new errorException('Expired file key');
+        }
+        return json_decode($data[0]['data'], true);
+    }
 
+    public function removeKey($key)
+    {
+        $date = date_create();
+        $date->modify('-1day');
+        $this->query('delete from ' . static::$tableName . ' where key=? OR dt<?', [$key, $date->format('Y-m-d H:i:s')], true);
+    }
+
+    public function getFileFromDocumentsServer($url)
+    {
+        return file_get_contents($url, true, stream_context_create([
+            'http' => [
+                'header' => "User-Agent: TOTUM\r\nConnection: Close\r\n\r\n",
+                'method' => 'GET'
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]));
+    }
+
+    public function callForceSave(string $fileKey, $user)
+    {
+        $data['token'] = JWT::encode([
+            "c" => "forcesave",
+            "key" => $fileKey,
+            "userdata" => 'test'
+        ], $this->getSettings('token'), 'HS256');
+
+        return json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
+            'http' => [
+                'header' => "Content-type: application/json\r\nConnection: Close\r\n\r\n",
+                'method' => 'POST',
+                'content' => json_encode($data, JSON_UNESCAPED_UNICODE)
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ])), true);
     }
 
 }

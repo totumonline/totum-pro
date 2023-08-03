@@ -7,6 +7,7 @@ use totum\common\calculates\CalculateAction;
 use totum\common\errorException;
 use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
+use totum\common\OnlyOfficeConnector;
 use totum\fieldTypes\File;
 use totum\models\TmpTables;
 use totum\tableTypes\tmpTable;
@@ -364,8 +365,23 @@ CODE
         }
         unset($file);
 
-        $this->Table->reCalculateFromOvers(['channel' => 'web', 'modify' => [$id => [$field['name']=>$fileData]]]);
+        $this->Table->reCalculateFromOvers(['channel' => 'web', 'modify' => [$id => [$field['name'] => $fileData]]]);
         return ['error' => 0];
     }
 
+    public function saveOnlyOfficeDoc()
+    {
+
+        $onlyOfficeConnector = new OnlyOfficeConnector($this->Totum->getConfig());
+        $data = $onlyOfficeConnector->getByKey($this->post['fileKey']);
+        if ($data['file'] === $this->post['fileName'] && in_array($this->Totum->getUser()->getId(), $data['users'])) {
+            $result = $onlyOfficeConnector->callForceSave($this->post['fileKey'], $this->Totum->getUser()->getId());
+
+            if ($result['error'] === 4 || ($result['error'] === 0 && $result['key'] === $this->post['fileKey'])) {
+                return ['ok' => 1];
+            } else return ['error' => 'An error occurred:' . $result['error']];
+        } else {
+            throw new errorException('File key wrong or expired');
+        }
+    }
 }
