@@ -127,13 +127,11 @@ class OnlyOfficeConnector
     }
 
     protected
-    function getSql($transactedSql = true): Sql
+    function getSql(): Sql
     {
         static $PDO;
-        if (!$transactedSql) {
-            return $PDO = $this->Config->getSql(false);
-        }
-        return $PDO ?? ($PDO = $this->Config->getSql(true));
+
+        return $PDO ?? ($PDO = $this->Config->getSql(false));
     }
 
     protected
@@ -141,7 +139,7 @@ class OnlyOfficeConnector
     {
         try {
 
-            $prepare = $this->getSql(false)->getPrepared($query);
+            $prepare = $this->getSql()->getPrepared($query);
             $prepare->execute($params);
             if ($isExec) {
                 return $prepare->rowCount();
@@ -153,7 +151,7 @@ class OnlyOfficeConnector
                 throw new criticalErrorException($exception->getMessage());
             }
 
-            $this->getSql(false)->exec('CREATE TABLE ' . static::$tableName . '(
+            $this->getSql()->exec('CREATE TABLE ' . static::$tableName . '(
   dt timestamp NOT NULL default NOW()::timestamp,
   key text,
   data jsonb
