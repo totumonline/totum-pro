@@ -161,7 +161,7 @@ class OnlyOfficeConnector
             $this->getSql()->exec('create unique index ' . static::$tableName . '_key_uindex
     on ' . static::$tableName . ' (key)');
 
-            throw new errorException($this->Config->getLangObj()->translate('The OnlyOffice service table was successfully created. Repeat the operation.'));
+            $this->query($query, $params, $isExec, true);
         }
 
     }
