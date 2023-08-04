@@ -1104,10 +1104,15 @@ class TableController extends interfaceController
             $logger->log('test', file_get_contents('php://input'), ['ip' => $_SERVER['REMOTE_ADDR']]);
             $data = json_decode(file_get_contents('php://input'), true);
 
-          if ($data['token'] ?? false) {
+            if ($data['token'] ?? false) {
                 try {
                     $onlyOfficeConnector = new OnlyOfficeConnector($this->Config);
                     $dataToken = $onlyOfficeConnector->parseToken($data['token']);
+
+                    if ($dataToken->status != $data['status']) {
+                        echo json_encode(['error' => 'Wrong token']);
+                        die;
+                    }
 
                     if ($dataToken->status === 2 || $dataToken->status === 4) {
                         $onlyOfficeConnector->removeKey($dataToken->key);
@@ -1116,8 +1121,10 @@ class TableController extends interfaceController
                         $this->User = Auth::loadAuthUser($this->Config, ($dataToken->users[0]), false);
 
                         $dataFromKey = $onlyOfficeConnector->getByKey($dataToken->key);
+
                         $logger->log('test', '$dataFromKey: ' . json_encode((array)$dataFromKey));
-                        if (empty($error)) {
+                        if (empty($error) && in_array($this->User['id'], $dataFromKey->users)) {
+
                             $request = $request->withParsedBody([
                                 'method' => 'editFile',
                                 'data' => [
@@ -1126,8 +1133,9 @@ class TableController extends interfaceController
                                     'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
                                 ]
                             ]);
-
+                            $onlyOfficeConnector->setSaved($dataToken->key);
                             $error = null;
+
                         }
                     }
 

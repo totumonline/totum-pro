@@ -375,9 +375,26 @@ CODE
         $onlyOfficeConnector = new OnlyOfficeConnector($this->Totum->getConfig());
         $data = $onlyOfficeConnector->getByKey($this->post['fileKey']);
         if ($data['file'] === $this->post['fileName'] && in_array($this->Totum->getUser()->getId(), $data['users'])) {
+
             $result = $onlyOfficeConnector->callForceSave($this->post['fileKey'], $this->Totum->getUser()->getId());
 
             if ($result['error'] === 4 || ($result['error'] === 0 && $result['key'] === $this->post['fileKey'])) {
+
+                $timer = time();
+                $ready = false;
+                while (!$ready) {
+                    usleep(0.2 * 10 ** 6);
+                    if ($timer < (time() - 3)) {
+                        $onlyOfficeConnector->setSaved($this->post['fileKey']);
+                        $onlyOfficeConnector->closeKey($this->post['fileKey'], $this->Totum->getUser()->getId(), true);
+                        break;
+                    }
+                    $ready = $onlyOfficeConnector->getByKey($this->post['fileKey'], 'onSaving') !== true;
+                    if ($ready && ($this->post['closeAfter'] ?? false) === 'true') {
+                        $onlyOfficeConnector->closeKey($this->post['fileKey'], $this->Totum->getUser()->getId());
+                    }
+                }
+
                 return ['ok' => 1];
             } else return ['error' => 'An error occurred:' . $result['error']];
         } else {

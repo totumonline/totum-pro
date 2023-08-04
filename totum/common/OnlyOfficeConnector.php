@@ -43,10 +43,6 @@ class OnlyOfficeConnector
                     'id' => (string)$Totum->getUser()->id,
                     'name' => $Totum->getUser()->fio
                 ],
-                'coediting' => [
-                    'mode' => 'strict',
-                    'change' => false
-                ]
             ],
 
         ];
@@ -131,13 +127,13 @@ class OnlyOfficeConnector
     }
 
     protected
-    function getSql($force = false): Sql
+    function getSql($transactedSql = true): Sql
     {
         static $PDO;
-        if ($force) {
+        if (!$transactedSql) {
             return $PDO = $this->Config->getSql(false);
         }
-        return $PDO ?? ($PDO = $this->Config->getSql(false));
+        return $PDO ?? ($PDO = $this->Config->getSql(true));
     }
 
     protected
@@ -145,7 +141,7 @@ class OnlyOfficeConnector
     {
         try {
 
-            $prepare = $this->getSql()->getPrepared($query);
+            $prepare = $this->getSql(false)->getPrepared($query);
             $prepare->execute($params);
             if ($isExec) {
                 return $prepare->rowCount();
@@ -157,7 +153,7 @@ class OnlyOfficeConnector
                 throw new criticalErrorException($exception->getMessage());
             }
 
-            $this->getSql(true)->exec('CREATE TABLE ' . static::$tableName . '(
+            $this->getSql(false)->exec('CREATE TABLE ' . static::$tableName . '(
   dt timestamp NOT NULL default NOW()::timestamp,
   key text,
   data jsonb
@@ -165,14 +161,14 @@ class OnlyOfficeConnector
             $this->getSql()->exec('create unique index ' . static::$tableName . '_key_uindex
     on ' . static::$tableName . ' (key)');
 
-            return $this->query($query, $params, $isExec, true);
+            throw new errorException($this->Config->getLangObj()->translate('The OnlyOffice service table was successfully created. Repeat the operation.'));
         }
 
     }
 
-    public function getByKey($key): array
+    public function getByKey($key, $dataKey = null): mixed
     {
-        $data = $this->query('select data from ' . static::$tableName . ' where key=?', [$key]);
+        $data = $this->query('select ' . ($dataKey ? "data->'$dataKey' as data" : 'data') . ' from ' . static::$tableName . ' where key=?', [$key]);
         if (!$data) {
             throw new errorException('Expired file key');
         }
@@ -183,7 +179,7 @@ class OnlyOfficeConnector
     {
         $date = date_create();
         $date->modify('-1day');
-        $this->query('delete from ' . static::$tableName . ' where key=? OR dt<?', [$key, $date->format('Y-m-d H:i:s')], true);
+        $this->query('delete from ' . static::$tableName . ' where key=? AND data->>\'onSaving\'!=\'true\' OR dt<?', [$key, $date->format('Y-m-d H:i:s')], true);
     }
 
     public function getFileFromDocumentsServer($url)
@@ -202,13 +198,65 @@ class OnlyOfficeConnector
 
     public function callForceSave(string $fileKey, $user)
     {
+        $this->updateKeyData($fileKey, 'onSaving', true);
+
         $data['token'] = JWT::encode([
-            "c" => "forcesave",
-            "key" => $fileKey,
-            "userdata" => 'test'
+            'c' => 'forcesave',
+            'key' => $fileKey,
+            'userdata' => $user
         ], $this->getSettings('token'), 'HS256');
 
-        return json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
+        $result = json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
+            'http' => [
+                'header' => "Content-type: application/json\r\nConnection: Close\r\n\r\n",
+                'method' => 'POST',
+                'content' => json_encode($data, JSON_UNESCAPED_UNICODE)
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ])), true);
+
+        return $result;
+    }
+
+    public function setSaved($fileKey)
+    {
+        $this->updateKeyData($fileKey, 'onSaving', false);
+    }
+
+    protected function updateKeyData($fileKey, $dataKey, $value)
+    {
+        if (is_bool($value)) {
+            $valueType = 'bool';
+            $value = $value ? 'true' : 'false';
+        } else $valueType = 'text';
+
+
+        $tableName = static::$tableName;
+        $this->query(<<<SQL
+update $tableName set data = data || jsonb_build_object(?::text, ?::$valueType) where key=?
+SQL
+            , [$dataKey, $value, $fileKey], true);
+    }
+
+    public function closeKey(string $fileKey, int $userId, $onlyOnServer = false)
+    {
+        if (!$onlyOnServer) {
+            $tableName = static::$tableName;
+            $this->query(<<<SQL
+delete from $tableName where key=? AND (data->>'shared'='false' OR data->>'users'='[$userId]')
+SQL
+                , [$fileKey], true);
+        }
+        $data = ['token' => JWT::encode([
+            "c" => "drop",
+            "key" => $fileKey,
+            "users" => [(string)$userId]
+        ], $this->getSettings('token'), 'HS256')];
+
+        json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
             'http' => [
                 'header' => "Content-type: application/json\r\nConnection: Close\r\n\r\n",
                 'method' => 'POST',
