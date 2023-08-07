@@ -572,8 +572,7 @@ class ReadTableActions extends Actions
                     } else {
 
                         if (!empty($field['secureFile'])) {
-                            /*Тут сформировать временный файл для отдачи*/
-                            $fileHttpPath = 'secure file';
+                            $fileHttpPath = false;
                         } else {
                             $fileHttpPath = 'https://' . $this->Totum->getConfig()->getMainHostName() . '/fls/' . $file['file'];
                         }
@@ -592,7 +591,7 @@ class ReadTableActions extends Actions
                             $file['name'],
                             $file['file'],
                             $tableData,
-                            $this->post['isCommon'] === 'true');
+                            isShared: $this->post['isCommon'] === 'true');
                     }
                 }
             }

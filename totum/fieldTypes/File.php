@@ -85,7 +85,7 @@ class File extends Field
         }
     }
 
-    public static function getFilePath($file_name, Conf $Config, $fileData = null): string
+    public static function getFilePath($file_name, Conf $Config, array|bool|null $fileData = null): string
     {
         if (str_contains($file_name, '/')) {
             return $Config->getSecureFilesDir() . $file_name;
@@ -96,7 +96,7 @@ class File extends Field
             }
             return $Config->getSecureFilesDir() . $file_name;
         }
-        if ($fileData['secureFile'] ?? false) {
+        if (($fileData === true) || $fileData['secureFile'] ?? false) {
             return $Config->getSecureFilesDir() . $file_name;
         }
         return $Config->getFilesDir() . $file_name;

@@ -21,17 +21,16 @@ class OnlyOfficeConnector
         return !!($this->getSettings()['host'] ?? false);
     }
 
-    public function getConfig(Totum $Totum, string $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true)
+    public function getConfig(Totum $Totum, string|bool $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true)
     {
         $tableData['users'] = [$Totum->getUser()->id];
 
         $config = [
             "document" => [
                 "fileType" => $ext,
-                "key" => $this->getKey($fileName, $tableData, $isShared),
+                "key" => $key = $this->getKey($fileName, $tableData, $isShared, isSecured: $fileHttpPath === false),
                 "title" => $title,
-                "url" => $fileHttpPath
-            ],
+                "url" => $fileHttpPath ?: 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key],
             "documentType" => $this->getDocumentType($ext),
             "editorConfig" => [
                 "callbackUrl" => 'https://' . $this->Config->getMainHostName() . $_SERVER['REQUEST_URI'] . '&OnlyOfficeAction=saveFile',
@@ -95,10 +94,11 @@ class OnlyOfficeConnector
     }
 
     protected
-    function getKey($fileName, $tableData, $isShared = true): string
+    function getKey($fileName, $tableData, $isShared = true, $isSecured = false): string
     {
         $tableData['file'] = $fileName;
         $tableData['shared'] = $isShared;
+        $tableData['download_request'] = date('Y-m-d H:i:s');
         if (($data = $this->query('select * from ' . static::$tableName . ' where data->>\'file\'=? order by dt desc', [$fileName]))) {
             foreach ($data as $_f) {
                 $_fData = json_decode($_f['data'], true);
@@ -106,11 +106,13 @@ class OnlyOfficeConnector
                 if ($isShared && $_fData['shared']) {
                     if (!$userConnected) {
                         $_fData['users'][] = $tableData['users'][0];
+                        $_fData['download_request'] = $tableData['download_request'];
                         $this->query('update ' . static::$tableName . ' set data=? where key=?', [json_encode($_fData), $_f['key']], true);
                     }
                     return $_f['key'];
                 }
                 if (!$isShared && !$_fData['shared'] && $userConnected) {
+                    $this->updateKeyData($_f['key'], 'download_request', $tableData['download_request']);
                     return $_f['key'];
                 }
             }
@@ -164,7 +166,7 @@ class OnlyOfficeConnector
 
     }
 
-    public function getByKey($key, $dataKey = null): mixed
+    public function  getByKey($key, $dataKey = null): mixed
     {
         $data = $this->query('select ' . ($dataKey ? "data->'$dataKey' as data" : 'data') . ' from ' . static::$tableName . ' where key=?', [$key]);
         if (!$data) {

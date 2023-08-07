@@ -1101,7 +1101,23 @@ class TableController extends interfaceController
         if (!empty($_GET['OnlyOfficeAction']) && ($onlyOfficeConnector = new OnlyOfficeConnector($this->Config))->isSwithedOn()) {
             $logger = $this->Config->getLogger('onlyoffice', ['test']);
             $error = 0;
-            $logger->log('test', file_get_contents('php://input'), ['ip' => $_SERVER['REMOTE_ADDR']]);
+            $logger->log('test', file_get_contents('php://input'), ['path' => $_SERVER['REQUEST_URI'], 'ip' => $_SERVER['REMOTE_ADDR']]);
+
+            if ($_GET['OnlyOfficeAction'] === 'getFile') {
+                if ($_GET['key'] ?? false) {
+                    $dataFromKey = $onlyOfficeConnector->getByKey($_GET['key']);
+                    if ($dataFromKey['download_request'] < date('Y-m-d H:i:s', time() - 120)) {
+                        throw new errorException('Expired download link');
+                    }
+                    $filePath = File::getFilePath($dataFromKey['file'], $this->Config, true);
+                    if (!file_exists($filePath)) {
+                        throw new errorException($this->translate('File [[%s]] is not found.', $dataFromKey['file']));
+                    }
+                    readfile($filePath);
+                    die;
+                }
+            }
+
             $data = json_decode(file_get_contents('php://input'), true);
 
             if ($isTest = false) {
