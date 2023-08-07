@@ -1098,21 +1098,21 @@ class TableController extends interfaceController
 
     protected function __run($action, ServerRequestInterface $request)
     {
-        if (!empty($_GET['OnlyOfficeAction'])) {
+        if (!empty($_GET['OnlyOfficeAction']) && ($onlyOfficeConnector = new OnlyOfficeConnector($this->Config))->isSwithedOn()) {
             $logger = $this->Config->getLogger('onlyoffice', ['test']);
             $error = 0;
             $logger->log('test', file_get_contents('php://input'), ['ip' => $_SERVER['REMOTE_ADDR']]);
             $data = json_decode(file_get_contents('php://input'), true);
 
-            $isText = false;
-           // $data['token'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiI5MWY2ZGU1MzYxN2U4MDcxZDUxMyIsInN0YXR1cyI6NiwidXJsIjoiaHR0cHM6Ly9vLW9mZmljZS50dG1hcHAucnUvY2FjaGUvZmlsZXMvZGF0YS85MWY2ZGU1MzYxN2U4MDcxZDUxM18yNDcxL291dHB1dC50eHQvb3V0cHV0LnR4dD9tZDU9U3l4RGpXUWZNclMyVGZNUWtmMEpSZyZleHBpcmVzPTE2OTExNTA2NjUmZmlsZW5hbWU9b3V0cHV0LnR4dCIsImNoYW5nZXN1cmwiOiJodHRwczovL28tb2ZmaWNlLnR0bWFwcC5ydS9jYWNoZS9maWxlcy9kYXRhLzkxZjZkZTUzNjE3ZTgwNzFkNTEzXzI0NzEvY2hhbmdlcy56aXAvY2hhbmdlcy56aXA_bWQ1PTdlT1lrZFI3aUZTS3dFNm5GQXRCREEmZXhwaXJlcz0xNjkxMTUwNjY1JmZpbGVuYW1lPWNoYW5nZXMuemlwIiwiaGlzdG9yeSI6eyJzZXJ2ZXJWZXJzaW9uIjoiNy40LjEiLCJjaGFuZ2VzIjpbeyJjcmVhdGVkIjoiMjAyMy0wOC0wNCAxMTo0OToyMyIsInVzZXIiOnsiaWQiOiIxIiwibmFtZSI6Ikdyb3VwMcKg0JDQtNC80LjQvdC40YHRgtGA0LDRgtC-0YAifX1dfSwidXNlcnMiOlsiMSJdLCJ1c2VyZGF0YSI6MSwibGFzdHNhdmUiOiIyMDIzLTA4LTA0VDExOjQ5OjIzLjAwMFoiLCJmb3JjZXNhdmV0eXBlIjowLCJmaWxldHlwZSI6InR4dCIsImlhdCI6MTY5MTE0OTc2NCwiZXhwIjoxNjkxMTUwMDY0fQ.UNM2uZHoaa-81CVM8cGD0MB60yXNfkj4IeAjEAGC01E';
+            if ($isTest = false) {
+                // $data['token'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiI5MWY2ZGU1MzYxN2U4MDcxZDUxMyIsInN0YXR1cyI6NiwidXJsIjoiaHR0cHM6Ly9vLW9mZmljZS50dG1hcHAucnUvY2FjaGUvZmlsZXMvZGF0YS85MWY2ZGU1MzYxN2U4MDcxZDUxM18yNDcxL291dHB1dC50eHQvb3V0cHV0LnR4dD9tZDU9U3l4RGpXUWZNclMyVGZNUWtmMEpSZyZleHBpcmVzPTE2OTExNTA2NjUmZmlsZW5hbWU9b3V0cHV0LnR4dCIsImNoYW5nZXN1cmwiOiJodHRwczovL28tb2ZmaWNlLnR0bWFwcC5ydS9jYWNoZS9maWxlcy9kYXRhLzkxZjZkZTUzNjE3ZTgwNzFkNTEzXzI0NzEvY2hhbmdlcy56aXAvY2hhbmdlcy56aXA_bWQ1PTdlT1lrZFI3aUZTS3dFNm5GQXRCREEmZXhwaXJlcz0xNjkxMTUwNjY1JmZpbGVuYW1lPWNoYW5nZXMuemlwIiwiaGlzdG9yeSI6eyJzZXJ2ZXJWZXJzaW9uIjoiNy40LjEiLCJjaGFuZ2VzIjpbeyJjcmVhdGVkIjoiMjAyMy0wOC0wNCAxMTo0OToyMyIsInVzZXIiOnsiaWQiOiIxIiwibmFtZSI6Ikdyb3VwMcKg0JDQtNC80LjQvdC40YHRgtGA0LDRgtC-0YAifX1dfSwidXNlcnMiOlsiMSJdLCJ1c2VyZGF0YSI6MSwibGFzdHNhdmUiOiIyMDIzLTA4LTA0VDExOjQ5OjIzLjAwMFoiLCJmb3JjZXNhdmV0eXBlIjowLCJmaWxldHlwZSI6InR4dCIsImlhdCI6MTY5MTE0OTc2NCwiZXhwIjoxNjkxMTUwMDY0fQ.UNM2uZHoaa-81CVM8cGD0MB60yXNfkj4IeAjEAGC01E';
+            }
 
             if ($data['token'] ?? false) {
                 try {
-                    $onlyOfficeConnector = new OnlyOfficeConnector($this->Config);
                     $dataToken = $onlyOfficeConnector->parseToken($data['token']);
 
-                    if (!$isText && $dataToken->status != $data['status']) {
+                    if (!$isTest && $dataToken->status != $data['status']) {
                         echo json_encode(['error' => 'Wrong token']);
                         die;
                     }
@@ -1121,6 +1121,7 @@ class TableController extends interfaceController
                         $onlyOfficeConnector->removeKey($dataToken->key);
                         $logger->log('test', 'removeKey: ' . $dataToken->key);
                     } else if ($dataToken->status === 6) {
+
                         $this->User = Auth::loadAuthUser($this->Config, ($dataToken->users[0]), false);
 
                         $dataFromKey = $onlyOfficeConnector->getByKey($dataToken->key);
