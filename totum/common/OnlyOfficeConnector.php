@@ -61,12 +61,10 @@ class OnlyOfficeConnector
     }
 
     public
-    function dropLogoutUser($user)
+    function dropLogoutUser(int $userId)
     {
-        foreach ($this->getFileKeysByUser($user) as $key) {
-            $this->sendCommand(['c' => 'drop',
-                'key' => $key,
-                'users' => ['6d5a81d0']]);
+        foreach ($this->getFileKeysByUser($userId) as $key) {
+            $this->closeKey($key, $userId);
         }
     }
 
@@ -108,6 +106,8 @@ class OnlyOfficeConnector
                         $_fData['users'][] = $tableData['users'][0];
                         $_fData['download_request'] = $tableData['download_request'];
                         $this->query('update ' . static::$tableName . ' set data=? where key=?', [json_encode($_fData), $_f['key']], true);
+                    } else {
+                        $this->updateKeyData($_f['key'], 'download_request', $tableData['download_request']);
                     }
                     return $_f['key'];
                 }
@@ -166,7 +166,7 @@ class OnlyOfficeConnector
 
     }
 
-    public function  getByKey($key, $dataKey = null): mixed
+    public function getByKey($key, $dataKey = null): mixed
     {
         $data = $this->query('select ' . ($dataKey ? "data->'$dataKey' as data" : 'data') . ' from ' . static::$tableName . ' where key=?', [$key]);
         if (!$data) {
@@ -179,7 +179,7 @@ class OnlyOfficeConnector
     {
         $date = date_create();
         $date->modify('-1day');
-        $this->query('delete from ' . static::$tableName . ' where key=? AND data->>\'onSaving\'!=\'true\' OR dt<?', [$key, $date->format('Y-m-d H:i:s')], true);
+        $this->query('delete from ' . static::$tableName . ' where key=? AND (data->>\'onSaving\' is null OR data->>\'onSaving\'!=\'true\' OR dt<?) ', [$key, $date->format('Y-m-d H:i:s')], true);
     }
 
     public function getFileFromDocumentsServer($url)
@@ -200,23 +200,11 @@ class OnlyOfficeConnector
     {
         $this->updateKeyData($fileKey, 'onSaving', true);
 
-        $data['token'] = JWT::encode([
+        $result = $this->sendCommand([
             'c' => 'forcesave',
             'key' => $fileKey,
             'userdata' => $user
-        ], $this->getSettings('token'), 'HS256');
-
-        $result = json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
-            'http' => [
-                'header' => "Content-type: application/json\r\nConnection: Close\r\n\r\n",
-                'method' => 'POST',
-                'content' => json_encode($data, JSON_UNESCAPED_UNICODE)
-            ],
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-            ],
-        ])), true);
+        ]);
 
         return $result;
     }
@@ -245,18 +233,35 @@ SQL
     {
         if (!$onlyOnServer) {
             $tableName = static::$tableName;
-            $this->query(<<<SQL
+            if (!$this->query(<<<SQL
 delete from $tableName where key=? AND (data->>'shared'='false' OR data->>'users'='[$userId]')
 SQL
-                , [$fileKey], true);
+                , [$fileKey], true)) {
+                $this->query('update ' . static::$tableName . ' set data = data || jsonb_build_object(\'users\', array_to_json(array_remove(ARRAY(SELECT jsonb_array_elements_text(data->\'users\'))::int[], ?))::jsonb) where key=?', [$userId, $fileKey]);
+            }
         }
-        $data = ['token' => JWT::encode([
+        $this->sendCommand([
             "c" => "drop",
             "key" => $fileKey,
             "users" => [(string)$userId]
-        ], $this->getSettings('token'), 'HS256')];
+        ]);
 
-        json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
+    }
+
+    protected function getFileKeysByUser(int $userId)
+    {
+        $keys = [];
+        foreach ($this->query('select key from ' . static::$tableName . ' where data->\'users\' @> ' . "'[$userId]'::jsonb", []) as $row) {
+            $keys[] = $row['key'];
+        }
+        return $keys;
+    }
+
+    protected function sendCommand(array $data)
+    {
+        $data = ['token' => JWT::encode($data, $this->getSettings('token'), 'HS256')];
+
+        return json_decode(file_get_contents($this->getSettings('host') . '/coauthoring/CommandService.ashx', true, stream_context_create([
             'http' => [
                 'header' => "Content-type: application/json\r\nConnection: Close\r\n\r\n",
                 'method' => 'POST',

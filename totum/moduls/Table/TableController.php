@@ -1137,25 +1137,26 @@ class TableController extends interfaceController
                         $onlyOfficeConnector->removeKey($dataToken->key);
                         $logger->log('test', 'removeKey: ' . $dataToken->key);
                     } else if ($dataToken->status === 6) {
-
-                        $this->User = Auth::loadAuthUser($this->Config, ($dataToken->users[0]), false);
+                        $this->User = Auth::loadAuthUser($this->Config, ($dataToken->userdata ?? $dataToken->users[0]), false);
 
                         $dataFromKey = $onlyOfficeConnector->getByKey($dataToken->key);
 
                         $logger->log('test', '$dataFromKey: ' . json_encode((array)$dataFromKey));
-                        if (empty($error) && in_array($this->User->getId(), $dataFromKey['users'])) {
-
-                            $request = $request->withParsedBody([
-                                'method' => 'editFile',
-                                'data' => [
-                                    'fieldName' => $dataFromKey['field'],
-                                    'fileName' => $dataFromKey['file'],
-                                    'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
-                                ]
-                            ]);
-                            $onlyOfficeConnector->setSaved($dataToken->key);
-                            $error = null;
-
+                        if (empty($error)) {
+                            if (in_array($this->User->getId(), $dataFromKey['users'])) {
+                                $request = $request->withParsedBody([
+                                    'method' => 'editFile',
+                                    'data' => [
+                                        'fieldName' => $dataFromKey['field'],
+                                        'fileName' => $dataFromKey['file'],
+                                        'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
+                                    ]
+                                ]);
+                                $onlyOfficeConnector->setSaved($dataToken->key);
+                                $error = null;
+                            } else {
+                                $error = 'Wrong user';
+                            }
                         }
                     }
 
