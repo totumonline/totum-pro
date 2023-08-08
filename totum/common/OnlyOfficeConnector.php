@@ -25,25 +25,28 @@ class OnlyOfficeConnector
     {
         $tableData['users'] = [$Totum->getUser()->id];
 
+        $configUrlViaKey = $fileHttpPath === false;
+
         $config = [
             "document" => [
                 "fileType" => $ext,
-                "key" => $key = $this->getKey($fileName, $tableData, $isShared, isSecured: $fileHttpPath === false),
+                "key" => $key = $this->getKey($fileName, $tableData, isConfigUrlViaKey: $configUrlViaKey, isShared: $isShared),
                 "title" => $title,
-                "url" => $fileHttpPath ?: 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key],
-            "documentType" => $this->getDocumentType($ext),
-            "editorConfig" => [
-                "callbackUrl" => 'https://' . $this->Config->getMainHostName() . $_SERVER['REQUEST_URI'] . '&OnlyOfficeAction=saveFile',
-                'customization' => [
-                    'forcesave' => false
-                ],
-                'user' => [
-                    'group' => 'Group1',
-                    'id' => (string)$Totum->getUser()->id,
-                    'name' => $Totum->getUser()->fio
-                ],
+                "url" => $configUrlViaKey ? 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key : $fileHttpPath
             ],
+                "documentType" => $this->getDocumentType($ext),
+                "editorConfig" => [
+                    "callbackUrl" => 'https://' . $this->Config->getMainHostName() . $_SERVER['REQUEST_URI'] . '&OnlyOfficeAction=saveFile',
+                    'customization' => [
+                        'forcesave' => false
+                    ],
+                    'user' => [
+                        'group' => 'Group1',
+                        'id' => (string)$Totum->getUser()->id,
+                        'name' => $Totum->getUser()->fio
+                    ],
 
+            ]
         ];
         $config['token'] = JWT::encode($config, $this->getSettings('token'), 'HS256');
         return ['config' => $config, 'script_src' => $this->getSettings('host') . '/web-apps/apps/api/documents/api.js'];
@@ -92,8 +95,9 @@ class OnlyOfficeConnector
     }
 
     protected
-    function getKey($fileName, $tableData, $isShared = true, $isSecured = false): string
+    function getKey($fileName, $tableData, &$isConfigUrlViaKey, $isShared = true): string
     {
+        $isConfigUrlViaKey=true;
         $tableData['file'] = $fileName;
         $tableData['shared'] = $isShared;
         $tableData['download_request'] = date('Y-m-d H:i:s');
@@ -103,15 +107,20 @@ class OnlyOfficeConnector
                 $userConnected = in_array($tableData['users'][0], $_fData['users']);
                 if ($isShared && $_fData['shared']) {
                     if (!$userConnected) {
-                        $_fData['users'][] = $tableData['users'][0];
-                        $_fData['download_request'] = $tableData['download_request'];
-                        $this->query('update ' . static::$tableName . ' set data=? where key=?', [json_encode($_fData), $_f['key']], true);
-                    } else {
-                        $this->updateKeyData($_f['key'], 'download_request', $tableData['download_request']);
+                        $this->query('update ' . static::$tableName . ' set data = data || jsonb_build_object(\'users\', array_to_json(array_append(ARRAY(SELECT jsonb_array_elements_text(data->\'users\'))::int[], ?))::jsonb);', [$tableData['users'][0]], true);
+                    }
+
+                    $this->updateKeyData($_f['key'], 'download_request', $tableData['download_request']);
+
+                    if ($_fData['added'] ?? false) {
+                        $isConfigUrlViaKey = true;
                     }
                     return $_f['key'];
                 }
                 if (!$isShared && !$_fData['shared'] && $userConnected) {
+                    if ($_fData['added'] ?? false) {
+                        $isConfigUrlViaKey = true;
+                    }
                     $this->updateKeyData($_f['key'], 'download_request', $tableData['download_request']);
                     return $_f['key'];
                 }

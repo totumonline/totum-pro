@@ -1109,10 +1109,15 @@ class TableController extends interfaceController
                     if ($dataFromKey['download_request'] < date('Y-m-d H:i:s', time() - 120)) {
                         throw new errorException('Expired download link');
                     }
-                    $filePath = File::getFilePath($dataFromKey['file'], $this->Config, true);
+                    if ($dataFromKey['isTmp'] ?? false) {
+                        $filePath = $this->Config->getTmpDir() . $dataFromKey['file'];
+                    } else {
+                        $filePath = File::getFilePath($dataFromKey['file'], $this->Config);
+                    }
                     if (!file_exists($filePath)) {
                         throw new errorException($this->translate('File [[%s]] is not found.', $dataFromKey['file']));
                     }
+
                     readfile($filePath);
                     die;
                 }
@@ -1121,7 +1126,7 @@ class TableController extends interfaceController
             $data = json_decode(file_get_contents('php://input'), true);
 
             if ($isTest = false) {
-                // $data['token'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiI5MWY2ZGU1MzYxN2U4MDcxZDUxMyIsInN0YXR1cyI6NiwidXJsIjoiaHR0cHM6Ly9vLW9mZmljZS50dG1hcHAucnUvY2FjaGUvZmlsZXMvZGF0YS85MWY2ZGU1MzYxN2U4MDcxZDUxM18yNDcxL291dHB1dC50eHQvb3V0cHV0LnR4dD9tZDU9U3l4RGpXUWZNclMyVGZNUWtmMEpSZyZleHBpcmVzPTE2OTExNTA2NjUmZmlsZW5hbWU9b3V0cHV0LnR4dCIsImNoYW5nZXN1cmwiOiJodHRwczovL28tb2ZmaWNlLnR0bWFwcC5ydS9jYWNoZS9maWxlcy9kYXRhLzkxZjZkZTUzNjE3ZTgwNzFkNTEzXzI0NzEvY2hhbmdlcy56aXAvY2hhbmdlcy56aXA_bWQ1PTdlT1lrZFI3aUZTS3dFNm5GQXRCREEmZXhwaXJlcz0xNjkxMTUwNjY1JmZpbGVuYW1lPWNoYW5nZXMuemlwIiwiaGlzdG9yeSI6eyJzZXJ2ZXJWZXJzaW9uIjoiNy40LjEiLCJjaGFuZ2VzIjpbeyJjcmVhdGVkIjoiMjAyMy0wOC0wNCAxMTo0OToyMyIsInVzZXIiOnsiaWQiOiIxIiwibmFtZSI6Ikdyb3VwMcKg0JDQtNC80LjQvdC40YHRgtGA0LDRgtC-0YAifX1dfSwidXNlcnMiOlsiMSJdLCJ1c2VyZGF0YSI6MSwibGFzdHNhdmUiOiIyMDIzLTA4LTA0VDExOjQ5OjIzLjAwMFoiLCJmb3JjZXNhdmV0eXBlIjowLCJmaWxldHlwZSI6InR4dCIsImlhdCI6MTY5MTE0OTc2NCwiZXhwIjoxNjkxMTUwMDY0fQ.UNM2uZHoaa-81CVM8cGD0MB60yXNfkj4IeAjEAGC01E';
+                $data['token'] = '';
             }
 
             if ($data['token'] ?? false) {
@@ -1129,11 +1134,8 @@ class TableController extends interfaceController
                     $dataToken = $onlyOfficeConnector->parseToken($data['token']);
 
                     if (!$isTest && $dataToken->status != $data['status']) {
-                        echo json_encode(['error' => 'Wrong token']);
-                        die;
-                    }
-
-                    if ($dataToken->status === 2 || $dataToken->status === 4) {
+                        $error = 'Wrong token';
+                    } elseif ($dataToken->status === 2 || $dataToken->status === 4) {
                         $onlyOfficeConnector->removeKey($dataToken->key);
                         $logger->log('test', 'removeKey: ' . $dataToken->key);
                     } else if ($dataToken->status === 6) {
@@ -1141,19 +1143,31 @@ class TableController extends interfaceController
 
                         $dataFromKey = $onlyOfficeConnector->getByKey($dataToken->key);
 
-                        $logger->log('test', '$dataFromKey: ' . json_encode((array)$dataFromKey));
+                        $logger->log('test', 'SAVING $dataFromKey: ' . json_encode((array)$dataFromKey));
+
                         if (empty($error)) {
                             if (in_array($this->User->getId(), $dataFromKey['users'])) {
-                                $request = $request->withParsedBody([
-                                    'method' => 'editFile',
-                                    'data' => [
-                                        'fieldName' => $dataFromKey['field'],
-                                        'fileName' => $dataFromKey['file'],
-                                        'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
-                                    ]
-                                ]);
-                                $onlyOfficeConnector->setSaved($dataToken->key);
-                                $error = null;
+
+                                if ($dataFromKey['isTmp']) {
+                                    if (is_file($fileName = $this->Config->getTmpDir() . $dataFromKey['file'])) {
+                                        file_put_contents($fileName, $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url));
+                                        $onlyOfficeConnector->setSaved($dataToken->key);
+                                        $error = 0;
+                                    } else {
+                                        $error = 'File not found';
+                                    }
+                                } else {
+                                    $request = $request->withParsedBody([
+                                        'method' => 'editFile',
+                                        'data' => [
+                                            'fieldName' => $dataFromKey['field'],
+                                            'fileName' => $dataFromKey['file'],
+                                            'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
+                                        ]
+                                    ]);
+                                    $onlyOfficeConnector->setSaved($dataToken->key);
+                                    $error = null;
+                                }
                             } else {
                                 $error = 'Wrong user';
                             }

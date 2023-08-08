@@ -53,6 +53,32 @@ class WriteTableActions extends ReadTableActions
 
     public function tmpFileUpload()
     {
+        if (!empty($this->post['newFileFromTemplate'])) {
+            $tmpFileName = tempnam($this->Totum->getConfig()->getTmpDir(), $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.');
+
+            if (file_exists($templateFile = $this->Totum->getConfig()->getBaseDir() . '/http/imgs/template.' . $this->post['newFileFromTemplate'])) {
+                copy($templateFile, $tmpFileName);
+            }
+            $tmpName = preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName);
+
+            $tableData = ['id' => $this->post['rowId'] ?? 0, 'field' => $this->post['fieldName']];
+            $tableData['tableId'] = $this->Table->getTableRow()['id'];
+            $tableData['cycleId'] = $this->Table->getCycle()?->getId();
+            $tableData['isTmp'] = true;
+
+            $OnlyOffice = new OnlyOfficeConnector($this->Totum->getConfig());
+            $result = $OnlyOffice->getConfig($this->Totum,
+                false,
+                $this->post['newFileFromTemplate'],
+                $name = 'new.' . $this->post['newFileFromTemplate'],
+                $tmpName,
+                $tableData,
+                isShared: false);
+            $result['tmpfile'] = $tmpName;
+            $result['name'] = $name;
+            $result['size'] = filesize($tmpFileName);
+            return $result;
+        }
         return File::fileUpload($this->User->getId(), $this->Totum->getConfig());
     }
 
@@ -386,8 +412,9 @@ CODE
                     usleep(0.2 * 10 ** 6);
                     if ($timer < (time() - 3)) {
                         $onlyOfficeConnector->setSaved($this->post['fileKey']);
-                        $onlyOfficeConnector->closeKey($this->post['fileKey'], $this->Totum->getUser()->getId(), true);
-                        break;
+                        return ['error'=>'Что-то пошло не так. 
+                        Если изменений не было - все правильно, просто закройте окно редактора. 
+                        Если были и это excel - уберите фокус из ячейки и попробуйте еще раз.'];
                     }
                     $ready = $onlyOfficeConnector->getByKey($this->post['fileKey'], 'onSaving') !== true;
                     if ($ready && ($this->post['closeAfter'] ?? false) === 'true') {
@@ -395,7 +422,11 @@ CODE
                     }
                 }
 
-                return ['ok' => 1];
+                if ($data['isTmp'] ?? false) {
+                    $size = @filesize($this->Totum->getConfig()->getTmpDir() . $data['file']);
+                }
+
+                return ['ok' => 1, 'size' => $size ?? null];
             } else return ['error' => 'An error occurred:' . $result['error']];
         } else {
             throw new errorException('File key wrong or expired');

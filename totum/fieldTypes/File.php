@@ -293,7 +293,6 @@ class File extends Field
             throw new criticalErrorException($this->translate('The data format is not correct for the File field.'));
         }
 
-
         $createTmpFile = function ($fileString, &$file) {
             $ftmpname = tempnam(
                 $this->table->getTotum()->getConfig()->getTmpDir(),
@@ -321,7 +320,7 @@ class File extends Field
             } elseif (!empty($file['filestringbase64'])) {
                 $createTmpFile(base64_decode($file['filestringbase64']), $file);
                 unset($file['filestringbase64']);
-            } elseif (empty($file['file'])) {
+            } elseif (empty($file['file']) && empty($file['tmpfile'])) {
                 throw new errorException($this->translate('The data format is not correct for the File field.'));
             }
         }
