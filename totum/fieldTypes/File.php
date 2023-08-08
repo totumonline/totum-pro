@@ -321,6 +321,8 @@ class File extends Field
             } elseif (!empty($file['filestringbase64'])) {
                 $createTmpFile(base64_decode($file['filestringbase64']), $file);
                 unset($file['filestringbase64']);
+            } elseif (empty($file['file'])) {
+                throw new errorException($this->translate('The data format is not correct for the File field.'));
             }
         }
         unset($file);
