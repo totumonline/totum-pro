@@ -591,7 +591,8 @@ class ReadTableActions extends Actions
                             $file['name'],
                             $file['file'],
                             $tableData,
-                            isShared: $this->post['isCommon'] === 'true');
+                            isShared: $this->post['isCommon'] === 'true',
+                            isReadonly: !is_a($this, WriteTableActions::class) || $this->post['edit'] === 'false');
                     }
                 }
             }

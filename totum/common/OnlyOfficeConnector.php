@@ -21,7 +21,7 @@ class OnlyOfficeConnector
         return !!($this->getSettings()['host'] ?? false);
     }
 
-    public function getConfig(Totum $Totum, string|bool $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true)
+    public function getConfig(Totum $Totum, string|bool $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true, bool $isReadonly = false)
     {
         $tableData['users'] = [$Totum->getUser()->id];
 
@@ -32,19 +32,24 @@ class OnlyOfficeConnector
                 "fileType" => $ext,
                 "key" => $key = $this->getKey($fileName, $tableData, isConfigUrlViaKey: $configUrlViaKey, isShared: $isShared),
                 "title" => $title,
-                "url" => $configUrlViaKey ? 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key : $fileHttpPath
+                "url" => $configUrlViaKey ? 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key : $fileHttpPath,
+                'permissions' => [
+                    'edit' => !$isReadonly
+                ]
+
             ],
-                "documentType" => $this->getDocumentType($ext),
-                "editorConfig" => [
-                    "callbackUrl" => 'https://' . $this->Config->getMainHostName() . $_SERVER['REQUEST_URI'] . '&OnlyOfficeAction=saveFile',
-                    'customization' => [
-                        'forcesave' => false
-                    ],
-                    'user' => [
-                        'group' => 'Group1',
-                        'id' => (string)$Totum->getUser()->id,
-                        'name' => $Totum->getUser()->fio
-                    ],
+            "documentType" => $this->getDocumentType($ext),
+            "editorConfig" => [
+                "callbackUrl" => 'https://' . $this->Config->getMainHostName() . $_SERVER['REQUEST_URI'] . '&OnlyOfficeAction=saveFile',
+                'customization' => [
+                    'forcesave' => false
+                ],
+                'user' => [
+                    'group' => 'Group1',
+                    'id' => (string)$Totum->getUser()->id,
+                    'name' => $Totum->getUser()->fio
+                ],
+
 
             ]
         ];
@@ -97,7 +102,7 @@ class OnlyOfficeConnector
     protected
     function getKey($fileName, $tableData, &$isConfigUrlViaKey, $isShared = true): string
     {
-        $isConfigUrlViaKey=true;
+        $isConfigUrlViaKey = true;
         $tableData['file'] = $fileName;
         $tableData['shared'] = $isShared;
         $tableData['download_request'] = date('Y-m-d H:i:s');
