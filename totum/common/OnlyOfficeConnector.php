@@ -26,6 +26,7 @@ class OnlyOfficeConnector
         $tableData['users'] = [$Totum->getUser()->id];
 
         $configUrlViaKey = $fileHttpPath === false;
+        $tableData['readOnly'] = $isReadonly;
 
         $config = [
             "document" => [

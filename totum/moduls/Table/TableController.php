@@ -1146,7 +1146,9 @@ class TableController extends interfaceController
                         $logger->log('test', 'SAVING $dataFromKey: ' . json_encode((array)$dataFromKey));
 
                         if (empty($error)) {
-                            if (in_array($this->User->getId(), $dataFromKey['users'])) {
+                            if ($dataFromKey['readOnly']) {
+                                $error = 'readOnly';
+                            } elseif (in_array($this->User->getId(), $dataFromKey['users'])) {
 
                                 if ($dataFromKey['isTmp']) {
                                     if (is_file($fileName = $this->Config->getTmpDir() . $dataFromKey['file'])) {
