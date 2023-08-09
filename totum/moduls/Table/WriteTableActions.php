@@ -386,6 +386,8 @@ CODE
                 if (!($field['versioned'] ?? false)) {
                     unset($file['file']);
                     unset($file['size']);
+                } elseif ($data['remove_last_version'] ?? false) {
+                    $file['remove_last_version'] = true;
                 }
             }
         }
@@ -402,7 +404,9 @@ CODE
         $data = $onlyOfficeConnector->getByKey($this->post['fileKey']);
         if ($data['file'] === $this->post['fileName'] && in_array($this->Totum->getUser()->getId(), $data['users'])) {
 
-            $result = $onlyOfficeConnector->callForceSave($this->post['fileKey'], $this->Totum->getUser()->getId());
+
+            $removeLastVersion = 'true' === ($this->post['remove_last_version'] ?? false);
+            $result = $onlyOfficeConnector->callForceSave($this->post['fileKey'], $this->Totum->getUser()->getId(), $removeLastVersion);
 
             if ($result['error'] === 4 || ($result['error'] === 0 && $result['key'] === $this->post['fileKey'])) {
 
@@ -412,7 +416,7 @@ CODE
                     usleep(0.2 * 10 ** 6);
                     if ($timer < (time() - 3)) {
                         $onlyOfficeConnector->setSaved($this->post['fileKey']);
-                        return ['error'=>'Что-то пошло не так. 
+                        return ['error' => 'Что-то пошло не так. 
                         Если изменений не было - все правильно, просто закройте окно редактора. 
                         Если были и это excel - уберите фокус из ячейки и попробуйте еще раз.'];
                     }

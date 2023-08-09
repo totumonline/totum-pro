@@ -211,9 +211,12 @@ class OnlyOfficeConnector
         ]));
     }
 
-    public function callForceSave(string $fileKey, $user)
+    public function callForceSave(string $fileKey, $user, bool $removeLastVersion)
     {
         $this->updateKeyData($fileKey, 'onSaving', true);
+        if ($removeLastVersion) {
+            $this->updateKeyData($fileKey, 'remove_last_version', $removeLastVersion);
+        }
 
         $result = $this->sendCommand([
             'c' => 'forcesave',
@@ -224,9 +227,13 @@ class OnlyOfficeConnector
         return $result;
     }
 
-    public function setSaved($fileKey)
+    public function setSaved($fileKey, $extraKey = null, $extraValue = null)
     {
-        $this->updateKeyData($fileKey, 'onSaving', false);
+        if ($extraKey) {
+            $this->updateKeyDatas($fileKey, 'onSaving', false, $extraKey, $extraValue);
+        } else {
+            $this->updateKeyData($fileKey, 'onSaving', false);
+        }
     }
 
     protected function updateKeyData($fileKey, $dataKey, $value)
@@ -238,10 +245,30 @@ class OnlyOfficeConnector
 
 
         $tableName = static::$tableName;
+
         $this->query(<<<SQL
 update $tableName set data = data || jsonb_build_object(?::text, ?::$valueType) where key=?
 SQL
             , [$dataKey, $value, $fileKey], true);
+    }
+
+    protected function updateKeyDatas($fileKey, $dataKey, $value, $dataKey2, $value2)
+    {
+        if (is_bool($value)) {
+            $valueType = 'bool';
+            $value = $value ? 'true' : 'false';
+        } else $valueType = 'text';
+
+        if (is_bool($value2)) {
+            $valueType2 = 'bool';
+            $value2 = $value2 ? 'true' : 'false';
+        } else $valueType2 = 'text';
+
+        $tableName = static::$tableName;
+        $this->query(<<<SQL
+update $tableName set data = data || jsonb_build_object(?::text, ?::$valueType) || jsonb_build_object(?::text, ?::$valueType2) where key=?
+SQL
+            , [$dataKey, $value, $dataKey2, $value2, $fileKey], true);
     }
 
     public function closeKey(string $fileKey, int $userId, $onlyOnServer = false)

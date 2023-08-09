@@ -1133,6 +1133,7 @@ class TableController extends interfaceController
                 try {
                     $dataToken = $onlyOfficeConnector->parseToken($data['token']);
 
+
                     if (!$isTest && $dataToken->status != $data['status']) {
                         $error = 'Wrong token';
                     } elseif ($dataToken->status === 2 || $dataToken->status === 4) {
@@ -1150,7 +1151,7 @@ class TableController extends interfaceController
                                 $error = 'readOnly';
                             } elseif (in_array($this->User->getId(), $dataFromKey['users'])) {
 
-                                if ($dataFromKey['isTmp']) {
+                                if ($dataFromKey['isTmp'] ?? false) {
                                     if (is_file($fileName = $this->Config->getTmpDir() . $dataFromKey['file'])) {
                                         file_put_contents($fileName, $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url));
                                         $onlyOfficeConnector->setSaved($dataToken->key);
@@ -1164,10 +1165,19 @@ class TableController extends interfaceController
                                         'data' => [
                                             'fieldName' => $dataFromKey['field'],
                                             'fileName' => $dataFromKey['file'],
-                                            'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url)
+                                            'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url),
+                                            'remove_last_version' => $dataFromKey['remove_last_version'] ?? false,
                                         ]
                                     ]);
-                                    $onlyOfficeConnector->setSaved($dataToken->key);
+
+                                    $this->Config->getSql()->addOnCommit(function () use ($dataFromKey, $dataToken, $onlyOfficeConnector) {
+                                        if ($dataFromKey['remove_last_version'] ?? false) {
+                                            $onlyOfficeConnector->setSaved($dataToken->key, 'remove_last_version', false);
+                                        } else {
+                                            $onlyOfficeConnector->setSaved($dataToken->key);
+                                        }
+                                    });
+
                                     $error = null;
                                 }
                             } else {
