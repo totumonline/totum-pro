@@ -540,6 +540,18 @@ class ReadTableActions extends Actions
 
         if (!$field || !$this->Table->isField('visible', 'web', $field)) {
             $error = $this->translate('Access to the file field is denied');
+        } elseif (!empty($this->post['TmpFile'])) {
+            if (!str_starts_with($this->post['TmpFile'], $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.' . $this->post['fieldName'])) {
+                throw new errorException('Tmp file name error');
+            }
+            return (new OnlyOfficeConnector($this->Totum->getConfig()))->getConfig($this->Totum,
+                false,
+                $this->post['ext'],
+                $this->post['name'],
+                $this->post['TmpFile'],
+                ['isTmp' => true],
+                isShared: false,
+                isReadonly: false);
         } else {
             if ($field['category'] === 'column') {
                 if (empty($this->post['rowId']) || !$this->Table->loadFilteredRows('web', [$this->post['rowId']])) {

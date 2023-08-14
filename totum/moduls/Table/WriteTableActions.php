@@ -5,6 +5,7 @@ namespace totum\moduls\Table;
 
 use totum\common\calculates\CalculateAction;
 use totum\common\errorException;
+use totum\common\Field;
 use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\OnlyOfficeConnector;
@@ -53,11 +54,41 @@ class WriteTableActions extends ReadTableActions
 
     public function tmpFileUpload()
     {
-        if (!empty($this->post['newFileFromTemplate'])) {
-            $tmpFileName = tempnam($this->Totum->getConfig()->getTmpDir(), $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.');
+        if (!empty($this->post['newFileFromTemplate']) || !empty($this->post['newFileFromFile'])) {
+            $tmpFileName = tempnam($this->Totum->getConfig()->getTmpDir(), $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.' . $this->post['fieldName']);
 
-            if (file_exists($templateFile = $this->Totum->getConfig()->getBaseDir() . '/http/imgs/template.' . $this->post['newFileFromTemplate'])) {
-                copy($templateFile, $tmpFileName);
+
+            if (!empty($this->post['newFileFromTemplate'])) {
+                if (file_exists($templateFile = $this->Totum->getConfig()->getBaseDir() . '/http/imgs/template.' . $this->post['newFileFromTemplate'])) {
+                    copy($templateFile, $tmpFileName);
+                }
+                $ext = $this->post['newFileFromTemplate'];
+                $name = 'new.' . $this->post['newFileFromTemplate'];
+
+                $updateResult = function (&$result) {
+                };
+            } else {
+                if (!empty($this->post['rowId'])) {
+                    $this->Table->checkIsUserCanViewIds('web', [$this->post['rowId']]);
+                }
+                if (!$this->Table->isField('visible', 'web', $this->post['fieldName'] ?? '')) {
+                    throw new errorException($this->translate('Access to the file field is denied'));
+                }
+                Field::init($this->Table->getFields()[$this->post['fieldName']], $this->Table)->checkFileByField($this->post['newFileFromFile'], $this->post['rowId'] ?? null);
+
+                if (file_exists($templateFile = File::getFilePath($this->post['newFileFromFile'], $this->Totum->getConfig(), $this->Table->getFields()[$this->post['fieldName']]))) {
+                    copy($templateFile, $tmpFileName);
+                }
+                $ext = preg_replace('/^.*?\.([^.]+)$/', '$1', $this->post['newFileFromFile']);
+                $name = $this->post['fileName'];
+
+                $updateResult = function (&$result) use ($templateFile, $name) {
+                    if ($this->Table->getFields()[$this->post['fieldName']]['versioned'] ?? false) {
+                        $result['file'] = $this->post['newFileFromFile'];
+                        $result['tmpfileName'] = $name;
+                        $result['tmpfileSize'] = filesize($templateFile);
+                    }
+                };
             }
             $tmpName = preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName);
 
@@ -69,14 +100,16 @@ class WriteTableActions extends ReadTableActions
             $OnlyOffice = new OnlyOfficeConnector($this->Totum->getConfig());
             $result = $OnlyOffice->getConfig($this->Totum,
                 false,
-                $this->post['newFileFromTemplate'],
-                $name = 'new.' . $this->post['newFileFromTemplate'],
+                $ext,
+                $name,
                 $tmpName,
                 $tableData,
                 isShared: false);
             $result['tmpfile'] = $tmpName;
             $result['name'] = $name;
             $result['size'] = filesize($tmpFileName);
+            $result['ext'] = $ext;
+            $updateResult($result);
             return $result;
         }
         return File::fileUpload($this->User->getId(), $this->Totum->getConfig());

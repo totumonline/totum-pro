@@ -213,6 +213,14 @@ class File extends Field
         return $files;
     }
 
+    public function checkFileByField($fileName, $id = null)
+    {
+        if (!str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $fileName),
+            $this->_getFprefix($id))) {
+            throw new errorException('Wrong file path');
+        }
+    }
+
     public function _getFprefix($rowId = null): string
     {
         return $this->table->getTableRow()['id'] . '_' //Таблица
