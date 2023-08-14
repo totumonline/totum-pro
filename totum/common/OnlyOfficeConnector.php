@@ -139,6 +139,9 @@ class OnlyOfficeConnector
 
             foreach ($data as $_f) {
                 $_fData = json_decode($_f['data'], true);
+                if ($_fData['readOnly'] ?? false) {
+                    continue;
+                }
                 $userConnected = in_array($tableData['users'][0], $_fData['users']);
                 if ($isShared && $_fData['shared']) {
                     if (!$userConnected) {
