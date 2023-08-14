@@ -544,7 +544,7 @@ class ReadTableActions extends Actions
             if (!str_starts_with($this->post['TmpFile'], $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.' . $this->post['fieldName'])) {
                 throw new errorException('Tmp file name error');
             }
-            return (new OnlyOfficeConnector($this->Totum->getConfig()))->getConfig($this->Totum,
+            return (OnlyOfficeConnector::init($this->Totum->getConfig()))->getConfig($this->Totum,
                 false,
                 $this->post['ext'],
                 $this->post['name'],
@@ -586,7 +586,7 @@ class ReadTableActions extends Actions
                         if (!empty($field['secureFile'])) {
                             $fileHttpPath = false;
                         } else {
-                            $fileHttpPath = 'https://' . $this->Totum->getConfig()->getMainHostName() . '/fls/' . $file['file'];
+                            $fileHttpPath = true;
                         }
                         $tableData = ['id' => $this->post['rowId'] ?? 0, 'field' => $field['name']];
                         $tableData['tableId'] = $this->Table->getTableRow()['id'];
@@ -597,7 +597,7 @@ class ReadTableActions extends Actions
                             throw new errorException('Wrong file path');
                         }
 
-                        $result = (new OnlyOfficeConnector($this->Totum->getConfig()))->getConfig($this->Totum,
+                        $result = (OnlyOfficeConnector::init($this->Totum->getConfig()))->getConfig($this->Totum,
                             $fileHttpPath,
                             $file['ext'],
                             $file['name'],
@@ -2271,7 +2271,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $_tableRow['__xlsx_import'] = is_a($this, WriteTableActions::class) && $this->isTableServiceOn('xlsximport') && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']) && !$this->isServicesBlocked && key_exists($this->Totum->getTableRow('ttm__prepared_data_import')['id'], $this->User->getTables());
         $_tableRow['__withDocPreviews'] = $this->isTableServiceOn('pdfdocpreview') && !$this->isServicesBlocked && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']);
 
-        $_tableRow['__withOnlyOffice'] = is_a($this, WriteTableActions::class) && (new OnlyOfficeConnector($this->Totum->getConfig()))->isSwithedOn();
+        $_tableRow['__withOnlyOffice'] = is_a($this, WriteTableActions::class) && (OnlyOfficeConnector::init($this->Totum->getConfig()))->isSwithedOn();
 
 
         foreach ($this->Table->getVisibleFields('web') as $field) {

@@ -97,7 +97,7 @@ class WriteTableActions extends ReadTableActions
             $tableData['cycleId'] = $this->Table->getCycle()?->getId();
             $tableData['isTmp'] = true;
 
-            $OnlyOffice = new OnlyOfficeConnector($this->Totum->getConfig());
+            $OnlyOffice = OnlyOfficeConnector::init($this->Totum->getConfig());
             $result = $OnlyOffice->getConfig($this->Totum,
                 false,
                 $ext,
@@ -392,6 +392,7 @@ CODE
 
     function editFile()
     {
+
         $data = is_string($this->post['data']) ? json_decode($this->post['data'], true) : $this->post['data'];
         $data['fileName'] = str_replace('-', '/', $data['fileName']);
         $field = $this->Table->getFields()[$data['fieldName']] ?? [];
@@ -433,7 +434,7 @@ CODE
     public function saveOnlyOfficeDoc()
     {
 
-        $onlyOfficeConnector = new OnlyOfficeConnector($this->Totum->getConfig());
+        $onlyOfficeConnector = OnlyOfficeConnector::init($this->Totum->getConfig());
         $data = $onlyOfficeConnector->getByKey($this->post['fileKey']);
         if ($data['file'] === $this->post['fileName'] && in_array($this->Totum->getUser()->getId(), $data['users'])) {
 

@@ -1098,100 +1098,35 @@ class TableController extends interfaceController
 
     protected function __run($action, ServerRequestInterface $request)
     {
-        if (!empty($_GET['OnlyOfficeAction']) && ($onlyOfficeConnector = new OnlyOfficeConnector($this->Config))->isSwithedOn()) {
+        if (!empty($_GET['OnlyOfficeAction']) && ($onlyOfficeConnector = OnlyOfficeConnector::init($this->Config))->isSwithedOn()) {
             $logger = $this->Config->getLogger('onlyoffice', ['test']);
             $error = 0;
             $logger->log('test', file_get_contents('php://input'), ['path' => $_SERVER['REQUEST_URI'], 'ip' => $_SERVER['REMOTE_ADDR']]);
 
             if ($_GET['OnlyOfficeAction'] === 'getFile') {
                 if ($_GET['key'] ?? false) {
-                    $dataFromKey = $onlyOfficeConnector->getByKey($_GET['key']);
-                    if ($dataFromKey['download_request'] < date('Y-m-d H:i:s', time() - 120)) {
-                        throw new errorException('Expired download link');
-                    }
-                    if ($dataFromKey['isTmp'] ?? false) {
-                        $filePath = $this->Config->getTmpDir() . $dataFromKey['file'];
-                    } else {
-                        $filePath = File::getFilePath($dataFromKey['file'], $this->Config);
-                    }
-                    if (!file_exists($filePath)) {
-                        throw new errorException($this->translate('File [[%s]] is not found.', $dataFromKey['file']));
-                    }
-
-                    readfile($filePath);
+                    readfile($onlyOfficeConnector->getFilePathByKey($_GET['key']));
                     die;
                 }
             }
 
             $data = json_decode(file_get_contents('php://input'), true);
 
-            if ($isTest = false) {
+            if (0) {
                 $data['token'] = '';
             }
 
             if ($data['token'] ?? false) {
                 try {
-                    $dataToken = $onlyOfficeConnector->parseToken($data['token']);
-
-
-                    if (!$isTest && $dataToken->status != $data['status']) {
-                        $error = 'Wrong token';
-                    } elseif ($dataToken->status === 2 || $dataToken->status === 4) {
-                        $onlyOfficeConnector->removeKey($dataToken->key);
-                        $logger->log('test', 'removeKey: ' . $dataToken->key);
-                    } else if ($dataToken->status === 6) {
-                        $this->User = Auth::loadAuthUser($this->Config, ($dataToken->userdata ?? $dataToken->users[0]), false);
-
-                        $dataFromKey = $onlyOfficeConnector->getByKey($dataToken->key);
-
-                        $logger->log('test', 'SAVING $dataFromKey: ' . json_encode((array)$dataFromKey));
-
-                        if (empty($error)) {
-                            if ($dataFromKey['readOnly']) {
-                                $error = 'readOnly';
-                            } elseif (in_array($this->User->getId(), $dataFromKey['users'])) {
-
-                                if ($dataFromKey['isTmp'] ?? false) {
-                                    if (is_file($fileName = $this->Config->getTmpDir() . $dataFromKey['file'])) {
-                                        file_put_contents($fileName, $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url));
-                                        $onlyOfficeConnector->setSaved($dataToken->key);
-                                        $error = 0;
-                                    } else {
-                                        $error = 'File not found';
-                                    }
-                                } else {
-                                    $request = $request->withParsedBody([
-                                        'method' => 'editFile',
-                                        'data' => [
-                                            'fieldName' => $dataFromKey['field'],
-                                            'fileName' => $dataFromKey['file'],
-                                            'filestring' => $onlyOfficeConnector->getFileFromDocumentsServer($dataToken->url),
-                                            'remove_last_version' => $dataFromKey['remove_last_version'] ?? false,
-                                        ]
-                                    ]);
-
-                                    $this->Config->getSql()->addOnCommit(function () use ($dataFromKey, $dataToken, $onlyOfficeConnector) {
-                                        if ($dataFromKey['remove_last_version'] ?? false) {
-                                            $onlyOfficeConnector->setSaved($dataToken->key, 'remove_last_version', false);
-                                        } else {
-                                            $onlyOfficeConnector->setSaved($dataToken->key);
-                                        }
-                                    });
-
-                                    $error = null;
-                                }
-                            } else {
-                                $error = 'Wrong user';
-                            }
-                        }
-                    }
-
+                    $error = $onlyOfficeConnector->tableActionByToken($data['token'], $request, $this->User, $logger);
                 } catch (\Exception $e) {
                     $error = $e->getMessage();
                 }
             }
+
             if (!is_null($error)) {
                 echo json_encode(['error' => $error]);
+                $logger->log('text', $error);
                 die;
             }
         } else {

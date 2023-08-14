@@ -275,7 +275,7 @@ class AuthController extends interfaceController
     public function actionLogout()
     {
 
-        $OnlyOffice = new OnlyOfficeConnector($this->Config);
+        $OnlyOffice = OnlyOfficeConnector::init($this->Config);
         if ($OnlyOffice->isSwithedOn()) {
             session_start();
             if ($_SESSION['userId'] ?? null) {

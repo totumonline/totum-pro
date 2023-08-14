@@ -4,14 +4,23 @@ namespace totum\common;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use Psr\Http\Message\ServerRequestInterface;
 use totum\common\configs\ConfParent;
 use totum\common\sql\Sql;
+use totum\fieldTypes\File;
 
 class OnlyOfficeConnector
 {
     static $tableName = '_onlyofficedata';
 
-    public function __construct(protected ConfParent $Config)
+    static protected OnlyOfficeConnector $self;
+
+    static public function init(ConfParent $Config)
+    {
+        return $self ?? ($self = new static($Config));
+    }
+
+    protected function __construct(protected ConfParent $Config)
     {
     }
 
@@ -21,7 +30,7 @@ class OnlyOfficeConnector
         return !!($this->getSettings()['host'] ?? false);
     }
 
-    public function getConfig(Totum $Totum, string|bool $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true, bool $isReadonly = false)
+    public function getConfig(Totum $Totum, bool $fileHttpPath, string $ext, string $title, string $fileName, array $tableData, bool $isShared = true, bool $isReadonly = false)
     {
         $tableData['users'] = [$Totum->getUser()->id];
 
@@ -33,7 +42,7 @@ class OnlyOfficeConnector
                 "fileType" => $ext,
                 "key" => $key = $this->getKey($fileName, $tableData, isConfigUrlViaKey: $configUrlViaKey, isShared: $isShared),
                 "title" => $title,
-                "url" => $configUrlViaKey ? 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key : $fileHttpPath,
+                "url" => $configUrlViaKey ? 'https://' . $Totum->getConfig()->getMainHostName() . '/Table/?OnlyOfficeAction=getFile&key=' . $key : 'https://' . $this->Config->getMainHostName() . '/fls/' . $fileName,
                 'permissions' => [
                     'edit' => !$isReadonly
                 ]
@@ -107,7 +116,27 @@ class OnlyOfficeConnector
         $tableData['file'] = $fileName;
         $tableData['shared'] = $isShared;
         $tableData['download_request'] = date('Y-m-d H:i:s');
+
+        $tableData['md5'] = $this->getFileHashByFileName($fileName, ($tableData['isTmp'] ?? false ? 'tmp' : null));
+
         if (($data = $this->query('select * from ' . static::$tableName . ' where data->>\'file\'=? order by dt desc', [$fileName]))) {
+
+            foreach ($data as $i => $_f) {
+                $_fData = json_decode($_f['data'], true);
+                if ($_fData['md5'] !== $tableData['md5']) {
+                    $this->removeKey($_f['key']);
+                    foreach ($_fData['users'] as $user) {
+                        $this->sendCommand([
+                            "c" => "drop",
+                            "key" => $_f['key'],
+                            "users" => [(string)$user]
+                        ]);
+                    }
+                    unset($data[$i]);
+                }
+            }
+
+
             foreach ($data as $_f) {
                 $_fData = json_decode($_f['data'], true);
                 $userConnected = in_array($tableData['users'][0], $_fData['users']);
@@ -314,6 +343,131 @@ SQL
                 'verify_peer_name' => false,
             ],
         ])), true);
+    }
+
+    public function getFilePathByKey(string $key)
+    {
+        $dataFromKey = $this->getByKey($key);
+        if ($dataFromKey['download_request'] < date('Y-m-d H:i:s', time() - 120)) {
+            throw new errorException('Expired download link');
+        }
+        if ($dataFromKey['isTmp'] ?? false) {
+            $filePath = $this->Config->getTmpDir() . $dataFromKey['file'];
+        } else {
+            $filePath = File::getFilePath($dataFromKey['file'], $this->Config);
+        }
+        if (!file_exists($filePath)) {
+            throw new errorException($this->Config->getLangObj()->translate('File [[%s]] is not found.', $dataFromKey['file']));
+        }
+        return $filePath;
+    }
+
+    protected function getFileHashByFileName($fileName, $fileType)
+    {
+        $filePath = match ($fileType) {
+            'tmp' => $this->Config->getTmpDir() . $fileName,
+            'secure' => File::getFilePath($fileName, $this->Config, true),
+            default => File::getFilePath($fileName, $this->Config),
+        };
+        if (!is_file($filePath)) {
+            return null;
+        }
+        return md5_file($filePath);
+    }
+
+    public function tableActionByToken(string $token, ServerRequestInterface &$request, &$User, $logger = null)
+    {
+        $error = 0;
+
+        $dataToken = $this->parseToken($token);
+        if ($dataToken->status === 2 || $dataToken->status === 4) {
+            $this->removeKey($dataToken->key);
+            $logger?->log('test', 'removeKey: ' . $dataToken->key);
+        } else if ($dataToken->status === 6) {
+            $User = Auth::loadAuthUser($this->Config, ($dataToken->userdata ?? $dataToken->users[0]), false);
+
+            $dataFromKey = $this->getByKey($dataToken->key);
+
+            $logger?->log('test', 'SAVING $dataFromKey: ' . json_encode((array)$dataFromKey));
+
+            if ($dataFromKey['readOnly']) {
+                $error = 'readOnly';
+            } elseif (in_array($User->getId(), $dataFromKey['users'])) {
+
+                if ($dataFromKey['isTmp'] ?? false) {
+                    if (is_file($fileName = $this->Config->getTmpDir() . $dataFromKey['file'])) {
+                        file_put_contents($fileName, $this->getFileFromDocumentsServer($dataToken->url));
+                        $this->setSaved($dataToken->key);
+                        $error = 0;
+                    } else {
+                        $error = 'File not found';
+                    }
+                } else {
+                    $request = $request->withParsedBody([
+                        'method' => 'editFile',
+                        'data' => [
+                            'fieldName' => $dataFromKey['field'],
+                            'fileName' => $dataFromKey['file'],
+                            'filestring' => $this->getFileFromDocumentsServer($dataToken->url),
+                            'remove_last_version' => $dataFromKey['remove_last_version'] ?? false,
+                        ]
+                    ]);
+                    $error = null;
+
+                    $this->onDescruct[] = (function () use ($dataFromKey, $dataToken) {
+                        if ($dataFromKey['remove_last_version'] ?? false) {
+                            $this->setSaved($dataToken->key, 'remove_last_version', false);
+                        } else {
+                            $this->setSaved($dataToken->key);
+                        }
+                    });
+                }
+            } else {
+                $error = 'Wrong user';
+            }
+        }
+        return $error;
+    }
+
+    protected $onDescruct = [];
+
+    public function __destruct()
+    {
+        foreach ($this->onDescruct as $func) {
+            $func();
+        }
+
+    }
+
+    public function checkFileHashes(string $fname)
+    {
+        $hash = md5_file($fname);
+        $fileName = preg_replace('/^.*?\/([^\/]+)$/', '$1', $fname);
+        if (($data = $this->query('select * from ' . static::$tableName . ' where data->>\'file\'=? order by dt desc', [$fileName]))) {
+            foreach ($data as $i => $_f) {
+                $_fData = json_decode($_f['data'], true);
+                if ($_fData['md5'] !== $hash) {
+                    if ($_fData['onSaving'] ?? false) {
+
+                        if ($_fData['remove_last_version'] ?? false) {
+                            $this->updateKeyData($data['key'], 'remove_last_version', false);
+                        }
+                        $this->setSaved($data['key'], 'md5', $hash);
+
+                    } else {
+                        $this->removeKey($_f['key']);
+                        foreach ($_fData['users'] as $user) {
+                            $this->sendCommand([
+                                "c" => "drop",
+                                "key" => $_f['key'],
+                                "users" => [(string)$user]
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
 }

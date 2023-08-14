@@ -13,6 +13,7 @@ use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\Lang\RU;
+use totum\common\OnlyOfficeConnector;
 use totum\common\sql\Sql;
 use totum\config\Conf;
 use totum\models\CalcsTableCycleVersion;
@@ -474,6 +475,11 @@ class FileVersioned extends File
                         if (!copy($ftmpname, $fname)) {
                             die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                         }
+                        $OnlyOfficeConnector = OnlyOfficeConnector::init($this->table->getTotum()->getConfig());
+                        if ($OnlyOfficeConnector->isSwithedOn()) {
+                            $OnlyOfficeConnector->checkFileHashes($fname);
+                        }
+
                         if (is_file($ftmpname . '_thumb.jpg')) {
                             if (!copy($ftmpname . '_thumb.jpg', $fname . '_thumb.jpg')) {
                                 die(json_encode(['error' => $this->translate('Failed to copy preview.')],
@@ -511,6 +517,11 @@ class FileVersioned extends File
                                 die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                             }
                             unlink($oldFile);
+                            $OnlyOfficeConnector = OnlyOfficeConnector::init($this->table->getTotum()->getConfig());
+                            if ($OnlyOfficeConnector->isSwithedOn()) {
+                                $OnlyOfficeConnector->checkFileHashes($filepath);
+                            }
+
                             if (is_file($oldFile . File::DOC_PREVIEW_POSTFIX)) {
                                 copy($oldFile . File::DOC_PREVIEW_POSTFIX, $filepath . File::DOC_PREVIEW_POSTFIX);
                                 unlink($oldFile . File::DOC_PREVIEW_POSTFIX);
