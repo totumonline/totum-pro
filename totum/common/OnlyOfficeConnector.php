@@ -5,6 +5,7 @@ namespace totum\common;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 use totum\common\configs\ConfParent;
 use totum\common\sql\Sql;
 use totum\fieldTypes\File;
@@ -107,6 +108,11 @@ class OnlyOfficeConnector
             return $this->Config->getSettings('h_pro_olny_office')[$key] ?? false;
         }
         return $this->Config->getSettings('h_pro_olny_office');
+    }
+
+    public function checkOnlyOfficeIp($ip)
+    {
+        return (!$this->getSettings('ip') || $this->getSettings('ip') === $ip);
     }
 
     protected
@@ -378,20 +384,20 @@ SQL
         return md5_file($filePath);
     }
 
-    public function tableActionByToken(string $token, ServerRequestInterface &$request, &$User, $logger = null)
+    public function tableActionByToken(string $token, ServerRequestInterface &$request, &$User, null|LoggerInterface $logger = null)
     {
         $error = 0;
 
         $dataToken = $this->parseToken($token);
         if ($dataToken->status === 2 || $dataToken->status === 4) {
             $this->removeKey($dataToken->key);
-            $logger?->log('test', 'removeKey: ' . $dataToken->key);
+            $logger?->debug('removeKey: ' . $dataToken->key);
         } else if ($dataToken->status === 6) {
             $User = Auth::loadAuthUser($this->Config, ($dataToken->userdata ?? $dataToken->users[0]), false);
 
             $dataFromKey = $this->getByKey($dataToken->key);
 
-            $logger?->log('test', 'SAVING $dataFromKey: ' . json_encode((array)$dataFromKey));
+            $logger?->debug('SAVING $dataFromKey: ' . json_encode((array)$dataFromKey));
 
             if ($dataFromKey['readOnly']) {
                 $error = 'readOnly';

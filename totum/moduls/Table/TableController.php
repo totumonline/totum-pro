@@ -1098,9 +1098,15 @@ class TableController extends interfaceController
     protected function __run($action, ServerRequestInterface $request)
     {
         if (!empty($_GET['OnlyOfficeAction']) && ($onlyOfficeConnector = OnlyOfficeConnector::init($this->Config))->isSwithedOn()) {
-            $logger = $this->Config->getLogger('onlyoffice', ['test']);
+            if (!$onlyOfficeConnector->checkOnlyOfficeIp($_SERVER['REMOTE_ADDR'] ?? '')) {
+                echo json_encode(['error' => 'OnlyOffice ip in settings is not matched']);
+                die;
+            }
+
+            $logger = null;//$this->Config->getLogger('onlyoffice', ['debug']);
+
             $error = 0;
-            $logger->log('test', file_get_contents('php://input'), ['path' => $_SERVER['REQUEST_URI'], 'ip' => $_SERVER['REMOTE_ADDR']]);
+            $logger?->debug(file_get_contents('php://input'), ['path' => $_SERVER['REQUEST_URI'], 'ip' => $_SERVER['REMOTE_ADDR']]);
 
             if ($_GET['OnlyOfficeAction'] === 'getFile') {
                 if ($_GET['key'] ?? false) {
@@ -1125,7 +1131,7 @@ class TableController extends interfaceController
 
             if (!is_null($error)) {
                 echo json_encode(['error' => $error]);
-                $logger->log('text', $error);
+                $logger?->debug($error);
                 die;
             }
         } else {
