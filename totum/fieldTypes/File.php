@@ -222,7 +222,7 @@ class File extends Field
         }
     }
 
-    public function _getFprefix($rowId = null): string
+    protected function _getFprefix($rowId = null): string
     {
         return $this->table->getTableRow()['id'] . '_' //Таблица
             . ($this->table->getTableRow()['type'] === 'calcs' ? $this->table->getCycle()->getId() . '_' : '') //цикл

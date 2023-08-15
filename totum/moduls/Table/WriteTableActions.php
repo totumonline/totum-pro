@@ -450,9 +450,7 @@ CODE
                     usleep(0.2 * 10 ** 6);
                     if ($timer < (time() - 3)) {
                         $onlyOfficeConnector->setSaved($this->post['fileKey']);
-                        return ['error' => 'Что-то пошло не так. 
-                        Если изменений не было - все правильно, просто закройте окно редактора. 
-                        Если были и это excel - уберите фокус из ячейки и попробуйте еще раз.'];
+                        return ['error' => $this->translate('OnlyOfficeSaveTimeoutError')];
                     }
                     $ready = $onlyOfficeConnector->getByKey($this->post['fileKey'], 'onSaving') !== true;
                     if ($ready && ($this->post['closeAfter'] ?? false) === 'true') {
@@ -467,7 +465,7 @@ CODE
                 return ['ok' => 1, 'size' => $size ?? null];
             } else return ['error' => 'An error occurred:' . $result['error']];
         } else {
-            throw new errorException('File key wrong or expired');
+            throw new errorException($this->translate('File key is not exists or is expired'));
         }
     }
 }

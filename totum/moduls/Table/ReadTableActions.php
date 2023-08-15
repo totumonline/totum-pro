@@ -592,10 +592,7 @@ class ReadTableActions extends Actions
                         $tableData['tableId'] = $this->Table->getTableRow()['id'];
                         $tableData['cycleId'] = $this->Table->getCycle()?->getId();
 
-                        if (!str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $file['file'] ?? ''),
-                            File::init($field, $this->Table)->_getFprefix($this->post['rowId'] ?? null))) {
-                            throw new errorException('Wrong file path');
-                        }
+                        File::init($field, $this->Table)->checkFileByField($file['file'] ?? '', $this->post['rowId'] ?? null);
 
                         $result = (OnlyOfficeConnector::init($this->Totum->getConfig()))->getConfig($this->Totum,
                             $fileHttpPath,

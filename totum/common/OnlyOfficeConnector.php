@@ -217,7 +217,7 @@ class OnlyOfficeConnector
     {
         $data = $this->query('select ' . ($dataKey ? "data->'$dataKey' as data" : 'data') . ' from ' . static::$tableName . ' where key=?', [$key]);
         if (!$data) {
-            throw new errorException('Expired file key');
+            throw new errorException($this->Config->getLangObj()->translate('File key is not exists or is expired'));
         }
         return json_decode($data[0]['data'], true);
     }

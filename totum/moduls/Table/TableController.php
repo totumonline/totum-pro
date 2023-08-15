@@ -2,7 +2,6 @@
 
 namespace totum\moduls\Table;
 
-use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\controllers\interfaceController;
 use totum\common\controllers\WithAuthTrait;
