@@ -442,10 +442,9 @@ SQL
 
     }
 
-    public function checkFileHashes(string $fname)
+    public function checkFileHashes(string $filepath, string $fileName)
     {
-        $hash = md5_file($fname);
-        $fileName = preg_replace('/^.*?\/([^\/]+)$/', '$1', $fname);
+        $hash = md5_file($filepath);
         if (($data = $this->query('select * from ' . static::$tableName . ' where data->>\'file\'=? order by dt desc', [$fileName]))) {
             foreach ($data as $i => $_f) {
                 $_fData = json_decode($_f['data'], true);

@@ -431,13 +431,13 @@ class File extends Field
 
                     static::$transactionCommits[$fname] = $ftmpname;
 
-                    $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname) {
+                    $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname, &$fl) {
                         if (!copy($ftmpname, $fname)) {
                             die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                         }
                         $OnlyOfficeConnector = OnlyOfficeConnector::init($this->table->getTotum()->getConfig());
                         if ($OnlyOfficeConnector->isSwithedOn()) {
-                            $OnlyOfficeConnector->checkFileHashes($fname);
+                            $OnlyOfficeConnector->checkFileHashes($fname, $fl['file']);
                         }
 
                         if (is_file($ftmpname . '_thumb.jpg')) {
