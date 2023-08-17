@@ -13,6 +13,7 @@ use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\Lang\RU;
+use totum\common\OnlyOfficeConnector;
 use totum\common\sql\Sql;
 use totum\config\Conf;
 use totum\models\CalcsTableCycleVersion;
@@ -460,7 +461,7 @@ class FileVersioned extends File
 
                     static::$transactionCommits[$fname] = $ftmpname;
 
-                    $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname, &$fVersionName) {
+                    $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname, &$fVersionName, &$fl) {
                         if ($fVersionName) {
                             if (!rename($fname, $fVersionName)) {
                                 die(json_encode(['error' => $this->translate('Failed to move file to version.')]));
@@ -474,6 +475,11 @@ class FileVersioned extends File
                         if (!copy($ftmpname, $fname)) {
                             die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                         }
+                        $OnlyOfficeConnector = OnlyOfficeConnector::init($this->table->getTotum()->getConfig());
+                        if ($OnlyOfficeConnector->isSwithedOn()) {
+                            $OnlyOfficeConnector->checkFileHashes($fname, $fl['file']);
+                        }
+
                         if (is_file($ftmpname . '_thumb.jpg')) {
                             if (!copy($ftmpname . '_thumb.jpg', $fname . '_thumb.jpg')) {
                                 die(json_encode(['error' => $this->translate('Failed to copy preview.')],
@@ -506,11 +512,16 @@ class FileVersioned extends File
                         $file['versions'][0]['file'] = $file['file'];
                         $file['size'] = $file['versions'][0]['size'];
 
-                        $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($oldFile, $filepath) {
+                        $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($oldFile, $filepath, &$fl) {
                             if (!copy($oldFile, $filepath)) {
                                 die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                             }
                             unlink($oldFile);
+                            $OnlyOfficeConnector = OnlyOfficeConnector::init($this->table->getTotum()->getConfig());
+                            if ($OnlyOfficeConnector->isSwithedOn()) {
+                                $OnlyOfficeConnector->checkFileHashes($filepath, $fl['file']);
+                            }
+
                             if (is_file($oldFile . File::DOC_PREVIEW_POSTFIX)) {
                                 copy($oldFile . File::DOC_PREVIEW_POSTFIX, $filepath . File::DOC_PREVIEW_POSTFIX);
                                 unlink($oldFile . File::DOC_PREVIEW_POSTFIX);

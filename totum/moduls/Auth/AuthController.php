@@ -17,6 +17,7 @@ use totum\common\Crypt;
 use totum\common\errorException;
 use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
+use totum\common\OnlyOfficeConnector;
 use totum\common\Totum;
 
 class AuthController extends interfaceController
@@ -273,6 +274,14 @@ class AuthController extends interfaceController
 
     public function actionLogout()
     {
+
+        $OnlyOffice = OnlyOfficeConnector::init($this->Config);
+        if ($OnlyOffice->isSwithedOn()) {
+            session_start();
+            if ($_SESSION['userId'] ?? null) {
+                $OnlyOffice->dropLogoutUser($_SESSION['userId']);
+            }
+        }
         Auth::webInterfaceRemoveAuth();
         $this->location();
         die;

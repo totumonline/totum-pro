@@ -10,6 +10,7 @@
     "psr/log": "^1.1",
     "guzzlehttp/psr7": "^1.6",
     "symfony/console": "^4.4",
+    "firebase/php-jwt": "v6.0.0",
     "ext-pdo": "*",
     "ext-json": "*",
     "ext-openssl": "*",

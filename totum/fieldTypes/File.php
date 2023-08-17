@@ -13,6 +13,7 @@ use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\Lang\RU;
+use totum\common\OnlyOfficeConnector;
 use totum\common\sql\Sql;
 use totum\config\Conf;
 use totum\models\CalcsTableCycleVersion;
@@ -85,7 +86,7 @@ class File extends Field
         }
     }
 
-    public static function getFilePath($file_name, Conf $Config, $fileData = null): string
+    public static function getFilePath($file_name, Conf $Config, array|bool|null $fileData = null): string
     {
         if (str_contains($file_name, '/')) {
             return $Config->getSecureFilesDir() . $file_name;
@@ -96,7 +97,7 @@ class File extends Field
             }
             return $Config->getSecureFilesDir() . $file_name;
         }
-        if ($fileData['secureFile'] ?? false) {
+        if (($fileData === true) || $fileData['secureFile'] ?? false) {
             return $Config->getSecureFilesDir() . $file_name;
         }
         return $Config->getFilesDir() . $file_name;
@@ -213,6 +214,14 @@ class File extends Field
         return $files;
     }
 
+    public function checkFileByField($fileName, $id = null)
+    {
+        if (!str_starts_with(preg_replace('~^.*?([^/]+$)~', '$1', $fileName),
+            $this->_getFprefix($id))) {
+            throw new errorException('Wrong file path');
+        }
+    }
+
     protected function _getFprefix($rowId = null): string
     {
         return $this->table->getTableRow()['id'] . '_' //Таблица
@@ -293,7 +302,6 @@ class File extends Field
             throw new criticalErrorException($this->translate('The data format is not correct for the File field.'));
         }
 
-
         $createTmpFile = function ($fileString, &$file) {
             $ftmpname = tempnam(
                 $this->table->getTotum()->getConfig()->getTmpDir(),
@@ -321,6 +329,8 @@ class File extends Field
             } elseif (!empty($file['filestringbase64'])) {
                 $createTmpFile(base64_decode($file['filestringbase64']), $file);
                 unset($file['filestringbase64']);
+            } elseif (empty($file['file']) && empty($file['tmpfile'])) {
+                throw new errorException($this->translate('The data format is not correct for the File field.'));
             }
         }
         unset($file);
@@ -421,10 +431,15 @@ class File extends Field
 
                     static::$transactionCommits[$fname] = $ftmpname;
 
-                    $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname) {
+                    $this->table->getTotum()->getConfig()->getSql()->addOnCommit(function () use ($ftmpname, $fname, &$fl) {
                         if (!copy($ftmpname, $fname)) {
                             die(json_encode(['error' => $this->translate('Failed to copy a temporary file.')]));
                         }
+                        $OnlyOfficeConnector = OnlyOfficeConnector::init($this->table->getTotum()->getConfig());
+                        if ($OnlyOfficeConnector->isSwithedOn()) {
+                            $OnlyOfficeConnector->checkFileHashes($fname, $fl['file']);
+                        }
+
                         if (is_file($ftmpname . '_thumb.jpg')) {
                             if (!copy($ftmpname . '_thumb.jpg', $fname . '_thumb.jpg')) {
                                 die(json_encode(['error' => $this->translate('Failed to copy preview.')],

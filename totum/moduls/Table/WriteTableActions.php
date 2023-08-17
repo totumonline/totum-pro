@@ -5,8 +5,10 @@ namespace totum\moduls\Table;
 
 use totum\common\calculates\CalculateAction;
 use totum\common\errorException;
+use totum\common\Field;
 use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
+use totum\common\OnlyOfficeConnector;
 use totum\fieldTypes\File;
 use totum\models\TmpTables;
 use totum\tableTypes\tmpTable;
@@ -52,6 +54,64 @@ class WriteTableActions extends ReadTableActions
 
     public function tmpFileUpload()
     {
+        if (!empty($this->post['newFileFromTemplate']) || !empty($this->post['newFileFromFile'])) {
+            $tmpFileName = tempnam($this->Totum->getConfig()->getTmpDir(), $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.' . $this->post['fieldName']);
+
+
+            if (!empty($this->post['newFileFromTemplate'])) {
+                if (file_exists($templateFile = $this->Totum->getConfig()->getBaseDir() . '/http/imgs/template.' . $this->post['newFileFromTemplate'])) {
+                    copy($templateFile, $tmpFileName);
+                }
+                $ext = $this->post['newFileFromTemplate'];
+                $name = 'new.' . $this->post['newFileFromTemplate'];
+
+                $updateResult = function (&$result) {
+                };
+            } else {
+                if (!empty($this->post['rowId'])) {
+                    $this->Table->checkIsUserCanViewIds('web', [$this->post['rowId']]);
+                }
+                if (!$this->Table->isField('visible', 'web', $this->post['fieldName'] ?? '')) {
+                    throw new errorException($this->translate('Access to the file field is denied'));
+                }
+                Field::init($this->Table->getFields()[$this->post['fieldName']], $this->Table)->checkFileByField($this->post['newFileFromFile'], $this->post['rowId'] ?? null);
+
+                if (file_exists($templateFile = File::getFilePath($this->post['newFileFromFile'], $this->Totum->getConfig(), $this->Table->getFields()[$this->post['fieldName']]))) {
+                    copy($templateFile, $tmpFileName);
+                }
+                $ext = preg_replace('/^.*?\.([^.]+)$/', '$1', $this->post['newFileFromFile']);
+                $name = $this->post['fileName'];
+
+                $updateResult = function (&$result) use ($templateFile, $name) {
+                    if ($this->Table->getFields()[$this->post['fieldName']]['versioned'] ?? false) {
+                        $result['file'] = $this->post['newFileFromFile'];
+                        $result['tmpfileName'] = $name;
+                        $result['tmpfileSize'] = filesize($templateFile);
+                    }
+                };
+            }
+            $tmpName = preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName);
+
+            $tableData = ['id' => $this->post['rowId'] ?? 0, 'field' => $this->post['fieldName']];
+            $tableData['tableId'] = $this->Table->getTableRow()['id'];
+            $tableData['cycleId'] = $this->Table->getCycle()?->getId();
+            $tableData['isTmp'] = true;
+
+            $OnlyOffice = OnlyOfficeConnector::init($this->Totum->getConfig());
+            $result = $OnlyOffice->getConfig($this->Totum,
+                false,
+                $ext,
+                $name,
+                $tmpName,
+                $tableData,
+                isShared: false);
+            $result['tmpfile'] = $tmpName;
+            $result['name'] = $name;
+            $result['size'] = filesize($tmpFileName);
+            $result['ext'] = $ext;
+            $updateResult($result);
+            return $result;
+        }
         return File::fileUpload($this->User->getId(), $this->Totum->getConfig());
     }
 
@@ -330,4 +390,82 @@ CODE
         return $this->Table->checkEditRow($summData, $tableData);
     }
 
+    function editFile()
+    {
+
+        $data = is_string($this->post['data']) ? json_decode($this->post['data'], true) : $this->post['data'];
+        $data['fileName'] = str_replace('-', '/', $data['fileName']);
+        $field = $this->Table->getFields()[$data['fieldName']] ?? [];
+        switch ($field['category'] ?? null) {
+            case 'column':
+                if ($this->Table->getTableRow()['type'] === 'calcs') {
+                    list($_, $cycleId, $id) = explode('_', $data['fileName']);
+                } else {
+                    list($_, $id) = explode('_', $data['fileName']);
+                }
+                if ($this->Table->loadFilteredRows('web', [$id])) {
+                    $fileData = $this->Table->getTbl()['rows'][$id][$data['fieldName']]['v'];
+                }
+                break;
+            case null:
+                throw new errorException('WRONG DATA FORMAT');
+            default:
+                $id = 'params';
+                $fileData = $this->Table->getTbl()['params'][$data['fieldName']]['v'];
+        }
+
+        foreach ($fileData as &$file) {
+            if ($file['file'] === $data['fileName']) {
+                $file['filestring'] = $data['filestring'];
+                if (!($field['versioned'] ?? false)) {
+                    unset($file['file']);
+                    unset($file['size']);
+                } elseif ($data['remove_last_version'] ?? false) {
+                    $file['remove_last_version'] = true;
+                }
+            }
+        }
+        unset($file);
+
+        $this->Table->reCalculateFromOvers(['channel' => 'web', 'modify' => [$id => [$field['name'] => $fileData]]]);
+        return ['error' => 0];
+    }
+
+    public function saveOnlyOfficeDoc()
+    {
+
+        $onlyOfficeConnector = OnlyOfficeConnector::init($this->Totum->getConfig());
+        $data = $onlyOfficeConnector->getByKey($this->post['fileKey']);
+        if ($data['file'] === $this->post['fileName'] && in_array($this->Totum->getUser()->getId(), $data['users'])) {
+
+
+            $removeLastVersion = 'true' === ($this->post['remove_last_version'] ?? false);
+            $result = $onlyOfficeConnector->callForceSave($this->post['fileKey'], $this->Totum->getUser()->getId(), $removeLastVersion);
+
+            if ($result['error'] === 4 || ($result['error'] === 0 && $result['key'] === $this->post['fileKey'])) {
+
+                $timer = time();
+                $ready = false;
+                while (!$ready) {
+                    usleep(0.2 * 10 ** 6);
+                    if ($timer < (time() - 3)) {
+                        $onlyOfficeConnector->setSaved($this->post['fileKey']);
+                        return ['error' => $this->translate('OnlyOfficeSaveTimeoutError')];
+                    }
+                    $ready = $onlyOfficeConnector->getByKey($this->post['fileKey'], 'onSaving') !== true;
+                    if ($ready && ($this->post['closeAfter'] ?? false) === 'true') {
+                        $onlyOfficeConnector->closeKey($this->post['fileKey'], $this->Totum->getUser()->getId());
+                    }
+                }
+
+                if ($data['isTmp'] ?? false) {
+                    $size = @filesize($this->Totum->getConfig()->getTmpDir() . $data['file']);
+                }
+
+                return ['ok' => 1, 'size' => $size ?? null];
+            } else return ['error' => 'An error occurred:' . $result['error']];
+        } else {
+            throw new errorException($this->translate('File key is not exists or is expired'));
+        }
+    }
 }

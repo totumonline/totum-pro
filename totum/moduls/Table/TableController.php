@@ -13,6 +13,7 @@ use totum\common\Auth;
 use totum\common\Field;
 use totum\common\Lang\RU;
 use totum\common\logs\CalculateLog;
+use totum\common\OnlyOfficeConnector;
 use totum\common\Services\ServicesConnector;
 use totum\common\WithPathMessTrait;
 use totum\common\sql\SqlException;
@@ -283,6 +284,7 @@ class TableController extends interfaceController
                     $dec = 1;
                     while (key_exists($ord, $orderedInners)) {
                         $ord += 5 * (1 / (10 ** $dec));
+                        $ord = (string)$ord;
                         $dec++;
                     }
 
@@ -485,7 +487,7 @@ class TableController extends interfaceController
 
         $this->tabButton = $request->getQueryParams()['b'] ?? null;
 
-        if ($post['ajax'] ?? null) {
+        if ($post['ajax'] ?? null || !empty($_GET['OnlyOfficeAction'])) {
             $this->isAjax = true;
         }
         if ($requestTable || $this->isAjax) {
@@ -969,7 +971,7 @@ class TableController extends interfaceController
                 } elseif (!($field = $this->Table->getFields()[$fieldName])) {
                     $error = $this->translate('The file field was not found');
                 } else {
-                    $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
+                    $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                 }
             }
             if (!empty($filepath)) {
@@ -1062,12 +1064,12 @@ class TableController extends interfaceController
                         if ($field['category'] === 'column') {
                             $rowId = $this->Table->getTableRow()['type'] === 'calcs' ? (int)$matches[3] : (int)$matches[2];
                             if ($this->Table->loadFilteredRows('web', [$rowId])) {
-                                $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
+                                $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                             } else {
                                 $error = $this->translate('Access to the file row is denied or the row does not exist');
                             }
                         } else {
-                            $filepath = File::getFilePath($folder.$filename, $this->Config, $field);
+                            $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                         }
                     }
                 }
@@ -1091,6 +1093,55 @@ class TableController extends interfaceController
                 echo $error;
             }
             die;
+        }
+    }
+
+    protected function __run($action, ServerRequestInterface $request)
+    {
+        if (!empty($_GET['OnlyOfficeAction']) && ($onlyOfficeConnector = OnlyOfficeConnector::init($this->Config))->isSwithedOn()) {
+            if (!$onlyOfficeConnector->checkOnlyOfficeIp($_SERVER['REMOTE_ADDR'] ?? '')) {
+                echo json_encode(['error' => 'OnlyOffice ip in settings is not matched']);
+                die;
+            }
+
+            $logger = null;//$this->Config->getLogger('onlyoffice', ['debug']);
+
+            $error = 0;
+            $logger?->debug(file_get_contents('php://input'), ['path' => $_SERVER['REQUEST_URI'], 'ip' => $_SERVER['REMOTE_ADDR']]);
+
+            if ($_GET['OnlyOfficeAction'] === 'getFile') {
+                if ($_GET['key'] ?? false) {
+                    readfile($onlyOfficeConnector->getFilePathByKey($_GET['key']));
+                    die;
+                }
+            }
+
+            $data = json_decode(file_get_contents('php://input'), true);
+
+            if (0) {
+                $data['token'] = '';
+            }
+
+            if ($data['token'] ?? false) {
+                try {
+                    $error = $onlyOfficeConnector->tableActionByToken($data['token'], $request, $this->User, $logger);
+                } catch (\Exception $e) {
+                    $error = $e->getMessage();
+                }
+            }
+
+            if (!is_null($error)) {
+                echo json_encode(['error' => $error]);
+                $logger?->debug($error);
+                die;
+            }
+        } else {
+            $this->User = Auth::webInterfaceSessionStart($this->Config);
+        }
+        if (!$this->User) {
+            $this->__UnauthorizedAnswer($request);
+        } else {
+            $this->__actionRun($action, $request);
         }
     }
 }

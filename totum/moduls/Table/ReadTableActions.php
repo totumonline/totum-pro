@@ -13,6 +13,7 @@ use totum\common\Field;
 use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\Model;
+use totum\common\OnlyOfficeConnector;
 use totum\common\Services\ServicesConnector;
 use totum\common\Totum;
 use totum\fieldTypes\Comments;
@@ -529,6 +530,86 @@ class ReadTableActions extends Actions
         }
         if (!empty($error)) {
             return ['error' => $error];
+        }
+    }
+
+    public function getOnlyOfficeCall()
+    {
+        $result = [];
+        $field = $this->Table->getFields()[$this->post['fieldName'] ?? ''] ?? '';
+
+        if (!$field || !$this->Table->isField('visible', 'web', $field)) {
+            $error = $this->translate('Access to the file field is denied');
+        } elseif (!empty($this->post['TmpFile'])) {
+            if (!str_starts_with($this->post['TmpFile'], $this->Totum->getConfig()->getSchema() . '.' . $this->User->getId() . '.' . $this->post['fieldName'])) {
+                throw new errorException('Tmp file name error');
+            }
+            return (OnlyOfficeConnector::init($this->Totum->getConfig()))->getConfig($this->Totum,
+                false,
+                $this->post['ext'],
+                $this->post['name'],
+                $this->post['TmpFile'],
+                ['isTmp' => true],
+                isShared: false,
+                isReadonly: false);
+        } else {
+            if ($field['category'] === 'column') {
+                if (empty($this->post['rowId']) || !$this->Table->loadFilteredRows('web', [$this->post['rowId']])) {
+                    $error = $this->translate('Access to the file row is denied or the row does not exist');
+                } else {
+                    $val = $this->Table->getTbl()['rows'][$this->post['rowId']][$field['name']];
+                }
+            } else {
+                $val = $this->Table->getTbl()['params'][$field['name']];
+            }
+        }
+
+        if (empty($error)) {
+            if (empty($val)) {
+                $error = $this->translate('File [[%s]] is not found.', $field['title']);
+            } else {
+                $file = null;
+                foreach ($val['v'] as $_file) {
+                    if ($this->post['fileName'] === $_file['file'] ?? '') {
+                        $file = $_file;
+                    }
+                }
+
+                if (!$file) {
+                    $error = $this->translate('File [[%s]] is not found.', $this->post['fileName']);
+                } else {
+                    $filePath = File::getFilePath($file['file'], $this->Totum->getConfig(), $field);
+                    if (!is_file($filePath)) {
+                        $error = $this->translate('File [[%s]] is not found.', $this->post['fileName']);
+                    } else {
+
+                        if (!empty($field['secureFile'])) {
+                            $fileHttpPath = false;
+                        } else {
+                            $fileHttpPath = true;
+                        }
+                        $tableData = ['id' => $this->post['rowId'] ?? 0, 'field' => $field['name']];
+                        $tableData['tableId'] = $this->Table->getTableRow()['id'];
+                        $tableData['cycleId'] = $this->Table->getCycle()?->getId();
+
+                        File::init($field, $this->Table)->checkFileByField($file['file'] ?? '', $this->post['rowId'] ?? null);
+
+                        $result = (OnlyOfficeConnector::init($this->Totum->getConfig()))->getConfig($this->Totum,
+                            $fileHttpPath,
+                            $file['ext'],
+                            $file['name'],
+                            $file['file'],
+                            $tableData,
+                            isShared: $this->post['isCommon'] === 'true',
+                            isReadonly: !is_a($this, WriteTableActions::class) || $this->post['edit'] === 'false');
+                    }
+                }
+            }
+        }
+        if (!empty($error)) {
+            return ['error' => $error];
+        } else {
+            return $result;
         }
     }
 
@@ -2186,6 +2267,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $_tableRow['__xlsx'] = $this->isTableServiceOn('xlsx') && !$this->isServicesBlocked && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']);
         $_tableRow['__xlsx_import'] = is_a($this, WriteTableActions::class) && $this->isTableServiceOn('xlsximport') && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']) && !$this->isServicesBlocked && key_exists($this->Totum->getTableRow('ttm__prepared_data_import')['id'], $this->User->getTables());
         $_tableRow['__withDocPreviews'] = $this->isTableServiceOn('pdfdocpreview') && !$this->isServicesBlocked && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']);
+
+        $_tableRow['__withOnlyOffice'] = is_a($this, WriteTableActions::class) && (OnlyOfficeConnector::init($this->Totum->getConfig()))->isSwithedOn();
+
 
         foreach ($this->Table->getVisibleFields('web') as $field) {
             if ($field['type'] === 'file' && !empty($field['versioned'])) {
