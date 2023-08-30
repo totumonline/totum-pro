@@ -42,16 +42,16 @@ use totum\config\Conf;
                                                                                               class="form-control"/>
             </div>
             <?php
-            if ($this->Config->getLDAPSettings('h_ldap_on') && $this->Config->getLDAPSettings('h_domain_selector') && $this->Config->getLDAPSettings('h_domains_settings')) {
+            if ($this->Config->getLDAPSettings('h_ldap_on', null) && $this->Config->getLDAPSettings('h_domain_selector', null) && $this->Config->getLDAPSettings('h_domains_settings', null)) {
                 ?>
                 <div class="form-group"><label><?= $this->translate('Authorization type') ?>:</label>
                     <select name="type" class="form-control selectpicker" id="auth_type_select">
                         <option value="">Totum</option>
                         <?php
-                        if ($this->Config->getLDAPSettings('h_domain_selector') === 'ldap') {
+                        if ($this->Config->getLDAPSettings('h_domain_selector', null) === 'ldap') {
                             echo '<option value="1">LDAP</option>';
                         } else {
-                            foreach ($this->Config->getLDAPSettings('h_domains_settings') as $domain => $_) {
+                            foreach ($this->Config->getLDAPSettings('h_domains_settings', null) as $domain => $_) {
                                 echo '<option value="' . $domain . '">' . $domain . '</option>';
                             }
                         } ?>
