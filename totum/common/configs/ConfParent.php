@@ -606,7 +606,7 @@ abstract class ConfParent
                             $_name = substr($_name, 2);
                             ldap_set_option(null, constant($_name), $val);
                         } else {
-                            ldap_set_option($this->settingsLDAPCache['connection'], constant($_name), $val);
+                            ldap_set_option($this->settingsLDAPCache['connection'][$domain], constant($_name), $val);
                         }
                     }
 
