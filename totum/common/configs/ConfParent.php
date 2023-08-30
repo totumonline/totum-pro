@@ -626,10 +626,11 @@ abstract class ConfParent
                                 }
                             }
                         }
-                        ldap_start_tls($this->settingsLDAPCache['connection']);
+                        ldap_start_tls($this->settingsLDAPCache['connection'][$domain]);
                     }
-
                 }
+
+                return $this->settingsLDAPCache['connection'][$domain];
                 break;
             case 'h_bind_format':
                 if (empty($this->settingsLDAPCache['h_domains_settings'][$domain]['bind_format'] ?? $this->settingsLDAPCache['h_bind_format'])) {
