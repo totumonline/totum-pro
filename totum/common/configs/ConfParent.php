@@ -639,7 +639,7 @@ abstract class ConfParent
                 break;
         }
 
-        if ($domain && str_starts_with('h_', $name) && is_array($this->settingsLDAPCache['h_domains_settings'][$domain] ?? null)) {
+        if ($domain && str_starts_with($name, 'h_') && is_array($this->settingsLDAPCache['h_domains_settings'][$domain] ?? null)) {
             $cropName = substr($name, 2);
             if (key_exists($cropName, $this->settingsLDAPCache['h_domains_settings'][$domain])) {
                 return $this->settingsLDAPCache['h_domains_settings'][$domain][$cropName];
