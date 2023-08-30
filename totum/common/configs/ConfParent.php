@@ -85,7 +85,6 @@ abstract class ConfParent
     protected $Lang;
 
 
-
     public function __construct($env = self::ENV_LEVELS['production'])
     {
         $this->mktimeStart = microtime(true);
@@ -565,7 +564,7 @@ abstract class ConfParent
         }
     }
 
-    public function getLDAPSettings(string $name)
+    public function getLDAPSettings(string $name, string|null $domain)
     {
         if (!$this->settingsLDAPCache) {
 
@@ -582,49 +581,48 @@ abstract class ConfParent
         }
         switch ($name) {
             case 'connection':
-                if (empty($this->settingsLDAPCache['connection'])) {
+                if (empty($this->settingsLDAPCache['connection'][$domain])) {
 
                     if (!extension_loaded("ldap")) {
                         die('LDAP extension php not enabled');
                     }
 
-                    $host = $this->settingsLDAPCache['h_host'];
+                    $host = $this->getLDAPSettings('h_host', $domain);
                     if (empty($host)) {
                         throw new errorException($this->translate('Set the host in the LDAP settings table'));
                     }
 
-                    $port = $this->settingsLDAPCache['h_port'];
+                    $port = $this->getLDAPSettings('h_port', $domain);
 
                     if (empty($port)) {
                         throw new errorException($this->translate('Set the port in the LDAP settings table'));
                     }
-                    $this->settingsLDAPCache['connection'] = ldap_connect($host, $port);
+                    $this->settingsLDAPCache['connection'][$domain] = ldap_connect($host, $port);
 
-                    $settings = $this->settingsLDAPCache['h_version'];
+                    $settings = $this->getLDAPSettings('h_version', $domain);
                     $settings['LDAP_OPT_PROTOCOL_VERSION'] = (int)($settings['LDAP_OPT_PROTOCOL_VERSION'] ?? 3);
                     foreach ($settings as $_name => $val) {
-                        if(str_starts_with($_name, 'G_')){
+                        if (str_starts_with($_name, 'G_')) {
                             $_name = substr($_name, 2);
                             ldap_set_option(null, constant($_name), $val);
-                        }else{
+                        } else {
                             ldap_set_option($this->settingsLDAPCache['connection'], constant($_name), $val);
                         }
                     }
 
-                    if ($this->getLDAPSettings('h_ssl')) {
-                        if ($this->getLDAPSettings('h_cert_file')) {
-                            $filesField = $this->getModel('tables_fields')->getField('data',
-                                ['table_name' => 'ttm__ldap_settings', 'name' => 'h_cert_file']);
-                            $filesField = json_decode($filesField, true);
-                            foreach ($this->getLDAPSettings('h_cert_file') as $file) {
-                                $filePath = File::getFilePath($file['name'], $this, $filesField);
-                                switch ($file['ext']) {
-                                    case 'crt':
-                                        ldap_set_option(null, LDAP_OPT_X_TLS_CERTFILE, $filePath);
-                                        break;
-                                    case 'key':
-                                        ldap_set_option(null, LDAP_OPT_X_TLS_KEYFILE, $filePath);
-                                        break;
+                    if ($this->getLDAPSettings('h_ssl', $domain)) {
+                        if (($cert = $this->getLDAPSettings('h_cert_file', $domain)) && is_array($cert)) {
+                            foreach ($cert as $file) {
+                                if (($file['name'] ?? null) && $file['ext'] ?? null) {
+                                    $filePath = File::getFilePath($file['name'], $this);
+                                    switch ($file['ext']) {
+                                        case 'crt':
+                                            ldap_set_option(null, LDAP_OPT_X_TLS_CERTFILE, $filePath);
+                                            break;
+                                        case 'key':
+                                            ldap_set_option(null, LDAP_OPT_X_TLS_KEYFILE, $filePath);
+                                            break;
+                                    }
                                 }
                             }
                         }
@@ -634,10 +632,17 @@ abstract class ConfParent
                 }
                 break;
             case 'h_bind_format':
-                if (empty($this->settingsLDAPCache['h_bind_format'])) {
+                if (empty($this->settingsLDAPCache['h_domains_settings'][$domain]['bind_format'] ?? $this->settingsLDAPCache['h_bind_format'])) {
                     throw new errorException($this->translate('Set the binding format in the LDAP settings table'));
                 }
                 break;
+        }
+
+        if ($domain && str_starts_with('h_', $name) && is_array($this->settingsLDAPCache['h_domains_settings'][$domain] ?? null)) {
+            $cropName = substr($name, 2);
+            if (key_exists($cropName, $this->settingsLDAPCache['h_domains_settings'][$domain])) {
+                return $this->settingsLDAPCache['h_domains_settings'][$domain][$cropName];
+            }
         }
 
         return $this->settingsLDAPCache[$name] ?? null;
@@ -876,7 +881,8 @@ SQL
 
     protected array $techTables = ['ttm__prepared_data_import'];
 
-    public function isTechTable(string $name){
+    public function isTechTable(string $name)
+    {
         return in_array($name, $this->techTables);
     }
 

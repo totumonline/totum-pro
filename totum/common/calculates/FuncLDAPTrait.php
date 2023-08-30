@@ -10,14 +10,15 @@ trait FuncLDAPTrait
     protected function funcPROLDAPgetUsers($params)
     {
 
-        $connection = $this->Table->getTotum()->getConfig()->getLDAPSettings('connection');
+
 
         $params = $this->getParamsArray($params, [], [], []);
         $this->__checkNotEmptyParams($params, ['basedn', 'filter', 'domain']);
 
+        $connection = $this->Table->getTotum()->getConfig()->getLDAPSettings('connection', $params['domain']);
 
         if ($params['user'] ?? null) {
-            $login = match ($this->Table->getTotum()->getConfig()->getLDAPSettings('h_bind_format')) {
+            $login = match ($this->Table->getTotum()->getConfig()->getLDAPSettings('h_bind_format', $params['domain'])) {
                 'at' => $params['user'] . '@' . $params['domain'],
                 'dn' => $params['user'],
                 default => throw new \Exception('Не поддерживаемый формат бинда ')
@@ -29,7 +30,7 @@ trait FuncLDAPTrait
         }
         $Conf = $this->Table->getTotum()->getConfig();
         $r = @ldap_search($connection, $params['basedn'], $params['filter'][0],
-            [$Conf->getLDAPSettings('h_login_param'), $Conf->getLDAPSettings('h_fio_param'), $Conf->getLDAPSettings('h_email_param')]
+            [$Conf->getLDAPSettings('h_login_param', $params['domain']), $Conf->getLDAPSettings('h_fio_param', $params['domain']), $Conf->getLDAPSettings('h_email_param', $params['domain'])]
         );
 
         if (!$r) {
@@ -48,9 +49,9 @@ trait FuncLDAPTrait
         $users = $procUsers;
 
         if ($params['withgroups'] ?? false) {
-            $groupsSetting = $Conf->getLDAPSettings('h_get_groups');
+            $groupsSetting = $Conf->getLDAPSettings('h_get_groups', $params['domain']);
             if ($groupsSetting) {
-                $groupParam = $Conf->getLDAPSettings('h_group_param');
+                $groupParam = $Conf->getLDAPSettings('h_group_param', $params['domain']);
                 foreach ($users as &$user) {
 
                     foreach ($groupsSetting as $groupParamName => $groupFilter) {
