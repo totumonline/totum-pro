@@ -100,7 +100,7 @@ class AuthController extends interfaceController
             $targetTableRow = $this->Totum->getTableRow($data['target']['t']);
             $link = '/Table/';
             if ($targetTableRow['type'] === 'calcs') {
-                $data['target']['c'] = 0;
+
                 $targetTable = $this->Totum->getTable($targetTableRow, $data['target']['c'] ?? 0);
                 $tree_node_id = $this->Totum->getTableRow($targetTable->getTableRow()['tree_node_id'])['tree_node_id'];
                 $link .= $tree_node_id . '/' . $targetTable->getTableRow()['tree_node_id'] . '/' . $data['target']['c'] . '/' . $targetTable->getTableRow()['id'] . '/';
@@ -290,11 +290,11 @@ class AuthController extends interfaceController
     protected function passwordCheckingAndProtectionWithLDAP(array $post, &$userRow): ?int
     {
         /*LDAP Off*/
-        if (!$this->Config->getLDAPSettings('h_ldap_on')) {
+        if (!$this->Config->getLDAPSettings('h_ldap_on', null)) {
             return null;
         }
         /*It's TOTUM auth*/
-        if ($this->Config->getLDAPSettings('h_domain_selector') && empty($post['type'])) {
+        if ($this->Config->getLDAPSettings('h_domain_selector', null) && empty($post['type'])) {
             return null;
         }
 
@@ -338,7 +338,7 @@ class AuthController extends interfaceController
 
 
         $checkLDAPBind = function ($loginIn, $password, $domain, &$userRow) {
-            $connection = $this->Config->getLDAPSettings('connection');
+            $connection = $this->Config->getLDAPSettings('connection', $domain);
 
             $getDnForUser = function () use ($domain, $loginIn, $userRow) {
                 if ($userRow) {
@@ -355,7 +355,7 @@ class AuthController extends interfaceController
             };
 
 
-            $login = match ($this->Config->getLDAPSettings('h_bind_format')) {
+            $login = match ($this->Config->getLDAPSettings('h_bind_format', $domain)) {
                 'at' => $loginIn . '@' . $domain,
                 'dn' => $getDnForUser(),
                 default => throw new \Exception('Не поддерживаемый формат бинда ')
@@ -414,18 +414,18 @@ class AuthController extends interfaceController
             }
 
         } else {
-            if (!$this->Config->getLDAPSettings('h_domain_selector')) {
+            if (!$this->Config->getLDAPSettings('h_domain_selector', null)) {
                 if ($userRow = Auth::getUserRowWithServiceRestriction($post['login'], $this->Config, 'web')) {
                     /*This is totum-user check it common way*/
                     return null;
                 } else {
-                    if (!is_array($this->Config->getLDAPSettings('h_domains_settings')) || count($this->Config->getLDAPSettings('h_domains_settings')) != 1) {
+                    if (!is_array($this->Config->getLDAPSettings('h_domains_settings', null)) || count($this->Config->getLDAPSettings('h_domains_settings', null)) != 1) {
                         /*If domain number is not 1 then check only totum-user here*/
                         return Auth::$AuthStatuses['WRONG_PASSWORD'];
                     } else {
                         $status = $checkLDAPBind($post['login'],
                             $post['pass'],
-                            array_key_first($this->Config->getLDAPSettings('h_domains_settings')),
+                            array_key_first($this->Config->getLDAPSettings('h_domains_settings', null)),
                             $userRow);
                     }
                 }
@@ -434,11 +434,11 @@ class AuthController extends interfaceController
                 return null;
             } else {
                 if ($post['type'] === "1") {
-                    if ($this->Config->getLDAPSettings('h_domain_selector') === "ldap") {
-                        if (count($this->Config->getLDAPSettings('h_domains_settings')) != 1) {
+                    if ($this->Config->getLDAPSettings('h_domain_selector', null) === "ldap") {
+                        if (count($this->Config->getLDAPSettings('h_domains_settings', null)) != 1) {
                             die("wrong ldap settings");
                         }
-                        $post['type'] = array_key_first($this->Config->getLDAPSettings('h_domains_settings'));
+                        $post['type'] = array_key_first($this->Config->getLDAPSettings('h_domains_settings', null));
                     } else {
                         die("wrong ldap settings");
                     }
