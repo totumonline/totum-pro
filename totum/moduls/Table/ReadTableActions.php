@@ -1051,6 +1051,15 @@ class ReadTableActions extends Actions
 
     public function printTable()
     {
+
+
+        $this->Table->reCalculateFilters(
+            'web',
+            false,
+            false,
+            ['params' => $this->getPermittedFilters($this->Request->getParsedBody()['filters'] ?? '')]
+        );
+
         $template = $this->Totum->getModel('print_templates')->executePrepared(
             true,
             ['name' => 'main'],
