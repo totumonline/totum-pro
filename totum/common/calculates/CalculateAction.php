@@ -950,7 +950,7 @@ class CalculateAction extends Calculate
                     $hash = $params['hash'];
                 } elseif ($this->Table->getTableRow()['id'] === $tableRow['id']) {
                     $hash = $this->Table->getTableRow()['sess_hash'];
-                }else{
+                } else {
                     $this->__checkNotEmptyParams($params, ['hash']);
                 }
                 if (!empty($hash)) {
@@ -1143,7 +1143,7 @@ class CalculateAction extends Calculate
                     $data['target']['f'][$f['field']] = $f['value'];
                 }
             }
-            if($params['cycle'] ?? false){
+            if ($params['cycle'] ?? false) {
                 $this->__checkNumericParam($params['cycle'], 'cycle');
                 $data['target']['c'] = $params['cycle'];
             }
@@ -1307,7 +1307,7 @@ class CalculateAction extends Calculate
 
         $this->Table->getTotum()->addToInterfaceDatas(
             'text',
-            ['title' => $title, 'width' => $width, 'height' => $params['height'] ?? null, 'text' => $params['html'] ?? '', 'close' => !!($params['close'] ?? false)],
+            ['title' => $title, 'width' => $width, 'scripts' => (array)($params['scripts'] ?? []), 'height' => $params['height'] ?? null, 'text' => $params['html'] ?? '', 'close' => !!($params['close'] ?? false)],
             $params['refresh'] ?? false
         );
     }
