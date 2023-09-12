@@ -84,6 +84,7 @@ abstract class ConfParent
     protected $procVars = [];
     protected $Lang;
 
+    public $loginsWithoutTwoFactorAuth = [];
 
     public function __construct($env = self::ENV_LEVELS['production'])
     {

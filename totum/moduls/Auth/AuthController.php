@@ -139,44 +139,59 @@ class AuthController extends interfaceController
             $this->location('/Auth/Login' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
             die;
         }
+
         $post = $request->getParsedBody();
+
+        $auth_user = function () {
+            $user = Auth::getUserById($this->Config, $_SESSION['auth_data']['id']);
+            unset($_SESSION['auth_data']);
+
+            Auth::isBlockedUserIfTimesOff($_SESSION['auth_data']['login'], null, $this->Config, 'write', Auth::$AuthStatuses['OK']);
+            Auth::webInterfaceSetAuth($user->getId());
+
+            $baseDir = $this->Config->getBaseDir();
+
+            if (in_array(1, $user->getRoles())) {
+                $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
+                `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+            }
+
+            $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : $user->getUserStartPath(),
+                !key_exists('from', $_GET));
+        };
+
+        if (in_array($_SESSION['auth_data']['login'], $this->Config->loginsWithoutTwoFactorAuth)) {
+            $auth_user();
+        }
+
+        if (Auth::isUserBlocked($_SESSION['auth_data']['login'], $this->Config)) {
+            $this->location('/Auth/Login' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
+        }
+
 
         if (!empty($post['login']) && !empty($_SESSION['auth_data']['secret'])) {
             if ($_SESSION['auth_data']['secret']['code'] != $post['secret'] ?? null) {
                 $error = $this->translate('Wrong secret code');
+                $_SESSION['auth_secret_anti_bruteforce']++;
+
             } elseif ($_SESSION['auth_data']['secret']['time'] < (time() - $this->Config->getSettings('h_pro_auth_live_time') * 60)) {
                 $error = $this->translate('Secret code expired');
-            } else {
-                $user = Auth::getUserById($this->Config, $_SESSION['auth_data']['id']);
-                unset($_SESSION['auth_data']);
-
-                $this->Config->getSql()->insert(
-                    'auth_log',
-                    [
-                        'datetime' => json_encode(['v' => date_create()->format('Y-m-d H:i')])
-                        , 'user_ip' => json_encode(['v' => ($_SERVER['REMOTE_ADDR'] ?? null)])
-                        , 'login' => json_encode(['v' => $user->login])
-                        , 'status' => json_encode(['v' => strval(Auth::$AuthStatuses['OK'])])
-                    ],
-                    false
-                );
-
-                Auth::webInterfaceSetAuth($user->getId());
-
-                $baseDir = $this->Config->getBaseDir();
-
-                if (in_array(1, $user->getRoles())) {
-                    $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
-                    `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+                if (Auth::isBlockedUserIfTimesOff($_SESSION['auth_data']['login'], Auth::$AuthStatuses['WRONG_PASSWORD'], $this->Config) === Auth::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION']) {
+                    $this->location('/Auth/Login' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
                 }
-
-                $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : $user->getUserStartPath(),
-                    !key_exists('from', $_GET));
+            } else {
+                $auth_user();
             }
         }
         if (empty($_SESSION['auth_data']['secret'])
             || (!empty($post['resend']) && $_SESSION['auth_data']['secret']['time'] < (time() - $this->Config->getSettings('h_pro_auth_resend_time')))
         ) {
+            $secretStatus = Auth::isBlockedUserIfTimesOff($_SESSION['auth_data']['login'], Auth::$AuthStatuses['SECRET_SENT'], $this->Config, 'check');
+            if ($secretStatus === Auth::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION']) {
+                Auth::isBlockedUserIfTimesOff($_SESSION['auth_data']['login'], Auth::$AuthStatuses['SECRET_SENT'], $this->Config, 'write', $secretStatus);
+                $this->location('/Auth/Login' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
+            }
+
             $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
             $Calculate = new CalculateAction($this->Config->getSettings('h_pro_auth_secret'));
             $settingsTable = $Totum->getTable('settings');
@@ -184,10 +199,28 @@ class AuthController extends interfaceController
             if (!$code || is_array($code)) {
                 die('Settings error.');
             }
-            $_SESSION['auth_data']['secret']['code'] = (string)$code;
-            $_SESSION['auth_data']['secret']['time'] = time();
-            $this->__addAnswerVar('code_sent', $this->translate('New secret code was sent'), true);
-        }elseif (!empty($post['resend'])){
+
+            try {
+
+                $codeInstruction = (new CalculateAction($this->Config->getSettings('h_pro_auth_message')))->execAction('CODE', $settingsTable->getTbl()['params'], $settingsTable->getTbl()['params'], $settingsTable->getTbl(), $settingsTable->getTbl(), $settingsTable, 'exec', [
+                    'secret' => $code,
+                    'userId' => $_SESSION['auth_data']['id']
+                ]);
+                if (!is_string($codeInstruction)) {
+                    $codeInstruction = null;
+                }
+
+                $_SESSION['auth_data']['secret']['code'] = (string)$code;
+                $_SESSION['auth_data']['secret']['time'] = time();
+
+                $this->__addAnswerVar('code_sent', $codeInstruction ?: $this->translate('New secret code was sent'), false);
+                Auth::isBlockedUserIfTimesOff($_SESSION['auth_data']['login'], Auth::$AuthStatuses['SECRET_SENT'], $this->Config, 'write', $secretStatus);
+
+            } catch (\Exception $exception) {
+                $error = $exception->getMessage();
+            }
+
+        } elseif (!empty($post['resend'])) {
             $error = $this->translate('You can\'t resend the secret yet.');
         }
 
@@ -195,7 +228,9 @@ class AuthController extends interfaceController
             $this->__addAnswerVar('error', $error, true);
         }
         $this->__addAnswerVar('schema_name', $this->Config->getSettings('totum_name'), true);
-        $this->__addAnswerVar('seconds', ($_SESSION['auth_data']['secret']['time'] + $this->Config->getSettings('h_pro_auth_resend_time')) - time());
+        if (!empty($_SESSION['auth_data']['secret']['time'])) {
+            $this->__addAnswerVar('seconds', ($_SESSION['auth_data']['secret']['time'] + $this->Config->getSettings('h_pro_auth_resend_time')) - time());
+        }
     }
 
     public function actionLogin(ServerRequestInterface $request)
@@ -268,7 +303,7 @@ class AuthController extends interfaceController
                     case Auth::$AuthStatuses['OK']:
                         if ($this->Config->getSettings('h_pro_auth_on_off')) {
 
-                            $_SESSION['auth_data'] = ['id' => $userRow['id']];
+                            $_SESSION['auth_data'] = ['id' => $userRow['id'], 'login' => mb_strtolower($post['login'])];
                             $this->location('/Auth/Verification' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
 
                         } else {
