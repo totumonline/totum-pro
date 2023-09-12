@@ -260,16 +260,18 @@ SQL;
             }
         }
 
-        $Config->getSql()->insert(
-            'auth_log',
-            [
-                'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
-                , 'user_ip' => json_encode(['v' => $ip])
-                , 'login' => json_encode(['v' => $login])
-                , 'status' => json_encode(['v' => strval($status)])
-            ],
-            false
-        );
+        if ($status !== static::$AuthStatuses['OK'] || !$Config->getSettings('h_pro_auth_on_off')) {
+            $Config->getSql()->insert(
+                'auth_log',
+                [
+                    'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
+                    , 'user_ip' => json_encode(['v' => $ip])
+                    , 'login' => json_encode(['v' => $login])
+                    , 'status' => json_encode(['v' => strval($status)])
+                ],
+                false
+            );
+        }
         return $status;
     }
 

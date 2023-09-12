@@ -19,6 +19,7 @@ use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\OnlyOfficeConnector;
 use totum\common\Totum;
+use totum\tableTypes\aTable;
 
 class AuthController extends interfaceController
 {
@@ -126,6 +127,78 @@ class AuthController extends interfaceController
 
     }
 
+    public function actionVerification(ServerRequestInterface $request)
+    {
+        $this->Config->setSessionCookieParams();
+        session_start();
+        if (!empty($_SESSION['userId'])) {
+            $this->location();
+            die;
+        }
+        if (empty($_SESSION['auth_data'])) {
+            $this->location('/Auth/Login' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
+            die;
+        }
+        $post = $request->getParsedBody();
+
+        if (!empty($post['login']) && !empty($_SESSION['auth_data']['secret'])) {
+            if ($_SESSION['auth_data']['secret']['code'] != $post['secret'] ?? null) {
+                $error = $this->translate('Wrong secret code');
+            } elseif ($_SESSION['auth_data']['secret']['time'] < (time() - $this->Config->getSettings('h_pro_auth_live_time') * 60)) {
+                $error = $this->translate('Secret code expired');
+            } else {
+                $user = Auth::getUserById($this->Config, $_SESSION['auth_data']['id']);
+                unset($_SESSION['auth_data']);
+
+                $this->Config->getSql()->insert(
+                    'auth_log',
+                    [
+                        'datetime' => json_encode(['v' => date_create()->format('Y-m-d H:i')])
+                        , 'user_ip' => json_encode(['v' => ($_SERVER['REMOTE_ADDR'] ?? null)])
+                        , 'login' => json_encode(['v' => $user->login])
+                        , 'status' => json_encode(['v' => strval(Auth::$AuthStatuses['OK'])])
+                    ],
+                    false
+                );
+
+                Auth::webInterfaceSetAuth($user->getId());
+
+                $baseDir = $this->Config->getBaseDir();
+
+                if (in_array(1, $user->getRoles())) {
+                    $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
+                    `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+                }
+
+                $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : $user->getUserStartPath(),
+                    !key_exists('from', $_GET));
+            }
+        }
+        if (empty($_SESSION['auth_data']['secret'])
+            || (!empty($post['resend']) && $_SESSION['auth_data']['secret']['time'] < (time() - $this->Config->getSettings('h_pro_auth_resend_time')))
+        ) {
+            $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
+            $Calculate = new CalculateAction($this->Config->getSettings('h_pro_auth_secret'));
+            $settingsTable = $Totum->getTable('settings');
+            $code = $Calculate->execAction('CODE', $settingsTable->getTbl()['params'], $settingsTable->getTbl()['params'], $settingsTable->getTbl(), $settingsTable->getTbl(), $settingsTable, 'exec');
+            if (!$code || is_array($code)) {
+                die('Settings error.');
+            }
+            $_SESSION['auth_data']['secret']['code'] = (string)$code;
+            $_SESSION['auth_data']['secret']['time'] = time();
+            $this->__addAnswerVar('code_sent', $this->translate('New secret code was sent'), true);
+        }elseif (!empty($post['resend'])){
+            $error = $this->translate('You can\'t resend the secret yet.');
+        }
+
+        if ($error ?? null) {
+            $this->__addAnswerVar('error', $error, true);
+        }
+        echo $_SESSION['auth_data']['secret']['code'];
+        $this->__addAnswerVar('schema_name', $this->Config->getSettings('totum_name'), true);
+        $this->__addAnswerVar('seconds', ($_SESSION['auth_data']['secret']['time'] + $this->Config->getSettings('h_pro_auth_resend_time')) - time());
+    }
+
     public function actionLogin(ServerRequestInterface $request)
     {
         $post = $request->getParsedBody();
@@ -194,18 +267,26 @@ class AuthController extends interfaceController
                     $this->Config,
                     'web')) {
                     case Auth::$AuthStatuses['OK']:
-                        Auth::webInterfaceSetAuth($userRow['id']);
+                        if ($this->Config->getSettings('h_pro_auth_on_off')) {
 
-                        $baseDir = $this->Config->getBaseDir();
+                            $_SESSION['auth_data'] = ['id' => $userRow['id']];
+                            $this->location('/Auth/Verification' . ($_GET['from'] ? '?from=' . urlencode($_GET['from']) : ''));
 
-                        if (in_array(1, $userRow['roles'])) {
-                            $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
-                            `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+                        } else {
+
+                            Auth::webInterfaceSetAuth($userRow['id']);
+
+                            $baseDir = $this->Config->getBaseDir();
+
+                            if (in_array(1, $userRow['roles'])) {
+                                $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
+                                `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+                            }
+
+                            $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : Auth::getUserById($this->Config,
+                                $userRow['id'])->getUserStartPath(),
+                                !key_exists('from', $_GET));
                         }
-
-                        $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : Auth::getUserById($this->Config,
-                            $userRow['id'])->getUserStartPath(),
-                            !key_exists('from', $_GET));
                         break;
                     case Auth::$AuthStatuses['LDAP_LOAD_CRASH']:
                         return ['error' => $this->translate('User is switched off or does not have access rights')];
@@ -461,17 +542,18 @@ class AuthController extends interfaceController
             }
             $status = $getWrongStatus();
         }
-
-        $Config->getSql()->insert(
-            'auth_log',
-            [
-                'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
-                , 'user_ip' => json_encode(['v' => $ip])
-                , 'login' => json_encode(['v' => $post['login']])
-                , 'status' => json_encode(['v' => strval($status)])
-            ],
-            false
-        );
+        if ($status !== Auth::$AuthStatuses['OK'] || !$Config->getSettings('h_pro_auth_on_off')) {
+            $Config->getSql()->insert(
+                'auth_log',
+                [
+                    'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
+                    , 'user_ip' => json_encode(['v' => $ip])
+                    , 'login' => json_encode(['v' => $post['login']])
+                    , 'status' => json_encode(['v' => strval($status)])
+                ],
+                false
+            );
+        }
         return $status;
 
     }
