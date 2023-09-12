@@ -194,7 +194,6 @@ class AuthController extends interfaceController
         if ($error ?? null) {
             $this->__addAnswerVar('error', $error, true);
         }
-        echo $_SESSION['auth_data']['secret']['code'];
         $this->__addAnswerVar('schema_name', $this->Config->getSettings('totum_name'), true);
         $this->__addAnswerVar('seconds', ($_SESSION['auth_data']['secret']['time'] + $this->Config->getSettings('h_pro_auth_resend_time')) - time());
     }
