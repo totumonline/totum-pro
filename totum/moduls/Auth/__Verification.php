@@ -31,6 +31,15 @@ use totum\config\Conf;
         #login{
             margin-right: 10px;
         }
+        #resend{
+            box-shadow: none;
+        }
+        #sent_message{
+            margin-bottom: 15px;
+        }
+        #sent_message:empty{
+            display: none;
+        }
     </style>
 
     <div style="text-align: center; font-size: 30px; padding-bottom: 2vh;padding-top: 2vh;"
@@ -40,7 +49,7 @@ use totum\config\Conf;
 
         <form method="post"
               id='form'>
-            <div><?= $code_sent ?? '' ?></div>
+            <div id="sent_message"><?= $code_sent ?? '' ?></div>
             <?php
             if (isset($seconds)) {
                 ?>
@@ -84,12 +93,14 @@ use totum\config\Conf;
                 resend.find('span').text(time)
             } else {
                 clearInterval(interval);
-                resend.html('<?=$this->translate('Resend secret')?> <i class="fa fa-refresh"></i>').prop('disabled', '')
+                let width = resend.width();
+                resend.html('<?=$this->translate('Resend secret')?> <i class="fa fa-refresh"></i>').prop('disabled', '').width(width)
             }
         };
         intervalFunc();
         let interval = setInterval(intervalFunc, 1000)
     } else {
-        resend.html('<?=$this->translate('Resend secret')?> <i class="fa fa-refresh"></i>').prop('disabled', '')
+        let width = resend.width();
+        resend.html('<?=$this->translate('Resend secret')?> <i class="fa fa-refresh"></i>').prop('disabled', '').width(width)
     }
 </script>
