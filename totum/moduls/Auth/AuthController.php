@@ -172,6 +172,7 @@ class AuthController extends interfaceController
         if (!empty($post['login']) && !empty($_SESSION['auth_data']['secret'])) {
             if ($_SESSION['auth_data']['secret']['code'] != $post['secret'] ?? null) {
                 $error = $this->translate('Wrong secret code');
+                $_SESSION['auth_secret_anti_bruteforce'] = $_SESSION['auth_secret_anti_bruteforce'] ?? 0;
                 $_SESSION['auth_secret_anti_bruteforce']++;
 
             } elseif ($_SESSION['auth_data']['secret']['time'] < (time() - $this->Config->getSettings('h_pro_auth_live_time') * 60)) {
@@ -195,7 +196,7 @@ class AuthController extends interfaceController
             $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
             $Calculate = new CalculateAction($this->Config->getSettings('h_pro_auth_secret'));
             $settingsTable = $Totum->getTable('settings');
-            $code = $Calculate->execAction('CODE', $settingsTable->getTbl()['params'], $settingsTable->getTbl()['params'], $settingsTable->getTbl(), $settingsTable->getTbl(), $settingsTable, 'exec',  [
+            $code = $Calculate->execAction('CODE', $settingsTable->getTbl()['params'], $settingsTable->getTbl()['params'], $settingsTable->getTbl(), $settingsTable->getTbl(), $settingsTable, 'exec', [
                 'userId' => $_SESSION['auth_data']['id']
             ]);
             if (!$code || is_array($code)) {
@@ -290,7 +291,6 @@ class AuthController extends interfaceController
             if (empty($post['login']) || is_array($post['login'])) {
                 return ['error' => $this->translate('Fill in the Login/Email field')];
             }
-
 
 
             if (empty($post['recover'])) {
