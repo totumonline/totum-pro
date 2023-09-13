@@ -144,8 +144,6 @@ class AuthController extends interfaceController
 
         $auth_user = function () {
             $user = Auth::getUserById($this->Config, $_SESSION['auth_data']['id']);
-            unset($_SESSION['auth_data']);
-
             Auth::isBlockedUserIfTimesOff($_SESSION['auth_data']['login'], null, $this->Config, 'write', Auth::$AuthStatuses['OK']);
             Auth::webInterfaceSetAuth($user->getId());
 
@@ -155,6 +153,8 @@ class AuthController extends interfaceController
                 $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
                 `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
             }
+
+            unset($_SESSION['auth_data']);
 
             $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : $user->getUserStartPath(),
                 !key_exists('from', $_GET));
