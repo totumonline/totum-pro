@@ -25,6 +25,12 @@ use totum\config\Conf;
             background: url(/imgs/mailttm.png) no-repeat center center fixed;
             background-size: cover;
         }
+        #EnterBlock{
+            display: flex;
+        }
+        #login{
+            margin-right: 10px;
+        }
     </style>
 
     <div style="text-align: center; font-size: 30px; padding-bottom: 2vh;padding-top: 2vh;"
@@ -43,15 +49,12 @@ use totum\config\Conf;
                                                                                                      value=""
                                                                                                      class="form-control"
                     /></div>
-                <div class="form-group"><input type="submit"
+                <div class="form-group" id="EnterBlock"><input type="submit"
                                                name="login"
                                                value="<?= $this->translate('Log in') ?>"
                                                style="width: auto; padding: 0px 22px;margin-top:4px;"
                                                id="login"
                                                class="form-control"/>
-
-                </div>
-                <div class="form-group">
                     <button type="submit"
                             name="resend"
                             value="ok"
@@ -60,7 +63,6 @@ use totum\config\Conf;
                             id="resend"
                             class="form-control"><?= $this->translate('You can resend a secret via <span></span> sec') ?>
                     </button>
-
                 </div>
                 <?php
             } ?>
