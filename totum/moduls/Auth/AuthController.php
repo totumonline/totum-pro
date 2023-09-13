@@ -195,7 +195,9 @@ class AuthController extends interfaceController
             $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
             $Calculate = new CalculateAction($this->Config->getSettings('h_pro_auth_secret'));
             $settingsTable = $Totum->getTable('settings');
-            $code = $Calculate->execAction('CODE', $settingsTable->getTbl()['params'], $settingsTable->getTbl()['params'], $settingsTable->getTbl(), $settingsTable->getTbl(), $settingsTable, 'exec');
+            $code = $Calculate->execAction('CODE', $settingsTable->getTbl()['params'], $settingsTable->getTbl()['params'], $settingsTable->getTbl(), $settingsTable->getTbl(), $settingsTable, 'exec',  [
+                'userId' => $_SESSION['auth_data']['id']
+            ]);
             if (!$code || is_array($code)) {
                 die('Settings error.');
             }
