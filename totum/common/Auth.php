@@ -14,7 +14,8 @@ class Auth
         'WRONG_PASSWORD' => 1,
         'BLOCKED_BY_CRACKING_PROTECTION' => 2,
         'TOKEN_AUTH' => 3,
-        'LDAP_LOAD_CRASH' => 4
+        'SECRET_SENT' => 4,
+        'LDAP_LOAD_CRASH' => 400
     ];
     public static $userManageRoles = [-1];
     public static $userManageTables = ['users', 'auth_log', 'ttm__users_online'];
@@ -213,10 +214,87 @@ SQL;
         return false;
     }
 
+    public static function isUserBlocked($login, Conf $Config): int|bool
+    {
+        $ip = ($_SERVER['REMOTE_ADDR'] ?? null);
+
+        $login = mb_strtolower($login);
+
+        if (($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
+            $BlockDate = date_create()->modify('-' . $block_time . 'minutes');
+            $block_date = $BlockDate->format('Y-m-d H:i');
+        }
+
+        if ($block_time && $Config->getModel('auth_log')->get(['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\'', 'status' => 2])) {
+            return static::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION'];
+        }
+        return false;
+    }
+
+    /**
+     * @param $login
+     * @param $countedStatus
+     * @param Conf $Config
+     * @param string $operationMode both|check|write
+     * @return bool
+     */
+    public static function isBlockedUserIfTimesOff($login, $countedStatus, Conf $Config, string $operationMode = "both", $status = null): int
+    {
+        $ip = ($_SERVER['REMOTE_ADDR'] ?? null);
+        $login = mb_strtolower($login);
+
+        if ($operationMode === 'both' || $operationMode === 'check') {
+            if (($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
+                $BlockDate = date_create()->modify('-' . $block_time . 'minutes');
+                $block_date = $BlockDate->format('Y-m-d H:i');
+            }
+
+            if (!$block_time || !$error_count) {
+                $status = $countedStatus;
+            } else {
+                $count = 0;
+                $statuses = $Config->getModel('auth_log')->getAll(
+                    ['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\''],
+                    'status',
+                    'id desc'
+                );
+                foreach ($statuses as $st) {
+                    if ($st["status"] == $countedStatus) {
+                        $count++;
+                    }
+                }
+
+                if ($count >= $error_count) {
+                    $status = static::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION'];
+                } else {
+                    $status = $countedStatus;
+                }
+            }
+        }
+
+        if ($operationMode === 'both' || $operationMode === 'write') {
+
+            $Config->getSql()->insert(
+                'auth_log',
+                [
+                    'datetime' => json_encode(['v' => date_create()->format('Y-m-d H:i')])
+                    , 'user_ip' => json_encode(['v' => $ip])
+                    , 'login' => json_encode(['v' => $login])
+                    , 'status' => json_encode(['v' => strval($status)])
+                ],
+                false
+            );
+
+        }
+
+        return $status;
+    }
+
     public static function passwordCheckingAndProtection($login, $pass, &$userRow, Conf $Config, $interface): int
     {
         $ip = ($_SERVER['REMOTE_ADDR'] ?? null);
         $now_date = date_create();
+        $login = mb_strtolower($login);
 
         if (($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
             $BlockDate = date_create()->modify('-' . $block_time . 'minutes');
@@ -260,16 +338,18 @@ SQL;
             }
         }
 
-        $Config->getSql()->insert(
-            'auth_log',
-            [
-                'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
-                , 'user_ip' => json_encode(['v' => $ip])
-                , 'login' => json_encode(['v' => $login])
-                , 'status' => json_encode(['v' => strval($status)])
-            ],
-            false
-        );
+        if ($status !== static::$AuthStatuses['OK'] || !$Config->getSettings('h_pro_auth_on_off')) {
+            $Config->getSql()->insert(
+                'auth_log',
+                [
+                    'datetime' => json_encode(['v' => $now_date->format('Y-m-d H:i')])
+                    , 'user_ip' => json_encode(['v' => $ip])
+                    , 'login' => json_encode(['v' => $login])
+                    , 'status' => json_encode(['v' => strval($status)])
+                ],
+                false
+            );
+        }
         return $status;
     }
 
