@@ -62,6 +62,9 @@ class installController extends interfaceController
 
     public function doIt(ServerRequestInterface $request, bool $output)
     {
+        if (!empty($_POST['ajax'])) {
+            die('{"ok": 1}');
+        }
         $this->actionMain($request);
         if ($output) {
             $this->output('Main');
