@@ -269,16 +269,16 @@ abstract class ConfParent
     {
         if ($User === 'NOT_TRANSLATE') {
             $this->userLangCreatorMode = 'NOT_TRANSLATE';
-        } elseif (static::isSuperlang && $User->lang) {
-            if (!$this->isLangFixed) {
+        } elseif (static::isSuperlang) {
+            if (!$this->isLangFixed && $User->lang) {
                 $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->lang))();
                 if ($this->Lang::class !== $newLang::class) {
                     $this->langLangsJsonTranslates = null;
                     $this->langJsonTranslates = null;
                     $this->Lang = $newLang;
                 }
-                $this->userLangCreatorMode = $User->isCreator();
             }
+            $this->userLangCreatorMode = $User->isCreator();
         }
     }
 
