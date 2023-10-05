@@ -625,10 +625,11 @@ abstract class aTable
             foreach ($this->Totum->getModel('tables_fields__v', true)->executePrepared(
                 true,
                 $where,
-                'name, category, data, id, title, ord',
+                'name, category, data, id, to_json(title) as title, ord',
                 'ord, name'
             ) as $f) {
-                ;
+                $f['title'] = json_decode($f['title']);
+
                 $f = $fields[$f['name']] = static::getFullField($f);
 
                 if (array_key_exists('type', $f) && $f['type'] === 'link') {
