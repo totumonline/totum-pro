@@ -154,7 +154,7 @@ class TableController extends interfaceController
         $this->addLogs($result, true);
 
 
-        return $result;
+        return $this->Config->superTranslate($result);
     }
 
 

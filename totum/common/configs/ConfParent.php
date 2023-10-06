@@ -582,9 +582,7 @@ abstract class ConfParent
                 $Logger ?? $this->getLogger('sql'),
                 $withSchema,
                 $this->getLangObj(),
-                $this,
-                (static::$timeLimit + 5) * 1000,
-
+                (static::$timeLimit + 5) * 1000
             );
         };
         if ($mainInstance) {
@@ -868,12 +866,12 @@ SQL
 
     public function getLangObj(): LangInterface
     {
-        return $this->userLangObj ?? $this->Lang;
+        return $this->Lang;
     }
 
     public function superTranslate(mixed $data): mixed
     {
-        if ($this->userLangCreatorMode === 'NOT_TRANSLATE') {
+        if (!static::isSuperlang || $this->userLangCreatorMode === 'NOT_TRANSLATE') {
             return $data;
         }
 
@@ -887,15 +885,22 @@ SQL
             $data = preg_replace_callback("~\{\{[/a-zA-Z0-9,?'!_\-]+\}\}~",
                 function ($template) {
                     $this->langJsonTranslates = $this->langJsonTranslates ?? $this->loadUserTranslates('main');
-                    return str_replace('"', '\"', $this->langJsonTranslates[$template[0]] ?? $template[0]);
+                    return $this->langJsonTranslates[$template[0]] ?? $template[0];
                 },
                 $data);
             if (!$this->userLangCreatorMode) {
                 $data = preg_replace_callback("~\{<([/a-zA-Z0-9,?'!_\-]+)>\}~",
-                    function ($template) {
+                    function ($template) use ($data) {
                         $this->langLangsJsonTranslates = $this->langLangsJsonTranslates ?? $this->loadUserTranslates('langs');
-
-                        return str_replace('"', '\"', $this->langLangsJsonTranslates[$template[1]] ?? $template[0]);
+                        return $this->langLangsJsonTranslates[$template[1]] ?? $template[0];
+                    },
+                    $data);
+                $data = preg_replace_callback("~<(\{\".+\})>~",
+                    function ($template) use ($data) {
+                        if ($d = @json_decode($template[1], true)) {
+                            return $d[$this->getLang()] ?? $d[strtolower(static::LANG)] ?? $template[0];
+                        }
+                        return $template[0];
                     },
                     $data);
             }

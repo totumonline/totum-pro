@@ -9,7 +9,6 @@ use Psr\Log\LoggerInterface;
 use totum\common\Lang\LangInterface;
 use totum\common\Lang\RU;
 use totum\common\tableSaveOrDeadLockException;
-use totum\config\Conf;
 
 class Sql
 {
@@ -29,7 +28,7 @@ class Sql
     protected $preparedCount;
 
 
-    public function __construct(array $settings, LoggerInterface $Log, $withSchema, protected LangInterface $Lang, protected Conf $Config, int $sessionTimeout = 0)
+    public function __construct(array $settings, LoggerInterface $Log, $withSchema, protected LangInterface $Lang, int $sessionTimeout = 0)
     {
         $this->Log = $Log;
         $this->PDO = static::getNewConnection($settings, $withSchema, $sessionTimeout);
@@ -137,7 +136,7 @@ class Sql
     {
         $query_string = $this->getQueryString($query_string, $vars);
         $r = $this->query($query_string);
-        return $this->Config::isSuperlang ? $this->Config->superTranslate($r->fetchColumn()) : $r->fetchColumn();
+        return $r->fetchColumn();
     }
 
     public function exec($query_string, $vars = array(), $execForce = false)
@@ -281,8 +280,6 @@ class Sql
             $r = $this->getPDO()->query($query_string);
             if (!$r) {
                 $this->errorHandler($this->getPDO()->errorCode(), $query_string);
-            } elseif ($this->Config::isSuperlang) {
-                $r = new SqlSuperlangPDODecorator($r, $this->Config);
             }
 
         }
@@ -334,7 +331,7 @@ class Sql
         }
     }
 
-    public function getPrepared($query_string, $driver_options = []): PDOStatement|SqlSuperlangPDODecorator
+    public function getPrepared($query_string, $driver_options = []): PDOStatement
     {
         $this->lastQuery = ['str' => $query_string, 'error' => null, 'num' => ($this->lastQuery['num'] + 1), 'options' => $driver_options];
         $microTime = microtime(1);
@@ -354,13 +351,10 @@ class Sql
 
         $stmt->setFetchMode(PDO::FETCH_ASSOC);
 
-        if ($this->Config::isSuperlang) {
-            return new SqlSuperlangPDODecorator($stmt, $this->Config);
-        }
         return $stmt;
     }
 
-    public function executePrepared(PDOStatement|SqlSuperlangPDODecorator $statement, array $listOfParams)
+    public function executePrepared(PDOStatement $statement, array $listOfParams)
     {
         $this->lastQuery = ['str' => $statement->queryString, 'error' => null, 'num' => ($this->lastQuery['num'] + 1), 'options' => $listOfParams];
 
