@@ -172,7 +172,7 @@ class FormsController extends interfaceController
         } catch (criticalErrorException $exception) {
             $result = ['error' => $exception->getMessage() . ($this->Totum->getUser()->isCreator() && is_callable([$exception, 'getPathMess']) ? '<br/>' . $exception->getPathMess() : '')];
         }
-        return ['settings' => $this->answerVars['settings']] + $result;
+        return ['settings' => $this->answerVars['settings']] + $this->Config->superTranslate($result);
     }
 
     public function actionMain()
