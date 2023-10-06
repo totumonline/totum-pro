@@ -91,7 +91,9 @@ class Totum
         $this->Config = $Config;
         $this->User = $User;
         $this->CalculateLog = new CalculateLog();
-        $this->Config->setUserData($User);
+        if($User){
+            $this->Config->setUserData($User);
+        }
     }
 
     public static function getTableClass($tableRow)
