@@ -41,7 +41,7 @@ class User
             return $this->allData[$name];
         }
 
-        if ($name === 'lang') {
+        if ($name === 'ttm__lang') {
             return null;
         }
 

@@ -265,13 +265,25 @@ abstract class ConfParent
      * @param User|string $User - User or "NOT_TRANSLATE"
      * @return void
      */
-    public function setUserData(User|string $User)
+    public function setUserData(User|string|array $User)
     {
         if ($User === 'NOT_TRANSLATE') {
             $this->userLangCreatorMode = 'NOT_TRANSLATE';
         } elseif (static::isSuperlang) {
-            if (!$this->isLangFixed && $User->lang) {
-                $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->lang))();
+            if (is_array($User)) {
+                if ($User['lang'] ?? null) {
+                    $newLang = new ('totum\\common\\Lang\\' . strtoupper($User['lang']))();
+                    if ($this->Lang::class !== $newLang::class) {
+                        $this->langLangsJsonTranslates = null;
+                        $this->langJsonTranslates = null;
+                        $this->Lang = $newLang;
+                    }
+                }
+                $this->userLangCreatorMode = false;
+
+                return;
+            } elseif (!$this->isLangFixed && $User->ttm__lang) {
+                $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->ttm__lang))();
                 if ($this->Lang::class !== $newLang::class) {
                     $this->langLangsJsonTranslates = null;
                     $this->langJsonTranslates = null;
@@ -889,23 +901,23 @@ SQL
                 },
                 $data);
             if (!$this->userLangCreatorMode) {
-                $data = preg_replace_callback("~\{<([/a-zA-Z0-9,?'!_\-]+)>\}~",
+                $data = preg_replace_callback("~\{\[([/a-zA-Z0-9,?'!_\-]+)\]\}~",
                     function ($template) use ($data) {
                         $this->langLangsJsonTranslates = $this->langLangsJsonTranslates ?? $this->loadUserTranslates('langs');
                         return $this->langLangsJsonTranslates[$template[1]] ?? $template[0];
                     },
                     $data);
-                $data = preg_replace_callback("~\{<(.+)>\}~",
+                $data = preg_replace_callback("~\{\[(.+)\]\}~",
                     function ($template) use ($data) {
-                        if(preg_match_all('/((?<lg>[a-z]{2})\s*:
+                        if (preg_match_all('/((?<lg>[a-z]{2})\s*:
 \s*(["\'])
 (?<tr>.*)
 \3\s*
 (;|$)
-)+/xDU', $template[1], $matches, PREG_SET_ORDER)){
-                            $langs=[];
-                            foreach ($matches as $match){
-                                $langs[$match['lg']]=$match['tr'];
+)+/xDU', $template[1], $matches, PREG_SET_ORDER)) {
+                            $langs = [];
+                            foreach ($matches as $match) {
+                                $langs[$match['lg']] = $match['tr'];
                             }
                             return $langs[$this->getLang()] ?? $langs[strtolower(static::LANG)] ?? $template[0];
                         }

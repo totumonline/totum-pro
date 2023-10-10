@@ -91,7 +91,7 @@ class Totum
         $this->Config = $Config;
         $this->User = $User;
         $this->CalculateLog = new CalculateLog();
-        if($User){
+        if ($User) {
             $this->Config->setUserData($User);
         }
     }
@@ -119,9 +119,8 @@ class Totum
 
     public function getCreatorWarnings()
     {
-       return $this->creatorWarnings;
+        return $this->creatorWarnings;
     }
-
 
 
     public function getMessenger()

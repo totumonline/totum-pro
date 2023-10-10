@@ -396,6 +396,10 @@ class TableController extends interfaceController
         try {
             if ($this->User) {
                 $this->__addAnswerVar('isCreatorView', $this->User->isCreator());
+                if ($this->User->isCreator()) {
+                    $this->__addAnswerVar('superlangLangs', array_keys((array)($this->Config->getSettings('h_pro_langs') ?? [])));
+                }
+
                 $this->__addAnswerVar('UserName', $this->User->getVar('fio'), true);
                 $userManager = array_intersect(Auth::$userManageRoles, $this->User->getRoles());
                 $suDo = Auth::isCanBeOnShadow($this->User);
@@ -534,6 +538,10 @@ class TableController extends interfaceController
     public function __actionRun($action, ServerRequestInterface $request)
     {
         $this->Totum = new Totum($this->Config, $this->User);
+        if ($this->User->isCreator() && ($_COOKIE['superlang'] ?? false)) {
+            $this->Config->setUserData(['lang' => $_COOKIE['superlang']]);
+        }
+
         $this->Totum->setCalcsTypesLog(json_decode($request->getCookieParams()['pcTableLogs'] ?? '[]', true));
 
         parent::__actionRun($action, $request);
