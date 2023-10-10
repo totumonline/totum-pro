@@ -895,10 +895,19 @@ SQL
                         return $this->langLangsJsonTranslates[$template[1]] ?? $template[0];
                     },
                     $data);
-                $data = preg_replace_callback("~<(\{\".+\})>~",
+                $data = preg_replace_callback("~\{<(.+)>\}~",
                     function ($template) use ($data) {
-                        if ($d = @json_decode($template[1], true)) {
-                            return $d[$this->getLang()] ?? $d[strtolower(static::LANG)] ?? $template[0];
+                        if(preg_match_all('/((?<lg>[a-z]{2})\s*:
+\s*(["\'])
+(?<tr>.*)
+\3\s*
+(;|$)
+)+/xDU', $template[1], $matches, PREG_SET_ORDER)){
+                            $langs=[];
+                            foreach ($matches as $match){
+                                $langs[$match['lg']]=$match['tr'];
+                            }
+                            return $langs[$this->getLang()] ?? $langs[strtolower(static::LANG)] ?? $template[0];
                         }
                         return $template[0];
                     },
