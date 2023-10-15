@@ -36,6 +36,8 @@ if (class_exists($controllerClass)) {
         die($Config->getLangObj()->translate('The module is not available for this host.'));
     }
 
+    $Config->profilingStart(preg_replace('/\?.*$/', '', $_SERVER['REQUEST_URI']).'/'.(($_POST['method'] ?? null)?:'table'));
+
     /*
      * @var Controller $Controller
      * */

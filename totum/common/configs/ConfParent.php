@@ -25,7 +25,7 @@ use totum\fieldTypes\File;
 abstract class ConfParent
 {
     use TablesModelsTrait;
-
+    use ProfilerTrait;
 
     /* Переменные настройки */
 
@@ -44,6 +44,8 @@ abstract class ConfParent
     protected $checkSSl = false;
 
     const isSuperlang = false;
+
+    static string $GlobProfilerVarName = 'PRO_PROFILER';
 
     const LANG = '';
 
@@ -148,6 +150,8 @@ abstract class ConfParent
 
     public function getClearConf()
     {
+        $GLOBALS[static::$GlobProfilerVarName]?->increaseRestarts();
+
         return new static($this->env);
     }
 
@@ -267,6 +271,10 @@ abstract class ConfParent
      */
     public function setUserData(User|string|array $User)
     {
+        if (is_object($User)) {
+            $GLOBALS[static::$GlobProfilerVarName]?->setUserId($User->getId());
+        }
+
         if ($User === 'NOT_TRANSLATE') {
             $this->userLangCreatorMode = 'NOT_TRANSLATE';
         } elseif (static::isSuperlang) {
@@ -280,7 +288,6 @@ abstract class ConfParent
                     }
                 }
                 $this->userLangCreatorMode = false;
-
                 return;
             } elseif (!$this->isLangFixed && $User->ttm__lang) {
                 $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->ttm__lang))();

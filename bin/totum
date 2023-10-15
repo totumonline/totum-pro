@@ -59,6 +59,9 @@ if (class_exists(Conf::class)) {
         $app->add(new SchemasList());
         $app->add(new SetHiddenHost());
     }
+
+    (new Conf())->profilingStart('/'.implode('/', $argv));
+
 } else {
     $app->add(new Install());
 }

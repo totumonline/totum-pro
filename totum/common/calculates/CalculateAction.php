@@ -28,6 +28,7 @@ class CalculateAction extends Calculate
     protected $allStartSections = [];
 
     use FuncLDAPTrait;
+    use FuncProProfileTrait;
 
     protected function formStartSections()
     {
