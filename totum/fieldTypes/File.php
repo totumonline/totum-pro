@@ -125,13 +125,18 @@ class File extends Field
         return false;
     }
 
-    protected static function getThumb($tmpFileName, $ext): \GdImage|bool
+    protected static function getThumb($tmpFileName, $ext, Conf $Config): \GdImage|bool
     {
         if ($ext === 'png') {
-            $source = imagecreatefrompng($tmpFileName);
+            $source = @imagecreatefrompng($tmpFileName);
         } else {
-            $source = imagecreatefromjpeg($tmpFileName);
+            $source = @imagecreatefromjpeg($tmpFileName);
         }
+
+        if (!$source) {
+            throw new criticalErrorException($Config->getLangObj()->translate('Wrong format file'));
+        }
+
         // получение нового размера
         list($width, $height) = getimagesize($tmpFileName);
 
@@ -170,11 +175,11 @@ class File extends Field
         return $thumb;
     }
 
-    protected static function checkAndCreateThumb($tmpFileName, $name)
+    protected static function checkAndCreateThumb($tmpFileName, $name, Conf $Config)
     {
         if ($ext = static::isImage($name)) {
             $thumbName = static::getTmpThumbName($tmpFileName);
-            $thumb = static::getThumb($tmpFileName, $ext);
+            $thumb = static::getThumb($tmpFileName, $ext, $Config);
             imagejpeg($thumb, $thumbName, 100);
         }
     }
@@ -194,7 +199,7 @@ class File extends Field
             }
 
             if (copy($_FILES['file']['tmp_name'], $tmpFileName)) {
-                static::checkAndCreateThumb($tmpFileName, $_FILES['file']['name']);
+                static::checkAndCreateThumb($tmpFileName, $_FILES['file']['name'], $Config);
                 return ['fname' => preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName)];
             }
         }
@@ -318,7 +323,7 @@ class File extends Field
             $file['size'] = filesize($ftmpname);
             $file['tmpfile'] = preg_replace('`^.*/([^/]+)$`', '$1', $ftmpname);
 
-            static::checkAndCreateThumb($ftmpname, $file['name']);
+            static::checkAndCreateThumb($ftmpname, $file['name'], $this->table->getTotum()->getConfig());
         };
 
         /*Добавление через filestring и filestringbase64 */
