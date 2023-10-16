@@ -116,6 +116,8 @@ abstract class interfaceController extends Controller
 
     protected function __addAnswerVar($name, $var, $quote = false)
     {
+        $var = $this->Config->superTranslate($var);
+
         if ($quote || $name === 'error') {
             $funcQuote = function ($var) use ($name, &$funcQuote) {
                 if (is_array($var)) {

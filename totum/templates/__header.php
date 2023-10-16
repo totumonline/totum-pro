@@ -53,6 +53,12 @@ $searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['
                     id="UserFio"><?= $UserName ?></li>
             </ul>
             <script>
+                <?php
+                    if($isCreatorView??false){
+                        echo 'App.superlangLangs = '.json_encode($superlangLangs).';';
+                    }
+                ?>
+
                 (function () {
                     let reUsers = <?=json_encode($reUsers ?? [], JSON_UNESCAPED_UNICODE); ?>;
                     let UserTables = <?=json_encode($UserTables ?? [], JSON_UNESCAPED_UNICODE); ?>;

@@ -19,12 +19,13 @@ use totum\common\Services\ServicesVarsInterface;
 use totum\common\sql\Sql;
 use totum\common\sql\SqlException;
 use totum\common\Totum;
+use totum\common\User;
 use totum\fieldTypes\File;
 
 abstract class ConfParent
 {
     use TablesModelsTrait;
-
+    use ProfilerTrait;
 
     /* Переменные настройки */
 
@@ -41,6 +42,10 @@ abstract class ConfParent
 
     protected $execSSHOn = false;
     protected $checkSSl = false;
+
+    const isSuperlang = false;
+
+    static string $GlobProfilerVarName = 'PRO_PROFILER';
 
     const LANG = '';
 
@@ -85,6 +90,9 @@ abstract class ConfParent
     protected $Lang;
 
     public $loginsWithoutTwoFactorAuth = [];
+    protected bool $isLangFixed = false;
+    protected ?array $langJsonTranslates = null;
+    protected bool|string $userLangCreatorMode = false;
 
     public function __construct($env = self::ENV_LEVELS['production'])
     {
@@ -142,6 +150,10 @@ abstract class ConfParent
 
     public function getClearConf()
     {
+        if (!empty($GLOBALS[static::$GlobProfilerVarName])) {
+            $GLOBALS[static::$GlobProfilerVarName]->increaseRestarts();
+        }
+
         return new static($this->env);
     }
 
@@ -253,6 +265,42 @@ abstract class ConfParent
             mkdir($dir, 0755, true);
         }
         return $dir;
+    }
+
+    /**
+     * @param User|string $User - User or "NOT_TRANSLATE"
+     * @return void
+     */
+    public function setUserData(User|string|array $User)
+    {
+        if (is_object($User) && !empty($GLOBALS[static::$GlobProfilerVarName])) {
+            $GLOBALS[static::$GlobProfilerVarName]->setUserId($User->getId());
+        }
+
+        if ($User === 'NOT_TRANSLATE') {
+            $this->userLangCreatorMode = 'NOT_TRANSLATE';
+        } elseif (static::isSuperlang) {
+            if (is_array($User)) {
+                if ($User['lang'] ?? null) {
+                    $newLang = new ('totum\\common\\Lang\\' . strtoupper($User['lang']))();
+                    if ($this->Lang::class !== $newLang::class) {
+                        $this->langLangsJsonTranslates = null;
+                        $this->langJsonTranslates = null;
+                        $this->Lang = $newLang;
+                    }
+                }
+                $this->userLangCreatorMode = false;
+                return;
+            } elseif (!$this->isLangFixed && $User->ttm__lang) {
+                $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->ttm__lang))();
+                if ($this->Lang::class !== $newLang::class) {
+                    $this->langLangsJsonTranslates = null;
+                    $this->langJsonTranslates = null;
+                    $this->Lang = $newLang;
+                }
+            }
+            $this->userLangCreatorMode = $User->isCreator();
+        }
     }
 
 
@@ -842,6 +890,55 @@ SQL
         return $this->Lang;
     }
 
+    public function superTranslate(mixed $data): mixed
+    {
+        if (!static::isSuperlang || $this->userLangCreatorMode === 'NOT_TRANSLATE') {
+            return $data;
+        }
+
+        if (is_array($data)) {
+            $vt = [];
+            foreach ($data as $k => $_v) {
+                $vt[$this->superTranslate($k)] = $this->superTranslate($_v);
+            }
+            return $vt;
+        } elseif (is_string($data)) {
+            $data = preg_replace_callback("~\{\{[/a-zA-Z0-9,?'!_\-]+\}\}~",
+                function ($template) {
+                    $this->langJsonTranslates = $this->langJsonTranslates ?? $this->loadUserTranslates('main');
+                    return $this->langJsonTranslates[$template[0]] ?? $template[0];
+                },
+                $data);
+            if (!$this->userLangCreatorMode) {
+                $data = preg_replace_callback("~\{\[([/a-zA-Z0-9,?'!_\-]+)\]\}~",
+                    function ($template) use ($data) {
+                        $this->langLangsJsonTranslates = $this->langLangsJsonTranslates ?? $this->loadUserTranslates('langs');
+                        return $this->langLangsJsonTranslates[$template[1]] ?? $template[0];
+                    },
+                    $data);
+                $data = preg_replace_callback("~\{\[(.+)\]\}~",
+                    function ($template) use ($data) {
+                        if (preg_match_all('/((?<lg>[a-z]{2})\s*:
+\s*(["\'])
+(?<tr>.*)
+\3\s*
+(;|$)
+)+/xDU', $template[1], $matches, PREG_SET_ORDER)) {
+                            $langs = [];
+                            foreach ($matches as $match) {
+                                $langs[$match['lg']] = $match['tr'];
+                            }
+                            return $langs[$this->getLang()] ?? $langs[strtolower(static::LANG)] ?? $template[0];
+                        }
+                        return $template[0];
+                    },
+                    $data);
+            }
+            return $data;
+        } else return $data;
+
+    }
+
     public function getTotumFooter()
     {
         $genTime = round(microtime(true) - $this->mktimeStart, 4);
@@ -877,7 +974,13 @@ SQL
             if (!class_exists('totum\\common\\Lang\\' . strtoupper($Settings['lang']))) {
                 throw new \Exception('Specified ' . $Settings['lang'] . ' language is not supported');
             }
-            $this->Lang = new ('totum\\common\\Lang\\' . strtoupper($Settings['lang']))();
+            $newLang = new ('totum\\common\\Lang\\' . strtoupper($Settings['lang']))();
+            if ($this->Lang::class !== $newLang::class) {
+                $this->langLangsJsonTranslates = null;
+                $this->langJsonTranslates = null;
+                $this->Lang = $newLang;
+            }
+            $this->isLangFixed = true;
         }
     }
 
@@ -894,4 +997,33 @@ SQL
             return '<style>' . preg_replace('~<\s*/\s*style\s*~', '', $css) . '</style>';
         }
     }
+
+    /**
+     * @param string $type main|langs
+     * @return array|mixed|void
+     * @throws SqlException
+     */
+    protected function loadUserTranslates(string $type)
+    {
+        switch ($type) {
+            case 'main':
+                return json_decode(file_get_contents($this->getBaseDir() . 'totum/moduls/install/' . $this->getLang() . '.json'), true);
+            case 'langs':
+                $langField = 'lang_' . $this->getLang();
+                $mainLangField = 'lang_' . strtolower(static::LANG);
+                $fields = $langField;
+                if ($langField !== $mainLangField) {
+                    $fields .= ', ' . $mainLangField;
+                }
+                $fields .= ', template';
+                $st = $this->Sql->getPDO()->prepare('select ' . $fields . ' from ttm__langs');
+                $st->execute();
+                $data = [];
+                foreach ($st->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                    $data[json_decode($row['template'])->v] = json_decode($row[$langField])->v ?? json_decode($row[$mainLangField])->v ?? $row['template'];
+                }
+                return $data;
+        }
+    }
+
 }

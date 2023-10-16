@@ -281,6 +281,7 @@ class Sql
             if (!$r) {
                 $this->errorHandler($this->getPDO()->errorCode(), $query_string);
             }
+
         }
 
 
@@ -290,6 +291,8 @@ class Sql
         $this->lastQuery['rows'] = $r && is_object($r) ? $r->rowCount() : null;
 
         $this->Log->debug($query_time_pad . ' !(' . $this->lastQuery['rows'] . ' rows) >> ' . $query_string);
+
+
         return $r;
     }
 

@@ -41,6 +41,10 @@ class User
             return $this->allData[$name];
         }
 
+        if ($name === 'ttm__lang') {
+            return null;
+        }
+
         throw new Exception($this->Config->getLangObj()->translate('A nonexistent [[%s]] property was requested.',
             $name));
     }

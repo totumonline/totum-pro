@@ -59,6 +59,8 @@ class TotumInstall
         $this->Sql = $this->Config->getSql();
 
         $this->Totum = new Totum($this->Config, $this->User);
+        $this->Config->setUserData('NOT_TRANSLATE');
+
         $this->Totum->setCalcsTypesLog(['all']);
         $this->CalculateLog = $CalculateLog ?? $this->Totum->getCalculateLog();
         $this->outputConsole = $outputConsole;
@@ -234,6 +236,10 @@ CONF;
 
     public function schemaTranslate($data, $pathToLang, $pathToBackLang = null)
     {
+        if ($this->Totum->getConfig()::isSuperlang) {
+            return $data;
+        }
+
         $translates = [];
         if ($pathToLang) {
             $translates = $this->getTranslatesFromFile($pathToLang);
@@ -806,7 +812,7 @@ CONF;
             }
         }
 
-        $this->consoleLog('Add and modify fields for ' . $n . ' "'.$filterDescription.'" tables ', 2);
+        $this->consoleLog('Add and modify fields for ' . $n . ' "' . $filterDescription . '" tables ', 2);
 
         $heldFields = $this->Config->getSettings('h_held_fields');
         if ($heldFields) {
@@ -844,7 +850,6 @@ CONF;
                 }
             }
         }
-
 
 
         $this->Totum->getTable('tables_fields')->reCalculateFromOvers(['add' => $fieldsAdd, 'modify' => $fieldsModify]);
@@ -1368,10 +1373,10 @@ CONF;
                             if (key_exists($row['id'], $addedBranches)) {
                                 if (!key_exists($row['parent_id'], $lastOrdParent)) {
                                     $lastOrdParent[$row['parent_id']] = $this->Totum->getModel('tree')->getField(
-                                            'ord',
-                                            ['parent_id' => $row['parent_id'], '!id' => array_values($addedBranches)],
-                                            'ord desc'
-                                        ) ?? 0;
+                                        'ord',
+                                        ['parent_id' => $row['parent_id'], '!id' => array_values($addedBranches)],
+                                        'ord desc'
+                                    ) ?? 0;
                                 }
                                 $lastOrdParent[$row['parent_id']] += 10;
                                 $modify[$addedBranches[$row['id']]]['ord'] = $lastOrdParent[$row['parent_id']];

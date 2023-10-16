@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '4.10.56.5-6.4';
+    public const VERSION = '4.11.57.0-7.0';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -91,6 +91,9 @@ class Totum
         $this->Config = $Config;
         $this->User = $User;
         $this->CalculateLog = new CalculateLog();
+        if ($User) {
+            $this->Config->setUserData($User);
+        }
     }
 
     public static function getTableClass($tableRow)
@@ -116,9 +119,8 @@ class Totum
 
     public function getCreatorWarnings()
     {
-       return $this->creatorWarnings;
+        return $this->creatorWarnings;
     }
-
 
 
     public function getMessenger()
