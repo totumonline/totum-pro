@@ -54,9 +54,9 @@ $searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['
             </ul>
             <script>
                 <?php
-                    if($isCreatorView??false){
-                        echo 'App.superlangLangs = '.json_encode($superlangLangs).';';
-                    }
+                if (!empty($superlangLangs) && ($isCreatorView ?? false)) {
+                    echo 'App.superlangLangs = ' . json_encode($superlangLangs) . ';';
+                }
                 ?>
 
                 (function () {
