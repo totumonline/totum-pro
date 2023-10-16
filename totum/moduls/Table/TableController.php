@@ -396,7 +396,7 @@ class TableController extends interfaceController
         try {
             if ($this->User) {
                 $this->__addAnswerVar('isCreatorView', $this->User->isCreator());
-                if ($this->User->isCreator()) {
+                if ($this->User->isCreator() && $this->Totum->getConfig()::isSuperlang) {
                     $this->__addAnswerVar('superlangLangs', (array)($this->Config->getSettings('h_pro_langs') ?? []));
                 }
 
