@@ -15,7 +15,7 @@ class Profiler
 
     public function __construct($path, callable $SaveObjectFunc, $extraData = [])
     {
-        $this->data = $extraData;
+        $this->data += $extraData;
         $this->data['path'] = $path;
         $this->data['start'] = round(microtime(true), 2);
         $this->SaveObjectFunc = $SaveObjectFunc;
