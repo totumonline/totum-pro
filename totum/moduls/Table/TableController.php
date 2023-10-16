@@ -397,7 +397,7 @@ class TableController extends interfaceController
             if ($this->User) {
                 $this->__addAnswerVar('isCreatorView', $this->User->isCreator());
                 if ($this->User->isCreator()) {
-                    $this->__addAnswerVar('superlangLangs', array_keys((array)($this->Config->getSettings('h_pro_langs') ?? [])));
+                    $this->__addAnswerVar('superlangLangs', (array)($this->Config->getSettings('h_pro_langs') ?? []));
                 }
 
                 $this->__addAnswerVar('UserName', $this->User->getVar('fio'), true);
@@ -897,6 +897,11 @@ class TableController extends interfaceController
     protected function addLogs(array &$result, bool $ajax)
     {
         if (($this->User->isCreator() || Auth::isShadowedCreator($this->Totum->getConfig()))) {
+
+            if ($this->Config->getSettings('h_pro_profiling') && ($this->Config->getSettings('h_pro_profiling')['on'] ?? false)) {
+                $this->Totum->addCreatorWarnings('Profiling is on: /Table/0/ttm__profiling');
+            }
+
 
             $addOrderErrors = function ($orderCodeErrors) {
                 $text = $this->translate('Order field calculation errors');

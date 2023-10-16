@@ -8,11 +8,17 @@ class Profiler
         'restarts' => 0
     ];
     protected string|null $startHash = null;
+    /**
+     * @var callable
+     */
+    protected $SaveObjectFunc;
 
-    public function __construct($path, protected ProfilerSaveObjectInterface $SaveObject)
+    public function __construct($path, callable $SaveObjectFunc, $extraData = [])
     {
+        $this->data = $extraData;
         $this->data['path'] = $path;
         $this->data['start'] = round(microtime(true), 2);
+        $this->SaveObjectFunc = $SaveObjectFunc;
     }
 
     public function saveStartLine()
@@ -23,11 +29,11 @@ class Profiler
     protected function save($isStart = false)
     {
         if ($this->startHash) {
-            $this->SaveObject->update($this->data, $this->startHash);
+            ($this->SaveObjectFunc)()->update($this->data, $this->startHash);
         } elseif ($isStart) {
-            $this->startHash = $this->SaveObject->insert($this->data);
+            $this->startHash = ($this->SaveObjectFunc)()->insert($this->data);
         } else {
-            $this->SaveObject->insert($this->data);
+            ($this->SaveObjectFunc)()->insert($this->data);
         }
 
     }

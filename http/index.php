@@ -32,11 +32,37 @@ if (empty($module)) {
 }
 $controllerClass = 'totum\\moduls\\' . $module . '\\' . $module . 'Controller';
 if (class_exists($controllerClass)) {
-    if($Config && !empty($Config->getHiddenHosts()[$Config->getFullHostName()]) && empty($Config->getHiddenHosts()[$Config->getFullHostName()][$module])){
+    if ($Config && !empty($Config->getHiddenHosts()[$Config->getFullHostName()]) && empty($Config->getHiddenHosts()[$Config->getFullHostName()][$module])) {
         die($Config->getLangObj()->translate('The module is not available for this host.'));
     }
 
-    $Config->profilingStart(preg_replace('/\?.*$/', '', $_SERVER['REQUEST_URI']).'/'.(($_POST['method'] ?? null)?:'table'));
+    $Config->profilingStart(preg_replace('/\?.*$/', '', $_SERVER['REQUEST_URI']) . '/' . (($_POST['method'] ?? null) ?: 'table'),
+        function () {
+            $data = [];
+            if (!empty($_POST) && !empty($_POST['data'])) {
+                if ($_data = @json_decode($_POST['data'], true)) {
+                    if ($_POST['method'] === 'edit') {
+                        $data['id_value'] = array_key_first($_data);
+                        if (is_array($_data[$data['id_value']] ?? false)) {
+                            $data['field_name'] = array_key_first($_data[$data['id_value']]);
+                        }
+                    } else {
+                        if (key_exists('id', $_data)) {
+                            $data['id_value'] = $_data['id'];
+                        } elseif (key_exists('item', $_data) && !is_array($_data['item'])) {
+                            $data['id_value'] = $_data['item'];
+                        }
+                        if (key_exists('fieldName', $_data)) {
+                            $data['field_name'] = $_data['fieldName'];
+                        } elseif (key_exists('fieldname', $_data)) {
+                            $data['field_name'] = $_data['fieldname'];
+                        }
+                    }
+                }
+            }
+            return $data;
+        }
+    );
 
     /*
      * @var Controller $Controller
@@ -51,9 +77,9 @@ if (class_exists($controllerClass)) {
 
 } else {
     if ($Config) {
-        $Lang=$Config->getLangObj();
-    }else{
-        $Lang=(new \totum\common\Lang\EN());
+        $Lang = $Config->getLangObj();
+    } else {
+        $Lang = (new \totum\common\Lang\EN());
     }
     echo $Lang->translate('Not found: %s', [htmlspecialchars($controllerClass)]);
 }

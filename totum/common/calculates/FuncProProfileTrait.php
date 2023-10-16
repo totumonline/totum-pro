@@ -20,7 +20,7 @@ trait FuncProProfileTrait
         
         if(!empty($params['order'])){
             foreach ($params['order'] ?? [] as $_w) {
-                if (preg_match('/^[a-zA-Z]+$/', $_w['field'])) {
+                if (preg_match('/^[a-zA-Z_]+$/', $_w['field'])) {
                     $where->order($_w['field'], $_w['ad']);
                 }
             }
@@ -43,7 +43,7 @@ trait FuncProProfileTrait
         $params = $this->getParamsArray($params, ['where']);
         $where = new FormatParamsForSelectFromTable();
         foreach ($params['where'] ?? [] as $_w) {
-            if (preg_match('/^[a-zA-Z]+$/', $_w['field'])) {
+            if (preg_match('/^[a-zA-Z_]+$/', $_w['field'])) {
                 $where->where($_w['field'], $_w['value'], $_w['operator']);
             }
         }

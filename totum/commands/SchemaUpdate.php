@@ -44,7 +44,7 @@ class SchemaUpdate extends Command
         if (is_callable([$Conf, 'setHostSchema'])) {
             if ($schema = $input->getOption('schema')) {
                 $Conf->setHostSchema(null, $schema);
-            }else{
+            } else {
                 $output->writeln('Set option -s for identify the schema or use schemas-update for update all ones');
                 return;
             }
@@ -61,19 +61,19 @@ class SchemaUpdate extends Command
 
         if ($file === 'sys_update') {
             $path = dirname(__FILE__) . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'moduls' . DIRECTORY_SEPARATOR . 'install' . DIRECTORY_SEPARATOR;
-            $file = $path. 'start.json.gz.ttm';
+            $file = $path . 'start.json.gz.ttm';
             $cont = $TotumInstall->getDataFromFile($file);
-            $cont = $TotumInstall->schemaTranslate($cont, $path.$Conf->getLang() . '.json', $Conf->getLang() !== 'en' ? $path.'en.json' : null);
-        }else{
+            $cont = $TotumInstall->schemaTranslate($cont, $path . $Conf->getLang() . '.json', $Conf->getLang() !== 'en' ? $path . 'en.json' : null);
+        } else {
             $cont = $TotumInstall->getDataFromFile($file);
         }
 
         if (($matches = json_decode($sourceName, true)) && is_array($matches) && key_exists(
-            'name',
-            $matches
-        ) && key_exists('matches', $matches)) {
-            $sourceName=$matches['name'];
-            $matches=$matches['matches'];
+                'name',
+                $matches
+            ) && key_exists('matches', $matches)) {
+            $sourceName = $matches['name'];
+            $matches = $matches['matches'];
         } else {
             $matches = $TotumInstall->getTotum()->getTable('ttm__updates')->getTbl()['params']['h_matches']['v'][$sourceName] ?? [];
         }

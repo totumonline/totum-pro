@@ -97,6 +97,9 @@ SQL
         $query = '';
         $params = [];
         foreach ($where->params()['where'] as $_w) {
+            if ($_w['value'] === '*ALL*') {
+                continue;
+            }
             if ($query) {
                 $query .= ' AND ';
             }
@@ -110,7 +113,11 @@ SQL
                 $params[] = $_w['value'];
             } else {
                 if ($_w['value'] === '' || is_null($_w['value'])) {
-                    $query .= 'data->\'' . $_w['field'] . '\' is null';
+                    if ($_w['operator'] === '!=') {
+                        $query .= 'data->\'' . $_w['field'] . '\' is not null';
+                    } else {
+                        $query .= 'data->\'' . $_w['field'] . '\' is null';
+                    }
                 } else {
                     if (is_array($_w['value'])) {
                         if (!empty($_w['value'])) {
@@ -136,6 +143,7 @@ SQL
         if (empty($query)) {
             $query = "TRUE";
         }
+
         return [$query, $params];
     }
 
@@ -146,7 +154,7 @@ SQL
         if ($st = $this->PDO->prepare("delete from " . static::table . " where $query")) {
             $st->execute($params);
         }
-        $this->PDO->exec("vacuum ".static::table);
+        $this->PDO->exec("vacuum " . static::table);
     }
 
 }
