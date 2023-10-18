@@ -41,6 +41,8 @@ trait MultiTrait
             $this->schemaName = $schemaName;
             $this->hostName = $hostName ?? array_flip($this->getSchemas())[$schemaName] ?? die($this->getLangObj()->translate('Scheme not found.'));
         }
+
+        $this->profilingStart();
     }
     public function getClearConf()
     {

@@ -59,29 +59,9 @@ if (class_exists(Conf::class)) {
         $app->add(new SchemasList());
         $app->add(new SetHiddenHost());
 
-
-        foreach ($argv as $i => $value) {
-            if ($value === '-s' || $value === '--schema') {
-                $schema = $argv[$i++];
-                break;
-            } elseif (str_starts_with($value, '-s=')) {
-                $schema = substr($value, 3);
-                break;
-            } elseif (str_starts_with($value, '--schema=')) {
-                $schema = substr($value, 9);
-                break;
-            }
-        }
-        if (!empty($schema) && (Conf::getSchemas()[$schema] ?? null)) {
-            $Conf = new Conf();
-            $Conf->setHostSchema(null, $schema);
-            $Conf->profilingStart('/' . implode('/', $argv));
-        }
-
-    } else {
-        (new Conf())->profilingStart('/' . implode('/', $argv));
     }
 
+    (new Conf())->profilingStart('/' . implode('/', $argv));
 
 } else {
     $app->add(new Install());
