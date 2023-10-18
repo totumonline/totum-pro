@@ -150,7 +150,7 @@ abstract class ConfParent
 
     public function getClearConf()
     {
-        if (!empty($GLOBALS[static::$GlobProfilerVarName])) {
+        if (!empty($GLOBALS[static::$GlobProfilerVarName]) && is_a($GLOBALS[static::$GlobProfilerVarName]??false, Profiler::class)) {
             $GLOBALS[static::$GlobProfilerVarName]->increaseRestarts();
         }
 
@@ -273,7 +273,7 @@ abstract class ConfParent
      */
     public function setUserData(User|string|array $User)
     {
-        if (is_object($User) && !empty($GLOBALS[static::$GlobProfilerVarName])) {
+        if (is_object($User) && is_a($GLOBALS[static::$GlobProfilerVarName]??false, Profiler::class)) {
             $GLOBALS[static::$GlobProfilerVarName]->setUserId($User->getId());
         }
 
