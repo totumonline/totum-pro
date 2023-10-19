@@ -97,7 +97,7 @@ class File extends Field
             }
             return $Config->getSecureFilesDir() . $file_name;
         }
-        if (($fileData === true) || $fileData['secureFile'] ?? false) {
+        if (($fileData === true) || ($fileData['secureFile'] ?? false)) {
             return $Config->getSecureFilesDir() . $file_name;
         }
         return $Config->getFilesDir() . $file_name;
