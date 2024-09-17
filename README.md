@@ -19,6 +19,8 @@ Run the standard Totum installer (by default, it is assumed to be `/root`) and s
 sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
 ```
 
+**For more information look at [documentation](https://docs.totum.online/pro-install)**
+
 ## Switching from Totum MIT V5
 
 > This instruction assumes that TOTUM MIT V5 was installed using the installation script.
