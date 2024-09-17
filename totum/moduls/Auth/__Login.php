@@ -30,6 +30,7 @@ use totum\config\Conf;
     <div style="text-align: center; font-size: 30px; padding-bottom: 2vh;padding-top: 2vh;"
          class="login-brand"><?= $schema_name ?> </div>
     <div class="center-block">
+        <div id="auth_text" style="padding-bottom:10px;"></div>
         <form method="post"
               id='form'>
             <div class="form-group"><label><?= $this->translate('Login/Email') ?>:</label><input type="text"

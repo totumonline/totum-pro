@@ -36,7 +36,7 @@ trait FuncLDAPTrait
         if (!$r) {
             throw new errorException(ldap_error($connection));
         }
-        $users = FuncLDAPTrait::cleanLDAPResult(ldap_get_entries($connection, $r));
+        $users = self::cleanLDAPResult(ldap_get_entries($connection, $r));
 
         $procUsers = [];
         foreach ($users as $user) {
@@ -63,7 +63,8 @@ trait FuncLDAPTrait
                             throw new errorException(ldap_error($connection));
                         }
 
-                        $user[$groupParamName] = FuncLDAPTrait::cleanLDAPResult(ldap_get_entries($connection, $r),
+                        $user[$groupParamName] = self::cleanLDAPResult(
+                            ldap_get_entries($connection, $r),
                             $groupParam);
                     }
 

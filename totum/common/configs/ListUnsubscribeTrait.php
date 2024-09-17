@@ -17,8 +17,8 @@ trait ListUnsubscribeTrait
     {
         if (!key_exists('enabled', $this->listUnsubscribeSettings)) {
             if (property_exists($this, 'SmtpData')) {
-                if (key_exists('enablelistunsubscride', $this->SmtpData)) {
-                    if ($this->listUnsubscribeSettings['enabled'] = $this->SmtpData['enablelistunsubscride']) {
+                if (key_exists('enablelistunsubscribe', $this->SmtpData)) {
+                    if ($this->listUnsubscribeSettings['enabled'] = $this->SmtpData['enablelistunsubscribe']) {
                         $this->listUnsubscribeSettings['header'] = true;
                         $this->listUnsubscribeSettings['link'] = true;
                     }else{

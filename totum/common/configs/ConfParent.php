@@ -67,6 +67,7 @@ abstract class ConfParent
 
 
     protected $dbConnectData;
+    protected string $proGoModuleServiceName = 'totum-gom';
 
     private $settingsCache;
     protected $settingsLDAPCache;
@@ -98,7 +99,11 @@ abstract class ConfParent
      * @var false|resource|null
      */
     protected $proGoModuleSocket;
-
+    /**
+     * @var array|mixed|null
+     */
+    protected mixed $langLangsJsonTranslates;
+    protected $checkSSLservices = true;
 
     public function __construct($env = self::ENV_LEVELS['production'])
     {
@@ -128,6 +133,10 @@ abstract class ConfParent
     {
         return $this->checkSSl;
     }
+    public function isCheckSslServices(): bool
+    {
+        return $this->checkSSLservices;
+    }
 
     public function getDefaultSender()
     {
@@ -156,7 +165,7 @@ abstract class ConfParent
 
     public function getClearConf()
     {
-        if (!empty($GLOBALS[static::$GlobProfilerVarName]) && is_a($GLOBALS[static::$GlobProfilerVarName]??false, Profiler::class)) {
+        if (!empty($GLOBALS[static::$GlobProfilerVarName]) && is_a($GLOBALS[static::$GlobProfilerVarName] ?? false, Profiler::class)) {
             $GLOBALS[static::$GlobProfilerVarName]->increaseRestarts();
         }
 
@@ -279,11 +288,15 @@ abstract class ConfParent
      */
     public function setUserData(User|string|array $User)
     {
-        if (is_object($User) && is_a($GLOBALS[static::$GlobProfilerVarName]??false, Profiler::class)) {
+        if (is_object($User) && is_a($GLOBALS[static::$GlobProfilerVarName] ?? false, Profiler::class)) {
             $GLOBALS[static::$GlobProfilerVarName]->setUserId($User->getId());
         }
 
-        if ($User === 'NOT_TRANSLATE') {
+        if ($User === 'NOT_V_TRANSLATE') {
+            if ($this->userLangCreatorMode !== 'NOT_TRANSLATE') {
+                $this->userLangCreatorMode = 'NOT_V_TRANSLATE';
+            }
+        }elseif ($User === 'NOT_TRANSLATE') {
             $this->userLangCreatorMode = 'NOT_TRANSLATE';
         } elseif (static::isSuperlang) {
             if (is_array($User)) {
@@ -297,8 +310,8 @@ abstract class ConfParent
                 }
                 $this->userLangCreatorMode = false;
                 return;
-            } elseif (!$this->isLangFixed && $User->ttm__lang) {
-                $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->ttm__lang))();
+            } elseif (!$this->isLangFixed && $User->ttm__langs) {
+                $newLang = new ('totum\\common\\Lang\\' . strtoupper($User->ttm__langs))();
                 if ($this->Lang::class !== $newLang::class) {
                     $this->langLangsJsonTranslates = null;
                     $this->langJsonTranslates = null;
@@ -307,6 +320,11 @@ abstract class ConfParent
             }
             $this->userLangCreatorMode = $User->isCreator();
         }
+    }
+
+    public function getProGoModuleServiceName(): string
+    {
+        return $this->proGoModuleServiceName;
     }
 
 
@@ -368,7 +386,7 @@ abstract class ConfParent
      * @param null $from
      * @throws errorException
      */
-    public function sendMail($to, $title, $body, $attachments = [], $from = null)
+    public function sendMail(array|string $to, $title, $body, $attachments = [], $from = null)
     {
         throw new errorException($this->translate('Settings for sending mail are not set.'));
     }
@@ -897,52 +915,86 @@ SQL
         return $this->Lang;
     }
 
-    public function superTranslate(mixed $data): mixed
+    public function superTranslate(mixed $data, $isCreator = false): mixed
     {
-        if (!static::isSuperlang || $this->userLangCreatorMode === 'NOT_TRANSLATE') {
+        if (
+            //Мультиленг выключен
+            !static::isSuperlang
+            ) {
             return $data;
         }
 
-        if (is_array($data)) {
-            $vt = [];
-            foreach ($data as $k => $_v) {
-                $vt[$this->superTranslate($k)] = $this->superTranslate($_v);
-            }
-            return $vt;
-        } elseif (is_string($data)) {
-            $data = preg_replace_callback("~\{\{[/a-zA-Z0-9,?'!_\-]+\}\}~",
-                function ($template) {
-                    $this->langJsonTranslates = $this->langJsonTranslates ?? $this->loadUserTranslates('main');
-                    return $this->langJsonTranslates[$template[0]] ?? $template[0];
-                },
-                $data);
-            if (!$this->userLangCreatorMode) {
-                $data = preg_replace_callback("~\{\[([/a-zA-Z0-9,?'!_\-]+)\]\}~",
-                    function ($template) use ($data) {
-                        $this->langLangsJsonTranslates = $this->langLangsJsonTranslates ?? $this->loadUserTranslates('langs');
-                        return $this->langLangsJsonTranslates[$template[1]] ?? $template[0];
+        $sys_translate = function ($data) use (&$sys_translate) {
+            if (is_array($data)) {
+                $res = [];
+                foreach ($data as $k => $v) {
+                    $res[$sys_translate($k)] = $sys_translate($v);
+                }
+                return $res;
+            } elseif (is_string($data)) {
+                return preg_replace_callback("~\{\{[/a-zA-Z0-9,?'!_\-]+\}\}~",
+                    function ($template) {
+                        $this->langJsonTranslates = $this->langJsonTranslates ?? $this->loadUserTranslates('main');
+                        return $this->langJsonTranslates[$template[0]] ?? $template[0];
                     },
-                    $data);
-                $data = preg_replace_callback("~\{\[(.+)\]\}~",
-                    function ($template) use ($data) {
-                        if (preg_match_all('/((?<lg>[a-z]{2})\s*:
+                    $data
+                );
+            }
+            return $data;
+        };
+        $data = $sys_translate($data);
+
+        if ($this->userLangCreatorMode === 'NOT_TRANSLATE' || $this->userLangCreatorMode=== true) {
+            return $data;
+        }
+
+        $lang_translate = function ($data, $inV = false) use (&$lang_translate, $isCreator) {
+            if (is_array($data)) {
+                $vt = [];
+                foreach ($data as $k => $_v) {
+                    if ($this->userLangCreatorMode === 'NOT_V_TRANSLATE' && $k === 'v') {
+                        $vt[$k] = $_v;
+                    } else {
+                        $vt[$lang_translate($k)] =
+                            $lang_translate($_v, ($inV || $k === 'v'));
+                        if ($isCreator && !$inV && $k === 'v' && $vt['v'] !== $_v) {
+                            $vt['t'] = $_v;
+                        }
+                    }
+                }
+                return $vt;
+            } elseif (is_string($data)) {
+
+                if (!$this->userLangCreatorMode || $this->userLangCreatorMode === 'NOT_V_TRANSLATE') {
+                    $data = preg_replace_callback("~\{\[([/a-zA-Z0-9,?'!_\-]+)\]\}~",
+                        function ($template) use ($data) {
+                            $this->langLangsJsonTranslates = $this->langLangsJsonTranslates ?? $this->loadUserTranslates('langs');
+                            return $this->langLangsJsonTranslates[$template[1]] ?? $template[0];
+                        },
+                        $data);
+                    $data = preg_replace_callback("~\{\[(.+)\]\}~",
+                        function ($template) use ($data) {
+                            if (preg_match_all('/((?<lg>[a-z]{2})\s*:
 \s*(["\'])
 (?<tr>.*)
 \3\s*
 (;|$)
 )+/xDU', $template[1], $matches, PREG_SET_ORDER)) {
-                            $langs = [];
-                            foreach ($matches as $match) {
-                                $langs[$match['lg']] = $match['tr'];
+                                $langs = [];
+                                foreach ($matches as $match) {
+                                    $langs[$match['lg']] = $match['tr'];
+                                }
+                                return $langs[$this->getLang()] ?? $langs[strtolower(static::LANG)] ?? $template[0];
                             }
-                            return $langs[$this->getLang()] ?? $langs[strtolower(static::LANG)] ?? $template[0];
-                        }
-                        return $template[0];
-                    },
-                    $data);
-            }
-            return $data;
-        } else return $data;
+                            return $template[0];
+                        },
+                        $data);
+                }
+                return $data;
+            } else return $data;
+        };
+
+       return $lang_translate($data);
 
     }
 
@@ -996,6 +1048,90 @@ SQL
     public function isTechTable(string $name)
     {
         return in_array($name, $this->techTables);
+    }
+
+    public function getThemesCss()
+    {
+        if ($css = trim($this->getSettings('h_custom_css') ?? '')) {
+            return '<style>' . preg_replace('~<\s*/\s*style\s*~', '', $css) . '</style>';
+        }
+    }
+
+    /**
+     * @param string $type main|langs
+     * @return array|mixed|void
+     * @throws SqlException
+     */
+    protected function loadUserTranslates(string $type)
+    {
+        switch ($type) {
+            case 'main':
+                return json_decode(file_get_contents($this->getBaseDir() . 'totum/moduls/install/' . $this->getLang() . '.json'), true);
+            case 'langs':
+                $langField = 'lang_' . $this->getLang();
+                $mainLangField = 'lang_' . strtolower(static::LANG);
+                $fields = $langField;
+                if ($langField !== $mainLangField) {
+                    $fields .= ', ' . $mainLangField;
+                }
+                $fields .= ', template';
+                $st = $this->Sql->getPDO()->prepare('select ' . $fields . ' from ttm__langs');
+                $st->execute();
+                $data = [];
+                foreach ($st->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                    $data[json_decode($row['template'])->v] = json_decode($row[$langField])->v ?? json_decode($row[$mainLangField])->v ?? $row['template'];
+                }
+                return $data;
+        }
+    }
+
+    function proGoModuleSocketSend(array $data, $close = false, $reCheckSchemaForce = false)
+    {
+
+        if (!$this->proGoModuleSocket || $reCheckSchemaForce) {
+            $this->proGoModuleSocket = @stream_socket_client("unix://" . $this->getBaseDir() . "/socket", $errno, $errstr, 30);
+            if (!$this->proGoModuleSocket) {
+                errorException::criticalException("GOMODULE: " . $errstr, $this);
+            }
+            $schemaData = ['schema' => $this->getSchema(true)];
+            if ($reCheckSchemaForce) {
+                $schemaData['check'] = true;
+            }
+            if (($data["method"] ?? '') == "license") {
+                $schemaData += $data;
+                return $this->proGoModuleSocketSend($schemaData);
+            }
+            $this->proGoModuleSocketSend($schemaData);
+        }
+        if (!$data) {
+            if ($close) {
+                fclose($this->proGoModuleSocket);
+                $this->proGoModuleSocket = null;
+            }
+            return;
+        }
+
+
+        $s = fwrite($this->proGoModuleSocket, json_encode($data, JSON_UNESCAPED_UNICODE));
+
+        $result = stream_get_line($this->proGoModuleSocket, 0, "\r\n");
+
+        if ($close) {
+            fclose($this->proGoModuleSocket);
+            $this->proGoModuleSocket = null;
+        }
+        try {
+            $result = json_decode($result, true, 512, JSON_THROW_ON_ERROR);
+            if (key_exists('error', $result)) {
+                errorException::criticalException("GOMODULE: " . $result['error'], $this);
+            }
+            return $result;
+        } catch (criticalErrorException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            errorException::criticalException('GOMODULE error: ' . $e->getMessage() . ':`' . $result . '`', $this);
+        }
+
     }
 
 }

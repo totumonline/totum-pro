@@ -601,11 +601,6 @@ class Actions
     public
     function checkForNotifications()
     {
-        /*TODO FOR MY TEST SERVER */
-        if ($_SERVER['HTTP_HOST'] === 'localhost:8080') {
-            die('test');
-        }
-
         $actived = $this->post['activeIds'] ?? [];
         $model = $this->Totum->getModel('notifications');
         $codes = $this->Totum->getModel('notification_codes');
@@ -671,27 +666,8 @@ class Actions
             return $result;
         };
 
-        if (!empty($this->post['periodicity']) && ($this->post['periodicity'] > 1)) {
-            $i = 0;
 
-            $count = ceil(20 / $this->post['periodicity']);
-
-            do {
-                echo "\n";
-                flush();
-
-                if (connection_status() !== CONNECTION_NORMAL) {
-                    die;
-                }
-                if ($result = $getNotification()) {
-                    break;
-                }
-
-                sleep($this->post['periodicity']);
-            } while (($i++) < $count);
-        } else {
-            $result = $getNotification();
-        }
+       $result = $getNotification();
         echo json_encode($result + ['notifications' => array_map(
                 function ($n) {
                     $n[0] = 'notification';

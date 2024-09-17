@@ -926,7 +926,7 @@ abstract class aTable
     public
     static function formUpdatedJson(User $User)
     {
-        return json_encode(['dt' => date('Y-m-d H:i'), 'code' => mt_rand(), 'user' => $User->getId()]);
+        return json_encode(['dt' => date('Y-m-d H:i:s ').substr(microtime(), 2, 5), 'code' => mt_rand(), 'user' => $User->getId()]);
     }
 
     public

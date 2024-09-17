@@ -25,7 +25,8 @@ class SchemaUpdate extends Command
                 'Enter source name',
                 'totum_' . (new Conf())->getLang()
             )
-            ->addArgument('file', InputArgument::OPTIONAL, 'Enter schema update filepath', 'sys_update');
+            ->addArgument('file', InputArgument::OPTIONAL, 'Enter schema update filepath', 'sys_update')
+            ->addOption('--restart-gom-false', '', InputOption::VALUE_NONE, 'Dont\'t restart go-module');
 
         if (key_exists(MultiTrait::class, class_uses(Conf::class, false))) {
             $this->addOption('schema', 's', InputOption::VALUE_REQUIRED, 'Enter schema name', '');
@@ -77,6 +78,11 @@ class SchemaUpdate extends Command
         $cont = $TotumInstall->applyMatches($cont, $matches);
 
         $TotumInstall->updateSchema($cont, true, $sourceName);
+
+        if (!$input->getOption('restart-gom-false')) {
+            $serviceName = $Conf->getProGoModuleServiceName();
+            passthru('sudo service '.$serviceName.' restart');
+        }
 
         return 0;
     }

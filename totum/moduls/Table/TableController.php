@@ -22,6 +22,7 @@ use totum\common\Totum;
 use totum\config\Conf;
 use totum\fieldTypes\File;
 use totum\models\Table;
+use totum\models\TmpTables;
 use totum\models\Tree;
 use totum\models\UserV;
 use totum\tableTypes\aTable;
@@ -154,7 +155,7 @@ class TableController extends interfaceController
         $this->addLogs($result, true);
 
 
-        return $this->Config->superTranslate($result);
+        return $result;
     }
 
 
@@ -420,18 +421,18 @@ class TableController extends interfaceController
                         $this->__addAnswerVar('UserTables', Auth::getUserManageTables($this->Config, $this->User));
                     }
                 }
+                $this->__addAnswerVar('topBranches', $this->getTopBranches(), true);
+                try {
+                    $this->setTreeData();
+                } catch (errorException $errorException) {
+                    $this->__addAnswerVar('error', $errorException->getMessage());
+                }
             }
             $this->__addAnswerVar('schema_name', $this->Config->getSettings('totum_name'), true);
 
             $this->__addAnswerVar('notification_period', $this->Config->getSettings('periodicity') ?? 0);
-            $this->__addAnswerVar('topBranches', $this->getTopBranches(), true);
-            $this->__addAnswerVar('totumFooter', $this->Config->getTotumFooter());
 
-            try {
-                $this->setTreeData();
-            } catch (errorException $errorException) {
-                $this->__addAnswerVar('error', $errorException->getMessage());
-            }
+            $this->__addAnswerVar('totumFooter', $this->Config->getTotumFooter());
 
 
             if (isset($this->Table)) {
@@ -802,7 +803,7 @@ class TableController extends interfaceController
                     case null:
                         $this->__addAnswerVar(
                             'html',
-                            preg_replace('#<script(.*?)>(.*?)</script>#is', '', $branchData['html']??'')
+                            preg_replace('#<script(.*?)>(.*?)</script>#is', '', $branchData['html'] ?? '')
                         );
                         break;
                     case 'anchor':
@@ -871,6 +872,14 @@ class TableController extends interfaceController
         } elseif ($this->User->isCreator()) {
             $Actions = new AdminTableActions($request, $this->modulePath, $this->Table, null);
             $error = $this->translate('Method [[%s]] in this module is not defined.', $method);
+            if(in_array($method, ['checkEditRow', 'checkInsertRow', 'getEditRow']))
+            {
+                $this->Config->setUserData('NOT_V_TRANSLATE');
+            }
+            elseif(in_array($method, ['getValue']))
+            {
+                $this->Config->setUserData('NOT_TRANSLATE');
+            }
         } elseif (!$this->onlyRead) {
             $Actions = new WriteTableActions($request, $this->modulePath, $this->Table, null);
             $error = $this->translate('Method [[%s]] in this module is not defined or has admin level access.',
@@ -1043,6 +1052,7 @@ class TableController extends interfaceController
         if (!empty($filename = $request->getQueryParams()['file'] ?? null) && !empty($fieldName = $request->getQueryParams()['field'] ?? null) && preg_match('/^[a-z][a-z0-9_]{2,50}$/',
                 $fieldName)) {
             session_write_close();
+
             if (!$this->Table) {
                 $error = $this->translate('The file table was not found.');
             } else {
@@ -1061,15 +1071,14 @@ class TableController extends interfaceController
                     $matches);
                 /*Проверка не скормили ли неверный путь*/
 
-                if (!empty($error)) ;
-                elseif ($matches['table'] !== (string)$this->Table->getTableRow()['id']
-                    || ($this->Table->getTableRow()['type'] === 'calcs' && (int)$matches[2] !== (int)$this->Table->getCycle()->getId())
-                ) {
-                    $error = $this->translate('The file path is not formed correctly.');
-                } elseif (!($field = $this->Table->getFields()[$fieldName])) {
-                    $error = $this->translate('The file field was not found');
-                } else {
-                    if (empty($field['secureFile'])) {
+
+                $getFilePath = function ($fieldName, $matches) use ($folder, $filename) {
+                    $error = null;
+                    $filepath = null;
+
+                    if (!($field = $this->Table->getFields()[$fieldName])) {
+                        $error = $this->translate('The file field was not found');
+                    } elseif (empty($field['secureFile'])) {
                         $error = $this->translate('The file is not protected');
                     } elseif (!$this->Table->isField('visible', 'web', $field)) {
                         $error = $this->translate('Access to the file field is denied');
@@ -1085,6 +1094,25 @@ class TableController extends interfaceController
                             $filepath = File::getFilePath($folder . $filename, $this->Config, $field);
                         }
                     }
+                    return [$error, $filepath];
+                };
+
+
+                if (!empty($error)) ;
+                elseif (!empty($request->getQueryParams()['hash']) && ($data = $this->Totum->getNamedModel(TmpTables::class)->getByHash(TmpTables::SERVICE_TABLES['linktoedit'],
+                    $this->User,  $request->getQueryParams()['hash'])) && !empty($sessionAccess = $_SESSION['secureLinkToEditAccess'][$request->getQueryParams()['hash']][$matches['table']])
+                && ($fileTable = $this->Totum->getTableRow($matches['table']))
+                && (!empty($sessionAccess[$fileTable['type'] === 'calcs'?(int)$matches[2]:0][$fileTable['type'] === 'calcs'?(int)$matches[3]:((int)$matches[2]??0)][$fieldName]))
+               ) {
+                    $this->Table = $this->Totum->getTable($fileTable, $fileTable['type'] === 'calcs'?(int)$matches[2]:null);
+                    list($error, $filepath) = $getFilePath($fieldName, $matches);
+
+                } elseif ($matches['table'] !== (string)$this->Table->getTableRow()['id']
+                    || ($this->Table->getTableRow()['type'] === 'calcs' && (int)$matches[2] !== (int)$this->Table->getCycle()->getId())
+                ) {
+                    $error = $this->translate('The file path is not formed correctly.');
+                } else {
+                    list($error, $filepath) = $getFilePath($fieldName, $matches);
                 }
             }
             if (!empty($filepath)) {

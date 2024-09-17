@@ -43,11 +43,11 @@ class GitUpdate extends Command
         }
 
         $Conf = new Conf();
-
+        $serviceName = $Conf->getProGoModuleServiceName();
         if (is_callable([$Conf, 'setHostSchema'])) {
-            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && bin/totum schemas-update');
+            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && sudo service '.$serviceName.' restart && bin/totum schemas-update ');
         } else {
-            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && bin/totum schema-update');
+            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && sudo service '.$serviceName.' restart && bin/totum schema-update');
         }
 
         return 0;

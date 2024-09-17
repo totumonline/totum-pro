@@ -53,6 +53,7 @@ class globcalcsTable extends JsonTables
         $this->onSaveTable($this->tbl, $saved);
 
         $this->Totum->tableChanged($this->tableRow['name']);
+        $this->Totum->addTableUpdated($this->tableRow['id'], $this->savedUpdated);
         return true;
     }
 

@@ -789,6 +789,7 @@ abstract class JsonTables extends aTable
 
         if (key_exists('tree', $this->fields) && !empty($this->fields['tree']['treeViewCalc'])) {
             $Field = Field::init($this->fields['tree'], $this);
+            $sortData = [];
 
             foreach ($this->tbl['rows'] as $row) {
                 $savedRow = $this->savedTbl['rows'][$row['id']] ?? [];

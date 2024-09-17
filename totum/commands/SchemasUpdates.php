@@ -48,12 +48,16 @@ class SchemasUpdates extends Command
 
             $output->writeln('update ' . $schemaName . " with source $matches from $file");
 
-            $p = popen("{$_SERVER['SCRIPT_FILENAME']} schema-update $matches $file -s $schemaName", 'r');
+            $p = popen("{$_SERVER['SCRIPT_FILENAME']} schema-update $matches $file -s $schemaName --restart-gom-false", 'r');
             while (is_resource($p) && $p && !feof($p)) {
                 $output->write("  " . fread($p, 1024));
             }
             pclose($p);
         }
+        $Conf = new Conf();
+        $serviceName = $Conf->getProGoModuleServiceName();
+        passthru('sudo service '.$serviceName.' restart');
+
         return 0;
     }
 }

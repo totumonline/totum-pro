@@ -891,17 +891,26 @@ class Calculate
                         case 'func':
                             $func = $r['func'];
 
+                            if (str_starts_with($func, 'ext')) {
+                                $func = $this->Table->getTotum()->getConfig()->getCalculateExtensionFunction($func);
+                                try {
+                                    $rTmp = $func->call($this, $r['params'], $rTmp);
+                                } catch (errorException $e) {
+                                    $e->addPath($this->translate('Function [[%s]]', $r['func']));
+                                    throw $e;
+                                }
+                            } else {
+                                $funcName = 'func' . $func;
+                                if (!is_callable([$this, $funcName])) {
+                                    throw new errorException($this->translate('Function [[%s]] is not found.', $func));
+                                }
 
-                            $funcName = 'func' . $func;
-                            if (!is_callable([$this, $funcName])) {
-                                throw new errorException($this->translate('Function [[%s]] is not found.', $func));
-                            }
-
-                            try {
-                                $rTmp = $this->$funcName($r['params'], $rTmp);
-                            } catch (errorException $e) {
-                                $e->addPath($this->translate('Function [[%s]]', $r['func']));
-                                throw $e;
+                                try {
+                                    $rTmp = $this->$funcName($r['params'], $rTmp);
+                                } catch (errorException $e) {
+                                    $e->addPath($this->translate('Function [[%s]]', $r['func']));
+                                    throw $e;
+                                }
                             }
 
 

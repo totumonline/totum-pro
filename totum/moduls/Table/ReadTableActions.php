@@ -261,6 +261,10 @@ class ReadTableActions extends Actions
                 ];
 
                 $LinkedTable->reCalculateFromOvers($modifyData);
+
+                session_start();
+                unset($_SESSION['secureLinkToEditAccess'][$this->post['shash']]);
+                session_write_close();
             }
 
         } else {
@@ -820,6 +824,38 @@ class ReadTableActions extends Actions
 
 
         switch ($pageViewType = $this->getPageViewType()) {
+            case 'tree':
+                $result += ['chdata' => []];
+
+                if (!is_array($this->post) || !key_exists('tree', $this->post)) {
+                    throw new errorException($this->translate('The tree index is not passed'));
+                }
+                $treeIndex = json_decode($this->post['tree'], true);
+                $result['chdata'] = array_merge(
+                    $result['chdata'],
+                    $this->getResultTree(
+                        function ($k, $v) use ($treeIndex) {
+                            if (key_exists($k, $treeIndex)) {
+                                if ($treeIndex[$k]) {
+                                    return 'loaded';
+                                } else {
+                                    return 'child';
+                                }
+                            }
+                        },
+                        ['']
+                    )
+                );
+
+                if ($this->isPagingView('tree') && $ids = json_decode($this->post['ids'], true)) {
+                    $result['chdata']['rows'] = $this->Table->getSortedFilteredRows('web', 'web', $ids)['rows'];
+                }
+
+                $pageIds = array_column($result['chdata']['rows'] ?? [], 'id');
+                $result['chdata']['params'] = $this->addValuesAndFormatsOfParams($this->Table->getTbl()['params'],
+                    $pageIds)['params'];
+                $result['chdata']['f'] = $this->getTableFormat($pageIds);
+                break;
             default:
 
                 $result += ['chdata' => $this->getTableClientData(
@@ -832,12 +868,19 @@ class ReadTableActions extends Actions
                     false
                 )];
 
-
-                if ($this->isPagingView()) {
-                    $params = $this->Table->filtersParamsForLoadRows('web');
-                    $result['allCount'] = $params === false ? 0 : $this->Table->countByParams($params);
+                switch ($pageViewType) {
+                    case 'panels':
+                        if ($this->Table->getTableRow()['with_order_field']) {
+                            $result['chdata']['nsorted_ids'] = array_column($result['chdata']['rows'], 'id');
+                        }
+                       // break; !Do NOT DELETE
+                    default:
+                        if ($this->isPagingView()) {
+                            $params = $this->Table->filtersParamsForLoadRows('web');
+                            $result['allCount'] = $params === false ? 0 : $this->Table->countByParams($params);
+                        }
+                        break;
                 }
-                break;
         }
 
 
@@ -1379,6 +1422,46 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         }
 
         switch ($this->getPageViewType()) {
+            case 'panels':
+                $result['viewType'] = 'panels';
+                $result['kanban'] = $this->getKanbanData($fields);
+
+                foreach ($result['fields'] as $k => $v) {
+                    if ($v['category'] === 'column' && !in_array($k, $fields)) {
+                        unset($result['fields'][$k]);
+                    }
+                }
+
+                $result = array_merge(
+                    $result,
+                    $this->getTableClientData(
+                        0,
+                        $this->isPagingView() ? 0 : null,
+                        false,
+                        $fields
+                    )
+                );
+
+                foreach ($result['tableRow']['panels_view']['fields'] as $k => $field) {
+                    if ($result['fields'][$field['field']]['showInWeb'] === false) {
+                        unset($result['tableRow']['panels_view']['fields'][$k]);
+                    }
+                }
+
+                $result['tableRow']['panels_view']['fields'] = array_values($result['tableRow']['panels_view']['fields']);
+                break;
+            case 'tree':
+                $tree = $this->Table->getFields()['tree'];
+                $result = array_merge(
+                    $result,
+                    $this->getTreeTopLevel($tree['treeViewLoad'] ?? null,
+                        $tree['treeViewOpen'] ?? null)
+                );
+                break;
+            case 'commonByCount':
+                /*For off button on table head*/
+                $result['panels'] = 'off';
+            // no break
             default:
                 $result = array_merge($result, $this->getTableClientData(0, $this->isPagingView() ? 0 : null, false));
 
@@ -1412,6 +1495,46 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
 
     protected function getPageViewType(): string
     {
+        if (($this->post['restoreView'] ?? false) || ($this->User->isCreator() && ($this->Cookies['ttm__commonTableView'] ?? false))) {
+            $this->creatorCommonView = true;
+            return 'common';
+        }
+
+        if ($this->Request->getQueryParams()['iframe'] ?? false) ; elseif (($panelViewSettings = ($this->Table->getTableRow()['panels_view'] ?? null))
+        ) {
+            if (($this->post['panelsView'] ?? false) === 'true') {
+                return 'panels';
+            } elseif (empty($this->post)) {
+                $params = $this->Table->filtersParamsForLoadRows('web');
+                $allCount = $params === false ? 0 : $this->Table->countByParams($params);
+                if ($allCount <= ($panelViewSettings['panels_max_count'] ?? 100)) {
+                    $checkCookies = function () use ($panelViewSettings) {
+                        $name = $this->getPanelsCookieName()[0];
+                        if (key_exists($name, $_COOKIE)) {
+                            return $_COOKIE[$name] === '1';
+                        }
+                        return $panelViewSettings['panels_view_first'];
+                    };
+
+                    if ($panelViewSettings['state'] === 'panel'
+                        || (
+                            $panelViewSettings['state'] === 'both'
+                            && $checkCookies()
+                        )) {
+                        return 'panels';
+                    }
+                } else {
+                    return 'commonByCount';
+                }
+            }
+        }
+        if (($tree = $this->Table->getFields()['tree'] ?? null)
+            && $tree['category'] === 'column'
+            && $tree['type'] === 'tree'
+            && !empty($tree['treeViewType'])) {
+            return 'tree';
+        }
+
         return 'common';
     }
 
@@ -2358,6 +2481,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     unset($changedIds['params']);
 
                     $selectOrFormatColumns['id'] = true;
+                    if ($this->getPageViewType() === 'tree') {
+                        $selectOrFormatColumns['n'] = true;
+                    }
 
                     $rows = $this->Table->getTbl()['rows'];
                     foreach ($pageIds as $id) {
@@ -2392,6 +2518,15 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 if ($this->Table->getChangeIds()['reordered']) {
                     $return['chdata']['order'] = array_column($return['chdata']['rows'], 'id');
                 }
+            }
+            if ($this->getPageViewType() === 'tree' && $this->Table->getFields()['tree']['treeViewType'] === 'self') {
+                $return['chdata']['tree'] = $this->getResultTree(
+                    function ($k, $v) {
+                        return 'child';
+                    },
+                    [''],
+                    true
+                )['tree'];
             }
 
             $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS']);

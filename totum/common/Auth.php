@@ -28,20 +28,29 @@ class Auth
 
     public static function loadAuthUserByLogin(Conf $Config, $userLogin, $UpdateActive)
     {
-        $where = ['login' => $userLogin, 'is_del' => false, 'on_off' => "true"];
-        if ($userRow = static::getUserWhere($Config, $where, $UpdateActive)) {
+        if($userRow = $Config->proGoModuleSocketSend(['method' => 'userByLogin', 'login' => $userLogin])) {
+            if ($UpdateActive) {
+                static::updateActiveDatetime($userRow, $Config);
+            }
             return new User($userRow, $Config);
+        }
+    }
+
+    protected static function updateActiveDatetime($userRow, $Config){
+        if (!str_starts_with($userRow['activ_datetime'] ?? '', date('Y-m-d H:i'))) {
+            $dt = ['activ_datetime' => json_encode(['v' => date('Y-m-d H:i:s')], JSON_UNESCAPED_UNICODE)];
+            $Config->getModel('users')->update($dt, ['id' => $userRow['id']]);
         }
     }
 
     public static function loadAuthUser(Conf $Config, $userId, $UpdateActive)
     {
-        $where = ['id' => $userId, 'is_del' => false, 'on_off' => "true"];
-
-        if ($userRow = static::getUserWhere($Config, $where, $UpdateActive)) {
+        if($userRow = $Config->proGoModuleSocketSend(['method' => 'userById', 'userId' => $userId])) {
+            if ($UpdateActive) {
+                static::updateActiveDatetime($userRow, $Config);
+            }
             return new User($userRow, $Config);
         }
-
         return null;
     }
 
@@ -296,24 +305,28 @@ SQL;
         $now_date = date_create();
         $login = mb_strtolower($login);
 
-        if (($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
+        $userRow = $userRow ?? Auth::getUserRowWithServiceRestriction(
+            $login,
+            $Config,
+            $interface
+        );
+
+        $authLogOn = $interface!=='xmljson' || !$userRow['ttm__off_auth_log'];
+
+        if ($authLogOn && ($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
             $BlockDate = date_create()->modify('-' . $block_time . 'minutes');
             $block_date = $BlockDate->format('Y-m-d H:i');
         }
 
-        if ($block_time && $Config->getModel('auth_log')->get(['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\'', 'status' => 2])) {
+        if ($authLogOn && $block_time && $Config->getModel('auth_log')->get(['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\'', 'status' => 2])) {
             return static::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION'];
         } else {
-            if (($userRow = $userRow ?? Auth::getUserRowWithServiceRestriction(
-                    $login,
-                    $Config,
-                    $interface
-                )) && static::checkUserPass(
+            if ($userRow && static::checkUserPass(
                     $pass,
                     $userRow['pass']
                 )) {
                 $status = static::$AuthStatuses['OK'];
-            } elseif (!$block_time || !$error_count) {
+            } elseif (!$authLogOn || !$block_time || !$error_count) {
                 $status = static::$AuthStatuses['WRONG_PASSWORD'];
             } else {
                 $count = 0;
@@ -338,7 +351,7 @@ SQL;
             }
         }
 
-        if ($status !== static::$AuthStatuses['OK'] || !$Config->getSettings('h_pro_auth_on_off')) {
+        if ($authLogOn && ($status !== static::$AuthStatuses['OK'] || !$Config->getSettings('h_pro_auth_on_off'))) {
             $Config->getSql()->insert(
                 'auth_log',
                 [
@@ -355,10 +368,7 @@ SQL;
 
     public static function getUserById(Conf $Config, $userId)
     {
-        $where = ['id' => $userId, 'is_del' => false, 'on_off' => "true"];
-        if ($userRow = static::getUserWhere($Config, $where)) {
-            return new User($userRow, $Config);
-        }
+        return static::loadAuthUser($Config, $userId, false);
     }
 
     public static function webInterfaceSetAuth($userId)
@@ -389,6 +399,7 @@ SQL;
 
         $_SESSION['userId'] = $id;
         session_write_close();
+
     }
 
     public static function isUserOnShadow(): bool

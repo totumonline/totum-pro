@@ -607,6 +607,7 @@ abstract class RealTables extends aTable
         $this->cachedSelects = [];
 
         $this->Totum->tableChanged($this->tableRow['name']);
+        $this->Totum->addTableUpdated($this->tableRow['id'], $this->savedUpdated);
     }
 
     public function addOrderField()
@@ -630,6 +631,7 @@ abstract class RealTables extends aTable
 
     protected function onSaveTable($tbl, $loadedTbl)
     {
+
         $fieldsWithActionOnChange = $this->getFieldsForAction('Change', 'param');
 
         $codeAction = $this->tableRow['default_action'] ?? null;

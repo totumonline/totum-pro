@@ -64,7 +64,9 @@ trait FuncTablesTrait
         } else {
             $SourceTable = $this->Table->getTotum()->getTable($sourceTableRow);
         }
-        return json_decode($SourceTable->getSavedUpdated(), true);
+        $struct = json_decode($SourceTable->getSavedUpdated(), true);
+        $struct['dt'] = substr($struct['dt'], 0, 16);
+        return $struct;
     }
 
     protected function funcGetUsingFields(string $params): array

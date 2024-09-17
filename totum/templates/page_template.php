@@ -4,21 +4,21 @@
     <link rel="stylesheet"
           type="text/css"
           href="/css/libs.css?v=3710809">
-    <script src="/js/libs.js?v=63416c5"></script>
+    <script src="/js/libs.js?v=b101ece"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=77b64a8">
+          href="/css/main.css?v=1841bfc">
 
     <?php
     if ($isCreatorView ?? null) { ?>
-        <script src="/js/functions.js?v=4718f08"></script>
+        <script src="/js/functions.js?v=57abc29"></script>
         <?php
         echo '<script>App.functions=App.functions.concat(' . $this->Config->getExtFunctionsTemplates() . ')</script>';
         ?>
         <?php
     } ?>
 
-    <script src="/js/main.js?v=6e2b78e"></script>
+    <script src="/js/main.js?v=d2050e9"></script>
     <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?9"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 

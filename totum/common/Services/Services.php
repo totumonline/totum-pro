@@ -71,11 +71,15 @@ class Services implements ServicesVarsInterface
                     'method' => 'GET',
                 ],
                 'ssl' => [
-                    'verify_peer' => $this->Config->isCheckSsl(),
-                    'verify_peer_name' => $this->Config->isCheckSsl(),
+                    'verify_peer' => $this->Config->isCheckSslServices(),
+                    'verify_peer_name' => $this->Config->isCheckSslServices(),
                 ],
             ]
         );
+
+        if (!$this->Config->isCheckSslServices()){
+            $value['link'] = str_replace('https://', 'http://', $value['link']);
+        }
 
         if (empty($value['link']) || !($file = @file_get_contents($value['link'], true, $context))) {
             if (!empty($value['error'])) {
