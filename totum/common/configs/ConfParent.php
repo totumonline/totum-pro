@@ -11,6 +11,7 @@
 namespace totum\common\configs;
 
 use totum\common\calculates\CalculateAction;
+use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Lang\LangInterface;
 use totum\common\logs\Log;
@@ -93,6 +94,11 @@ abstract class ConfParent
     protected bool $isLangFixed = false;
     protected ?array $langJsonTranslates = null;
     protected bool|string $userLangCreatorMode = false;
+    /**
+     * @var false|resource|null
+     */
+    protected $proGoModuleSocket;
+
 
     public function __construct($env = self::ENV_LEVELS['production'])
     {
@@ -792,10 +798,11 @@ ON CONFLICT (name) DO UPDATE
         };
 
 
-        $returnData = function ($prepare) {
+        $returnData = function ($prepare) use($params) {
             if ($data = $prepare->fetch()) {
                 if ($params['date'] ?? false) {
-                    return ['date' => $data['dt'], 'value' => json_decode($data['value'], true)['v']];
+                    list($date, $tail) = explode('.', $data['dt']);
+                    return ['date' => $date, 'secpart'=>$tail, 'value' => json_decode($data['value'], true)['v']];
                 } else {
                     return json_decode($data['value'], true)['v'];
                 }
@@ -989,41 +996,6 @@ SQL
     public function isTechTable(string $name)
     {
         return in_array($name, $this->techTables);
-    }
-
-    public function getThemesCss()
-    {
-        if ($css = trim($this->getSettings('h_custom_css'))) {
-            return '<style>' . preg_replace('~<\s*/\s*style\s*~', '', $css) . '</style>';
-        }
-    }
-
-    /**
-     * @param string $type main|langs
-     * @return array|mixed|void
-     * @throws SqlException
-     */
-    protected function loadUserTranslates(string $type)
-    {
-        switch ($type) {
-            case 'main':
-                return json_decode(file_get_contents($this->getBaseDir() . 'totum/moduls/install/' . $this->getLang() . '.json'), true);
-            case 'langs':
-                $langField = 'lang_' . $this->getLang();
-                $mainLangField = 'lang_' . strtolower(static::LANG);
-                $fields = $langField;
-                if ($langField !== $mainLangField) {
-                    $fields .= ', ' . $mainLangField;
-                }
-                $fields .= ', template';
-                $st = $this->Sql->getPDO()->prepare('select ' . $fields . ' from ttm__langs');
-                $st->execute();
-                $data = [];
-                foreach ($st->fetchAll(\PDO::FETCH_ASSOC) as $row) {
-                    $data[json_decode($row['template'])->v] = json_decode($row[$langField])->v ?? json_decode($row[$mainLangField])->v ?? $row['template'];
-                }
-                return $data;
-        }
     }
 
 }
