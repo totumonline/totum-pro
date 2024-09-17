@@ -50,7 +50,7 @@ $searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['
                 </li>
 
                 <li class="navbar-text"
-                    id="UserFio"><?= $UserName ?></li>
+                    id="UserFio" data-id="<?=$this->User->getId()?>"><?= $UserName ?></li>
             </ul>
             <script>
                 <?php

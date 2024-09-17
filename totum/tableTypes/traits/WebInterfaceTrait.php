@@ -230,7 +230,7 @@ trait WebInterfaceTrait
             if (is_array($id) || $this->loadFilteredRows('web', [$id])) {
                 $row = is_array($id) ? $id : $this->tbl['rows'][$id];
                 foreach ($dynamicData as $fieldName => $dynamicValues) {
-                    $data[$fieldName] = $row[$fieldName]['v'] ?? (is_array($id) ? $row[$fieldName] : null) ?? [];
+                    $data[$fieldName] = $row[$fieldName]['v'] ?? (is_array($id) ? ($row[$fieldName ] ?? null) : null) ?? [];
                     foreach ($dynamicValues as $k => $v) {
                         $data[$fieldName][$k] = $v;
                     }

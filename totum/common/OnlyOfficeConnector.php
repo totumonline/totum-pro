@@ -55,11 +55,7 @@ class OnlyOfficeConnector
                 'customization' => [
                     'forcesave' => false
                 ],
-                'user' => [
-                    'group' => 'Group1',
-                    'id' => (string)$Totum->getUser()->id,
-                    'name' => $Totum->getUser()->fio
-                ],
+                'user' => $Totum->getConfig()->proGoModuleSocketSend(["method"=>"OOConfig", "user"=>$Totum->getUser()->getId()]),
 
 
             ]

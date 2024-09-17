@@ -46,17 +46,24 @@ class ServicesConnector
                     'method' => 'GET',
                 ],
                 'ssl' => [
-                    'verify_peer' => $Config->isCheckSsl(),
-                    'verify_peer_name' => $Config->isCheckSsl(),
+                    'verify_peer' => $Config->isCheckSslServices(),
+                    'verify_peer_name' => $Config->isCheckSslServices(),
                 ],
             ]
         );
+
+        if (!$this->Config->isCheckSslServices()){
+            $value['link'] = str_replace('https://', 'http://', $value['link']);
+        }
 
         if (empty($value['link']) || !($file = @file_get_contents($value['link'], true, $context))) {
             if (!empty($value['error'])) {
                 throw new errorException('Generator error: ' . $value['error']);
             }
             if (!empty($value['link'])) {
+                if(empty($http_response_header)){
+                    throw new errorException('Service server did not answer');
+                }
                 throw new errorException('Wrong data from service server: ' . $http_response_header);
             } else {
                 throw new errorException('Unknown error');
@@ -90,8 +97,8 @@ class ServicesConnector
                     'content' => json_encode($Data)
                 ],
                 'ssl' => [
-                    'verify_peer' => $this->Config->isCheckSsl(),
-                    'verify_peer_name' => $this->Config->isCheckSsl(),
+                    'verify_peer' => $this->Config->isCheckSslServices(),
+                    'verify_peer_name' => $this->Config->isCheckSslServices(),
                 ],
             ]
         );

@@ -1,0 +1,14 @@
+[Unit]
+Description=Totum GOM
+After=network.target multi-user.target postgresql.service
+Wants=multi-user.target postgresql.service
+
+[Service]
+ExecStart=/home/totum/totum-mit/bin/gomodule -php-sessions-directory /var/lib/php/sessions_totum -totum-directory /home/totum/totum-mit/
+Type=simple
+User=totum
+TimeoutStartSec=0
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=paths.target

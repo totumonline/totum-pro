@@ -21,7 +21,6 @@ class calcsTable extends JsonTables
     /**
      * @var array|bool|mixed|string
      */
-    protected $dataRow;
 
     public function __construct(Totum $Totum, $tableRow, Cycle $Cycle, $light = false)
     {
@@ -78,7 +77,7 @@ class calcsTable extends JsonTables
         $this->saveSourceTables();
 
         $this->Totum->tableChanged($this->tableRow['name']);
-
+        $this->Totum->addTableUpdated($this->tableRow['id'].'/'.$this->Cycle->getId(), $this->savedUpdated);
         return true;
     }
 

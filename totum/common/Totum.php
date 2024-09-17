@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '4.11.57.0-7.1';
+    public const VERSION = '5.12.60.0-8.0';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -79,6 +79,7 @@ class Totum
     protected $fieldObjectsCachesVar;
     protected array $orderFieldCodeErrors = [];
     protected array $creatorWarnings = [];
+    protected mixed $tablesUpdated;
 
 
     /**
@@ -406,7 +407,7 @@ class Totum
 
     public function getNamedModel(string $className, $isService = false): Model
     {
-        return $this->getModel(TablesModelsTrait::getTableNameByModel($className), $isService);
+        return $this->getModel(Conf::getTableNameByModel($className), $isService);
     }
 
     public function getModel(string $tableName, $isService = false): Model
@@ -565,6 +566,23 @@ class Totum
         $this->hashes[$type][$hash] = $value;
 
         return $hash;
+    }
+
+    public function addTableUpdated(int|string $id, string $updated)
+    {
+        if (empty($this->tablesUpdated)) {
+            $this->Config->getSql()->addOnCommit(function () {
+                $this->Config->proGoModuleSocketSend([
+                    'method' => 'tableUpdates',
+                    'updates' => $this->tablesUpdated
+                ]);
+            });
+        }
+        if (is_int($id)) {
+            $id = "$id/0";
+        }
+        $this->tablesUpdated[$id] = json_decode($updated, true);
+        $this->tablesUpdated[$id]['code'] = "{$this->tablesUpdated[$id]['code']}";
     }
 
 }

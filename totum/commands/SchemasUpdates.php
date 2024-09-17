@@ -25,7 +25,7 @@ class SchemasUpdates extends Command
             ->addOption('exclude', mode: InputOption::VALUE_IS_ARRAY|InputOption::VALUE_OPTIONAL, description: 'Enter schema names for exclude', default: []);
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $matches = $input->getArgument('matches');
         $file = $input->getArgument('file');
@@ -48,11 +48,16 @@ class SchemasUpdates extends Command
 
             $output->writeln('update ' . $schemaName . " with source $matches from $file");
 
-            $p = popen("{$_SERVER['SCRIPT_FILENAME']} schema-update $matches $file -s $schemaName", 'r');
+            $p = popen("{$_SERVER['SCRIPT_FILENAME']} schema-update $matches $file -s $schemaName --restart-gom-false", 'r');
             while (is_resource($p) && $p && !feof($p)) {
                 $output->write("  " . fread($p, 1024));
             }
             pclose($p);
         }
+        $Conf = new Conf();
+        $serviceName = $Conf->getProGoModuleServiceName();
+        passthru('sudo service '.$serviceName.' restart');
+
+        return 0;
     }
 }

@@ -789,6 +789,7 @@ abstract class JsonTables extends aTable
 
         if (key_exists('tree', $this->fields) && !empty($this->fields['tree']['treeViewCalc'])) {
             $Field = Field::init($this->fields['tree'], $this);
+            $sortData = [];
 
             foreach ($this->tbl['rows'] as $row) {
                 $savedRow = $this->savedTbl['rows'][$row['id']] ?? [];
@@ -1034,7 +1035,7 @@ abstract class JsonTables extends aTable
 
 
             $codeAction = $this->tableRow['default_action'] ?? null;
-            if ($codeAction && !preg_match('/^\s*=\s*:\s*$/', $codeAction)) {
+            if ($codeAction && !Calculate::hasStartSection($codeAction)){
                 $this->execDefaultTableAction($codeAction, $loadedTbl, $tbl);
             }
 

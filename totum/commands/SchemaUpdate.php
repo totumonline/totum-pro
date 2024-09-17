@@ -8,13 +8,10 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
 use totum\common\configs\MultiTrait;
-use totum\common\errorException;
 use totum\common\TotumInstall;
 use totum\common\User;
 use totum\config\Conf;
-use totum\config\Conf2;
 
 class SchemaUpdate extends Command
 {
@@ -28,14 +25,15 @@ class SchemaUpdate extends Command
                 'Enter source name',
                 'totum_' . (new Conf())->getLang()
             )
-            ->addArgument('file', InputArgument::OPTIONAL, 'Enter schema update filepath', 'sys_update');
+            ->addArgument('file', InputArgument::OPTIONAL, 'Enter schema update filepath', 'sys_update')
+            ->addOption('--restart-gom-false', '', InputOption::VALUE_NONE, 'Dont\'t restart go-module');
 
         if (key_exists(MultiTrait::class, class_uses(Conf::class, false))) {
             $this->addOption('schema', 's', InputOption::VALUE_REQUIRED, 'Enter schema name', '');
         }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!class_exists(Conf::class)) {
             $output->writeln('ERROR: config class not found');
@@ -46,7 +44,7 @@ class SchemaUpdate extends Command
                 $Conf->setHostSchema(null, $schema);
             } else {
                 $output->writeln('Set option -s for identify the schema or use schemas-update for update all ones');
-                return;
+                return 0;
             }
         }
         $sourceName = $input->getArgument('matches');
@@ -80,5 +78,12 @@ class SchemaUpdate extends Command
         $cont = $TotumInstall->applyMatches($cont, $matches);
 
         $TotumInstall->updateSchema($cont, true, $sourceName);
+
+        if (!$input->getOption('restart-gom-false')) {
+            $serviceName = $Conf->getProGoModuleServiceName();
+            passthru('sudo service '.$serviceName.' restart');
+        }
+
+        return 0;
     }
 }

@@ -7,10 +7,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
-use totum\common\Auth;
-use totum\common\configs\MultiTrait;
-use totum\common\errorException;
 use totum\common\Totum;
 use totum\config\Conf;
 
@@ -23,7 +19,7 @@ class GitUpdate extends Command
             ->setDescription('update from git origin master && composer && schema(s)-update');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!$input->getOption('force')) {
             $error = true;
@@ -47,11 +43,11 @@ class GitUpdate extends Command
         }
 
         $Conf = new Conf();
-
+        $serviceName = $Conf->getProGoModuleServiceName();
         if (is_callable([$Conf, 'setHostSchema'])) {
-            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && bin/totum schemas-update');
+            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && sudo service '.$serviceName.' restart && bin/totum schemas-update ');
         } else {
-            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && bin/totum schema-update');
+            passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev && sudo service '.$serviceName.' restart && bin/totum schema-update');
         }
 
         return 0;

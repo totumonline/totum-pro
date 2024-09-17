@@ -261,6 +261,10 @@ class ReadTableActions extends Actions
                 ];
 
                 $LinkedTable->reCalculateFromOvers($modifyData);
+
+                session_start();
+                unset($_SESSION['secureLinkToEditAccess'][$this->post['shash']]);
+                session_write_close();
             }
 
         } else {
@@ -869,7 +873,7 @@ class ReadTableActions extends Actions
                         if ($this->Table->getTableRow()['with_order_field']) {
                             $result['chdata']['nsorted_ids'] = array_column($result['chdata']['rows'], 'id');
                         }
-                        break;
+                       // break; !Do NOT DELETE
                     default:
                         if ($this->isPagingView()) {
                             $params = $this->Table->filtersParamsForLoadRows('web');
@@ -1437,6 +1441,14 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                         $fields
                     )
                 );
+
+                foreach ($result['tableRow']['panels_view']['fields'] as $k => $field) {
+                    if ($result['fields'][$field['field']]['showInWeb'] === false) {
+                        unset($result['tableRow']['panels_view']['fields'][$k]);
+                    }
+                }
+
+                $result['tableRow']['panels_view']['fields'] = array_values($result['tableRow']['panels_view']['fields']);
                 break;
             case 'tree':
                 $tree = $this->Table->getFields()['tree'];
@@ -2233,12 +2245,12 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             );
 
         } else {
-            $tableRow['description'] = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $tableRow['description']);
+            $tableRow['description'] = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $tableRow['description'] ?? '');
         }
         $_tableRow = array_intersect_key($tableRow, array_flip($fields));
         foreach (Totum::TABLE_CODE_PARAMS as $name) {
             if (key_exists($name, $_tableRow)) {
-                $_tableRow[$name] = trim($_tableRow[$name]);
+                $_tableRow[$name] = trim($_tableRow[$name] ?? '');
                 $_tableRow[$name] = !!preg_match('/^\s*[a-z0-9]*\=\:\s*[^\s]+/mu', $_tableRow[$name]);
             }
         }
@@ -2271,7 +2283,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             }
 
         }
-        $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description']);
+        $_tableRow['description'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $_tableRow['description'] ?? '');
         $_tableRow['__withPDF'] = $this->isTableServiceOn('pdf') && !$this->isServicesBlocked && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']);
         $_tableRow['__xlsx'] = $this->isTableServiceOn('xlsx') && !$this->isServicesBlocked && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']);
         $_tableRow['__xlsx_import'] = is_a($this, WriteTableActions::class) && $this->isTableServiceOn('xlsximport') && !$this->Totum->getConfig()->isTechTable($this->Table->getTableRow()['name']) && !$this->isServicesBlocked && key_exists($this->Totum->getTableRow('ttm__prepared_data_import')['id'], $this->User->getTables());
@@ -2902,7 +2914,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         }
 
         foreach ($data as &$v) {
-            $v = json_decode($v, true);
+            $v = json_decode($v??'', true);
         }
         if (is_array($data['tables'])) {
             if (in_array('*ALL*', $data['tables'])) {

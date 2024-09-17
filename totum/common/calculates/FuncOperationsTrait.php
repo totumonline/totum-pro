@@ -10,6 +10,10 @@ use totum\fieldTypes\File;
 trait FuncOperationsTrait
 {
 
+    protected function funcIsItPRO($params){
+        return true;
+    }
+
     protected function cURL($url, string $ref = '', $header = 0, $cookie = '', $post = null, $timeout = null, $headers = null, $method = null): bool|string|null
     {
         if ($headers) {

@@ -11,10 +11,23 @@ trait WithPhpMailerTrait
 
     abstract protected function getDefaultSender();
 
-    public function sendMail($to, $title, $body, $attachments = [], $from = null, $replyTo = null, $hcopy = null)
+    public function sendMail(array|string $to, $title, $body, $attachments = [], $from = null, $replyTo = null, $hcopy = null)
     {
-        if(!$this->checkMailReceivers($to, $hcopy)){
-            return ;
+
+        $this->loadListUnsubscribeSettings();
+
+        if ($this->listUnsubscribeSettings['enabled'] && is_array($to)) {
+            foreach ($to as $_to) {
+                $this->sendMail($_to, $title, $body, $attachments, $from, $replyTo, $hcopy);
+                if ($hcopy) {
+                    $hcopy = null;
+                }
+            }
+            return;
+        }
+
+        if (!$this->checkMailReceivers($to, $hcopy)) {
+            return;
         }
 
         list($body, $attachments) = $this->mailBodyAttachments($body, $attachments);

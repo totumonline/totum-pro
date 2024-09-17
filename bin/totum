@@ -1,12 +1,22 @@
 #!/usr/bin/env php
 <?php
 
+$configIniFile = dirname(__FILE__).'/../CLI.totum.php.ini';
+
+$configIni = parse_ini_file($configIniFile);
+foreach ($configIni as $key => $value) {
+    ini_set($key, $value);
+}
+
+
 use totum\commands\CleanSchemasTmpTables;
 use totum\commands\CleanSchemaTmpTables;
 use totum\commands\CleanTmps;
 use totum\commands\CleanTmpTablesFilesMulti;
+use totum\commands\CleanTmpTablesFiles;
 use totum\commands\CodeExec;
 use totum\commands\GitUpdate;
+use totum\commands\HostSchema;
 use totum\commands\SchemaAdd;
 use totum\commands\SchemaCron;
 use totum\commands\SchemaCrons;
@@ -19,9 +29,11 @@ use totum\commands\SchemasList;
 use totum\commands\SchemasUpdates;
 use totum\commands\SchemaUpdate;
 use totum\commands\SchemaBackup;
+use totum\commands\SchemaUsers;
 use totum\commands\SchemaUserUnblock;
 use totum\commands\ServiceNotifications;
 use totum\commands\SetHiddenHost;
+use totum\commands\TableUpdated;
 use totum\commands\Vacuum;
 use totum\common\configs\MultiTrait;
 use totum\config\Conf;
@@ -48,6 +60,10 @@ if (class_exists(Conf::class)) {
     $app->add(new CodeExec());
     $app->add(new SchemaUserUnblock());
     $app->add(new ServiceNotifications());
+    $app->add(new HostSchema());
+    $app->add(new SchemaUsers());
+    $app->add(new TableUpdated());
+    $app->add(new CleanTmpTablesFiles());
 
     if (key_exists(MultiTrait::class, class_uses(Conf::class, false))) {
         $app->add(new SchemasCrons());

@@ -21,7 +21,7 @@ class CleanTmpTablesFiles extends Command
         }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!class_exists(Conf::class)) {
             $output->writeln('ERROR: config class not found');
@@ -35,19 +35,29 @@ class CleanTmpTablesFiles extends Command
         $dirs[] = $Conf->getFilesDir();
         $dirs[] = $Conf->getSecureFilesDir();
 
-        foreach ($dirs as $dir) {
-            if (is_dir($dir)) {
-                if ($dh = opendir($dir)) {
-                    while (($file = readdir($dh)) !== false) {
-                        if (is_file($fName = $dir . '/' . $file) && strpos($file,
-                                '!tmp!') && fileatime($fName) < time() - 3600) {
+        $cleanTmpFilesinDir = function ($dir) use (&$cleanTmpFilesinDir) {
+            if ($dh = opendir($dir)) {
+                while (($file = readdir($dh)) !== false) {
+                    if (is_file($fName = $dir . '/' . $file)) {
+                        if (str_contains($file,
+                            '!tmp!') && fileatime($fName) < time() - 3600) {
                             unlink($fName);
                         }
+                    } elseif ($file !='.' && $file !='..' && is_dir($fName)) {
+                        $cleanTmpFilesinDir($fName);
                     }
-                    closedir($dh);
                 }
+                closedir($dh);
+            }
+        };
+
+
+        foreach ($dirs as $dir) {
+            if (is_dir($dir)) {
+                $cleanTmpFilesinDir($dir);
             }
         }
 
+        return 0;
     }
 }

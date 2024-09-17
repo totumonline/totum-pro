@@ -438,6 +438,8 @@ class CalculateAction extends Calculate
         }
 
         $TotumInstall->updateSchema($params['schema'], true, $params['matches_name']);
+        $serviceName = $this->Table->getTotum()->getConfig()->getProGoModuleServiceName();
+        `sudo service $serviceName restart`;
     }
 
     protected function funcLinkToButtons($params)
@@ -631,8 +633,14 @@ class CalculateAction extends Calculate
                 $v = [];
             }
         }
+
         if ($fieldData['type'] === 'number') {
             $fieldData['dectimalSeparator'] = $fieldData['dectimalSeparator'] ?? $this->Table->getTotum()->getConfig()->getSettings('numbers_format')['dectimalSeparator'] ?? ',';
+        } elseif ($fieldData['type'] === 'file' && $fieldData['secureFile'] === true) {
+
+            @session_start();
+            $_SESSION['secureLinkToEditAccess'][$newHash][$LinkedTable->getTableRow()['id']][$LinkedTable->getCycle()?->getId()??0][$params['id']??0][$fieldData['name']] = true;
+            session_write_close();
         }
 
         $this->Table->getTotum()->addToInterfaceDatas(
@@ -1178,11 +1186,11 @@ class CalculateAction extends Calculate
                 $Date = date_create($params['timeout']);
             } elseif (is_numeric($params['timeout'])) {
                 $Date = date_create();
+                $Date->modify($params['timeout'] . ' seconds');
             } else {
                 throw new errorException($this->translate('The [[%s]] parameter is not correct.', 'timeout'));
             }
 
-            $Date->modify($params['timeout'] . ' seconds');
             $date = $Date->format('Y-m-d H:i:s');
 
             $data['expire'] = $date;
@@ -1398,6 +1406,9 @@ class CalculateAction extends Calculate
             if ($filters) {
                 $cripted = Crypt::getCrypted(json_encode($filters, JSON_UNESCAPED_UNICODE));
                 $q_params['f'] = $cripted;
+                if (!empty($q_params['b'])) {
+                    $q_params['efl'] = $q_params['f'];
+                }
             }
         }
 
@@ -1472,7 +1483,7 @@ class CalculateAction extends Calculate
 
     protected function funcInsert($params)
     {
-        if ($params = $this->getParamsArray($params, ['field', 'cycle'], ['field'])) {
+        if ($params = $this->getParamsArray($params, ['field'], ['field'])) {
             $addedIds = [];
             $funcSet = function ($params) use (&$addedIds) {
                 $table = $this->getSourceTable($params);
@@ -1505,7 +1516,7 @@ class CalculateAction extends Calculate
 
 
             if (!empty($params['cycle'])) {
-                $cycleIds = $params['cycle'];
+                $cycleIds = (array)$params['cycle'];
                 foreach ($cycleIds as $cycleId) {
                     $params['cycle'] = $cycleId;
                     $funcSet($params);
