@@ -152,7 +152,7 @@ class SchemaUsers extends Command
                     $usersCount += $connections - 1;
                     return [count($rolesMap[$rolesString]),""];
                 }
-                elseif(count($rolesMap[$rolesString])<=5){
+                elseif(count($rolesMap[$rolesString])<=8){
                     $lightUsersCount += $connections;
                     return [count($rolesMap[$rolesString]),"+"];
                 }else{
