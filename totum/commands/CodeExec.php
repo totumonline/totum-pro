@@ -61,10 +61,11 @@ class CodeExec extends Command
         $calc = new CalculateAction($data['code']);
         $vars = $data['vars'] ?? [];
         $vars['tpa'] = 'exec';
-        $calc->exec(['name' => 'SSH CODE'], [], [], [], [], [], $Table, $vars);
+        $data = $calc->exec(['name' => 'SSH CODE'], [], [], [], [], [], $Table, $vars);
 
         $Totum->transactionCommit();
 
+        $output->write(json_encode($data));
         return 0;
     }
 }

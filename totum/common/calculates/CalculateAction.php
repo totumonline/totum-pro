@@ -439,7 +439,11 @@ class CalculateAction extends Calculate
 
         $TotumInstall->updateSchema($params['schema'], true, $params['matches_name']);
         $serviceName = $this->Table->getTotum()->getConfig()->getProGoModuleServiceName();
-        `sudo service $serviceName restart`;
+
+        $this->Table->getTotum()->addOnEnd(function () use ($serviceName) {
+            `sudo service $serviceName restart`;
+        });
+
     }
 
     protected function funcLinkToButtons($params)
