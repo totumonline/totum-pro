@@ -55,9 +55,11 @@ class Auth
             }
 
         } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), 'is not found')) {
+            if (str_contains($e->getMessage(), 'is not found') && str_contains($e->getMessage(), 'User')) {
                 session_destroy();
+                return null;
             }
+            throw $e;
         }
         return null;
 
