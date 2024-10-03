@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '5.12.60.0-8.0';
+    public const VERSION = '5.13.60.0-8.1';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -236,7 +236,6 @@ class Totum
                     );
                     $tableId = $TableRow['id'];
                     if (in_array($tableId, $searchTables)) {
-
                         $pkCreate = function ($id) use ($tableId) {
                             return $tableId . '-' . $id;
                         };
@@ -250,9 +249,13 @@ class Totum
                                     $deletes[] = $pkCreate($id);
                                 } else {
                                     if (!is_array($Table->getTbl()['rows'][$id]['ttm_search']['v'])) {
-                                        errorException::criticalException($this->translate('Check that the ttm__search field type in table %s is data',
-                                            $Table->getTableRow()['name']),
-                                            $this);
+                                        errorException::criticalException(
+                                            $this->translate(
+                                                'Check that the ttm__search field type in table %s is data',
+                                                $Table->getTableRow()['name']
+                                            ),
+                                            $this
+                                        );
                                     }
                                     $updates[] = array_merge(
                                         $Table->getTbl()['rows'][$id]['ttm_search']['v'],
@@ -273,7 +276,8 @@ class Totum
             $SearchTable = $this->getTable('ttm__search_settings');
             $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/"+$#path`)');
             if ($updates) {
-                $Calc->execAction('KOD',
+                $Calc->execAction(
+                    'KOD',
                     $SearchTable->getTbl()['params'],
                     $SearchTable->getTbl()['params'],
                     $SearchTable->getTbl(),
@@ -283,11 +287,12 @@ class Totum
                     [
                         'posts' => json_encode($updates, JSON_UNESCAPED_UNICODE),
                         'path' => 'documents'
-                    ]);
+                    ]
+                );
             }
             if ($deletes) {
-
-                $Calc->execAction('KOD',
+                $Calc->execAction(
+                    'KOD',
                     $SearchTable->getTbl()['params'],
                     $SearchTable->getTbl()['params'],
                     $SearchTable->getTbl(),
@@ -297,7 +302,8 @@ class Totum
                     [
                         'posts' => json_encode($deletes, JSON_UNESCAPED_UNICODE),
                         'path' => 'documents/delete-batch'
-                    ]);
+                    ]
+                );
             }
         }
     }
@@ -367,8 +373,11 @@ class Totum
                     $this->tablesInstances[$cacheString] = cyclesTable::init($this, $tableRow, $extraData, $light);
                     break;
                 default:
-                    errorException::criticalException($this->translate('The [[%s]] table type is not connected to the system.',
-                        $tableRow['type']),
+                    errorException::criticalException(
+                        $this->translate(
+                            'The [[%s]] table type is not connected to the system.',
+                            $tableRow['type']
+                        ),
                         $this
                     );
             }
@@ -585,4 +594,17 @@ class Totum
         $this->tablesUpdated[$id]['code'] = "{$this->tablesUpdated[$id]['code']}";
     }
 
+    protected array $onEnd = [];
+    public function addOnEnd(\Closure $param)
+    {
+        $this->onEnd[]=$param;
+    }
+
+    /*Использовать только для "дернуть гом" и прочих неважных транзакционно штук*/
+    public function __destruct()
+    {
+        foreach ($this->onEnd as $f) {
+            $f();
+        }
+    }
 }

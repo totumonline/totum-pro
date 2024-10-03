@@ -147,7 +147,7 @@ class ReadTableActions extends Actions
         $result = null;
         $vars = [];
         list($fieldName, $dynamic) = explode('/', $this->post['field'] . '/');
-        if ($dynamic) {
+        if ($dynamic || $dynamic == "0") {
             $this->post['field'] = $fieldName;
             $vars['nfd'] = $dynamic;
         }

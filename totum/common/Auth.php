@@ -28,7 +28,7 @@ class Auth
 
     public static function loadAuthUserByLogin(Conf $Config, $userLogin, $UpdateActive)
     {
-        if($userRow = $Config->proGoModuleSocketSend(['method' => 'userByLogin', 'login' => $userLogin])) {
+        if ($userRow = $Config->proGoModuleSocketSend(['method' => 'userByLogin', 'login' => $userLogin])) {
             if ($UpdateActive) {
                 static::updateActiveDatetime($userRow, $Config);
             }
@@ -36,7 +36,8 @@ class Auth
         }
     }
 
-    protected static function updateActiveDatetime($userRow, $Config){
+    protected static function updateActiveDatetime($userRow, $Config)
+    {
         if (!str_starts_with($userRow['activ_datetime'] ?? '', date('Y-m-d H:i'))) {
             $dt = ['activ_datetime' => json_encode(['v' => date('Y-m-d H:i:s')], JSON_UNESCAPED_UNICODE)];
             $Config->getModel('users')->update($dt, ['id' => $userRow['id']]);
@@ -45,14 +46,25 @@ class Auth
 
     public static function loadAuthUser(Conf $Config, $userId, $UpdateActive)
     {
-        if($userRow = $Config->proGoModuleSocketSend(['method' => 'userById', 'userId' => $userId])) {
-            if ($UpdateActive) {
-                static::updateActiveDatetime($userRow, $Config);
+        try {
+            if ($userRow = $Config->proGoModuleSocketSend(['method' => 'userById', 'userId' => $userId])) {
+                if ($UpdateActive) {
+                    static::updateActiveDatetime($userRow, $Config);
+                }
+                return new User($userRow, $Config);
             }
-            return new User($userRow, $Config);
+
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'is not found') && str_contains($e->getMessage(), 'User')) {
+                session_destroy();
+                return null;
+            }
+            throw $e;
         }
         return null;
+
     }
+
 
     public static function webInterfaceSessionStart($Config)
     {
@@ -311,7 +323,7 @@ SQL;
             $interface
         );
 
-        $authLogOn = $interface!=='xmljson' || !$userRow['ttm__off_auth_log'];
+        $authLogOn = $interface !== 'xmljson' || !$userRow['ttm__off_auth_log'];
 
         if ($authLogOn && ($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
             $BlockDate = date_create()->modify('-' . $block_time . 'minutes');
