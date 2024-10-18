@@ -8,6 +8,8 @@ $searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['
                                     class="fa fa-search"></i></span>' : '';
 
 ?>
+} ?>
+<script>App = App || {}; App.isCreatorView = <?=json_encode($isCreatorView)?></script>
 <nav class="totbar-default navbar-default">
     <div class="container-fluid">
         <div
