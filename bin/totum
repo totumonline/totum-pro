@@ -33,6 +33,7 @@ use totum\commands\SchemaUsers;
 use totum\commands\SchemaUserUnblock;
 use totum\commands\ServiceNotifications;
 use totum\commands\SetHiddenHost;
+use totum\commands\SwitchOffExtraNotifications;
 use totum\commands\TableUpdated;
 use totum\commands\Vacuum;
 use totum\common\configs\MultiTrait;
@@ -64,6 +65,7 @@ if (class_exists(Conf::class)) {
     $app->add(new SchemaUsers());
     $app->add(new TableUpdated());
     $app->add(new CleanTmpTablesFiles());
+    $app->add(new SwitchOffExtraNotifications());
 
     if (key_exists(MultiTrait::class, class_uses(Conf::class, false))) {
         $app->add(new SchemasCrons());
