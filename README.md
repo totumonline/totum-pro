@@ -40,4 +40,4 @@ sudo find / -name "totum_install_vars"
 
 ## * Switching from Totum MIT V4
 
-See the [MIT V4 - PRO V5 upgrade instructions](https://docs.totum.online/update_5_mit_pro)
+See the [MIT V4 - PRO V6 upgrade instructions](https://docs.totum.online/update_5_mit_pro)
