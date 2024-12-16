@@ -6,12 +6,9 @@ For PRO license terms, see the [PRO version page](https://totum.online/pro)
 
 The license text is available in the [totum-pro-license repository](https://github.com/totumonline/totum-pro-license/blob/main/license_last)
 
-## Installing V5 PRO
+## Installing PRO
 
 > System for initial installation: **Ubuntu 24.04**
-
-> V5 uses web-sockets, so if you use intermediate proxies, you need to configure them in advance. To ensure WebSocket requests are not lost when passing through an intermediate proxy server before Nginx, make sure this proxy correctly handles and forwards the Upgrade and Connection headers used to establish WebSocket connections.
-
 
 Run the standard Totum installer (by default, it is assumed to be `/root`) and select the PRO installation option:
 
@@ -21,18 +18,11 @@ sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totu
 
 **For more information look at [documentation](https://docs.totum.online/pro-install)**
 
-## Switching from Totum MIT V5
+## Switching from Totum MIT *
 
-> This instruction assumes that TOTUM MIT V5 was installed using the installation script.
-
-> There are no mechanisms to revert from PRO to MIT.
+> This instruction assumes that TOTUM MIT was installed using the installation script.
 
 > Solutions developed in MIT are compatible with PRO.
-
-> Solutions developed in PRO are not backward compatible with MIT.
-
-> V5 uses web-sockets, so if you use intermediate proxies, you need to configure them in advance. To ensure WebSocket requests are not lost when passing through an intermediate proxy server before Nginx, make sure this proxy correctly handles and forwards the Upgrade and Connection headers used to establish WebSocket connections.
-
 
 Run the standard Totum installer from the same folder from which it was run on the server during the initial system installation:
 
@@ -48,6 +38,6 @@ If you forgot the folder from which the installer was run, search for `totum_ins
 sudo find / -name "totum_install_vars"
 ```
 
-## Switching from Totum MIT V4
+## * Switching from Totum MIT V4
 
 See the [MIT V4 - PRO V5 upgrade instructions](https://docs.totum.online/update_5_mit_pro)
