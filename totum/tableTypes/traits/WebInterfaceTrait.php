@@ -642,7 +642,7 @@ trait WebInterfaceTrait
             $csv[] = [$this->tableRow['title']];
             //Апдейтед
             $updated = json_decode($this->updated, true);
-            $csv[] = ['date: ' . date_create($updated['dt'])->format('d.m H:i') . '', 'code:' . $updated['code'] . '', 'structureCode:' . $this->getStructureUpdatedJSON()['code']];
+            $csv[] = ['date: ' . date_create(substr($updated['dt'], 0, 19))->format('d.m H:i') . '', 'code:' . $updated['code'] . '', 'structureCode:' . $this->getStructureUpdatedJSON()['code']];
 
             //id Проекта    Название проекта
             if ($this->tableRow['type'] === 'calcs') {
