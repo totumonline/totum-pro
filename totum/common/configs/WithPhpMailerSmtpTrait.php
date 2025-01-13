@@ -84,11 +84,9 @@ trait WithPhpMailerSmtpTrait
             $mail->Subject = $title;
             $mail->Body = $body;
 
-            try {
-                return $mail->send();
-            } catch (\Exception) {
-                return $mail->send();
-            }
+
+            return $mail->send();
+
 
         } catch (\Exception $e) {
             throw new \ErrorException($mail->ErrorInfo);
