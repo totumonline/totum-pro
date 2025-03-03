@@ -3,13 +3,13 @@
     <script>App = {}</script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/libs.css?v=3710809">
-    <script src="/js/libs.js?v=b101ece"></script>
+          href="/css/libs.css?v=05e91a2">
+    <script src="/js/libs.js?v=2923e3e"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=cea2bcc">
-    <script src="/js/main.js?v=af9cfb7"></script>
-    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?12"></script>
+          href="/css/main.css?v=f2bc4c9">
+    <script src="/js/main.js?v=dfc2623"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?13"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
     <link rel="shortcut icon" type="image/png" href="/fls/6_favicon.png"/>
