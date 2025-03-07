@@ -3,11 +3,11 @@
     <script>App = {}</script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/libs.css?v=3710809">
-    <script src="/js/libs.js?v=b101ece"></script>
+          href="/css/libs.css?v=05e91a2">
+    <script src="/js/libs.js?v=2923e3e"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=cea2bcc">
+          href="/css/main.css?v=6e93991">
 
     <?php
     if ($isCreatorView ?? null) { ?>
@@ -18,8 +18,8 @@
         <?php
     } ?>
 
-    <script src="/js/main.js?v=af9cfb7"></script>
-    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?12"></script>
+    <script src="/js/main.js?v=4cd3d34"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?13"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
 
