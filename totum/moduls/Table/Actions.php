@@ -710,6 +710,7 @@ class Actions
                 'p' => $func['all_parameters'] ?? [],
                 'm' => $func['multiple']?? [],
                 'n' => $func['required'] ?? [],
+                'D' => $func['description'],
             ];
         }
 
