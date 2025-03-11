@@ -714,7 +714,7 @@ class Actions
             ];
         }
 
-        return $funcs;
+        return ['funcs' => $funcs];
     }
 
     public function setThemeClass()
