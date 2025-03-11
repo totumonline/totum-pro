@@ -18,6 +18,7 @@ use totum\common\Model;
 use totum\common\sql\SqlException;
 use totum\models\TmpTables;
 use totum\tableTypes\aTable;
+use totum\tableTypes\RealTables;
 
 class Calculate
 {
@@ -900,6 +901,19 @@ class Calculate
                                     $e->addPath($this->translate('Function [[%s]]', $r['func']));
                                     throw $e;
                                 }
+                            } elseif (str_starts_with($func, 'spec')) {
+                                $funcRow =  Model::getClearValuesWithExtract($this->Table->getTotum()->getModel('ttm__custom_functions')->get(where: ['search_name'=>strtolower(substr($func, 4))]));
+                                if (!$funcRow){
+                                    throw new errorException($this->translate('Function [[%s]] is not found.', $func));
+                                }
+
+                                try {
+                                    $rTmp = $this->execSpecFunc($funcRow, $r['params']);
+                                } catch (errorException $e) {
+                                    $e->addPath($this->translate('Function [[%s]]', $r['func']));
+                                    throw $e;
+                                }
+
                             } else {
                                 $funcName = 'func' . $func;
                                 if (!is_callable([$this, $funcName])) {
@@ -1811,5 +1825,60 @@ class Calculate
                     [$param]));
             }
         }
+    }
+
+    protected function execSpecFunc(array $funcRow, array|string $params)
+    {
+        $params = $this->getParamsArray($params, $funcRow['multiple']??[]);
+
+        $CA = new static($funcRow['code_totum']);
+        try {
+            $Vars = [];
+            foreach ($funcRow['all_parameters'] as $pName) {
+                if (!in_array($pName, $funcRow['required'])) {
+                    if (in_array($pName, $funcRow['multiple'])) {
+                        $Vars[$pName] = $params[$pName] ?? [];
+                    } else {
+                        $Vars[$pName] = $params[$pName] ?? null;
+                    }
+                }elseif (key_exists($pName, $params)){
+                    $Vars[$pName] = $params[$pName];
+                }
+            }
+            if (is_a($this, CalculateAction::class)) {
+                $r = $CA->execAction(
+                    $this->varName,
+                    $this->oldRow,
+                    $this->row,
+                    $this->oldTbl,
+                    $this->tbl,
+                    $this->Table,
+                    $this->vars['tpa'],
+                    $Vars
+                );
+            } else {
+                $r = $CA->exec(
+                    $this->varData,
+                    $this->newVal,
+                    $this->oldRow,
+                    $this->row,
+                    $this->oldTbl,
+                    $this->tbl,
+                    $this->Table,
+                    $Vars
+                );
+            }
+            $this->newLogParent['children'][] = $CA->getLogVar();
+
+            if (is_a($this, CalculcateFormat::class)) {
+                return $this->formatArray = array_merge($this->formatArray, $r);
+            }
+            return $r;
+        } catch (errorException $e) {
+            $this->newLogParent['children'][] = $CA->getLogVar();
+            throw $e;
+        }
+
+
     }
 }
