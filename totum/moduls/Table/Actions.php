@@ -699,23 +699,12 @@ class Actions
         if (!$this->isCreatorView())
             return ['error'=>'It\'s Creator function'];
 
-        $funcs = [];
 
-        foreach ($this->Totum->getModel('ttm__custom_functions')->getAll(order_by: 'function_name') as $func) {
-            $func = Model::getClearValuesWithExtract($func);
-            $funcs[] = [
-                'name' => 'spec'.$func['function_name'],
-                't' => $func['template'],
-                'd' => false,
-                'p' => $func['all_parameters'] ?? [],
-                'm' => $func['multiple']?? [],
-                'n' => $func['required'] ?? [],
-                'D' => $func['description'],
-            ];
-        }
 
-        return ['funcs' => $funcs];
+        return ['funcs' => TableController::getSpecFunctionsArray($this->Totum)];
     }
+
+
 
     public function setThemeClass()
     {

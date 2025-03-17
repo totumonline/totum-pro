@@ -13,6 +13,7 @@ use totum\common\Auth;
 use totum\common\Field;
 use totum\common\Lang\RU;
 use totum\common\logs\CalculateLog;
+use totum\common\Model;
 use totum\common\OnlyOfficeConnector;
 use totum\common\Services\ServicesConnector;
 use totum\common\WithPathMessTrait;
@@ -1184,5 +1185,25 @@ class TableController extends interfaceController
         } else {
             $this->__actionRun($action, $request);
         }
+    }
+
+    static function getSpecFunctionsArray($Totum):array
+    {
+        $funcs = [];
+
+        foreach ($Totum->getModel('ttm__custom_functions')->getAll(order_by: 'function_name') as $func) {
+            $func = Model::getClearValuesWithExtract($func);
+            $funcs[] = [
+                'name' => 'spec'.$func['function_name'],
+                't' => $func['template'],
+                'd' => false,
+                'p' => $func['all_parameters'] ?? [],
+                'm' => $func['multiple']?? [],
+                'n' => $func['required'] ?? [],
+                'D' => $func['description'],
+            ];
+        }
+
+        return $funcs;
     }
 }

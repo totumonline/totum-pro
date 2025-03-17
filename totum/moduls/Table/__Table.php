@@ -1,6 +1,7 @@
 <?php
 
 use totum\common\Lang\RU;
+use totum\moduls\Table\TableController;
 
 $isCreatorView = $isCreatorView ?? false;
 
@@ -100,6 +101,11 @@ if ($Logs) {
 
 unset($tableConfig['FullLOGS']);
 unset($tableConfig['LOGS']);
+
+if ($isCreatorView) {
+    $specFuncs = json_encode(TableController::getSpecFunctionsArray($this->Totum), JSON_UNESCAPED_UNICODE);
+}
+
 ?>
 <div id="table"></div>
 <script>
@@ -115,4 +121,12 @@ unset($tableConfig['LOGS']);
     $(function () {
         new App.pcTableMain($('#table'), TableConfig);
     })
+    <?php
+    if ($isCreatorView){?>
+    $(function () {
+        App.SpecFuncs = <?=$specFuncs?>;
+    })
+
+   <?php }  ?>
+
 </script>
