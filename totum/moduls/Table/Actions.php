@@ -7,7 +7,7 @@ use JetBrains\PhpStorm\ArrayShape;
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\Auth;
 use totum\common\calculates\CalculateAction;
-use totum\common\calculates\CalculcateFormat;
+use totum\common\calculates\CalculateFormat;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\FormatParamsForSelectFromTable;
@@ -429,7 +429,7 @@ class Actions
         $fieldData = $Table->getFields()['h_user_settings_buttons'] ?? null;
 
         if ($fieldData) {
-            $clc = new CalculcateFormat($fieldData['format']);
+            $clc = new CalculateFormat($fieldData['format']);
 
             $result = $clc->getPanelFormat(
                 'h_user_settings_buttons',
@@ -699,23 +699,12 @@ class Actions
         if (!$this->isCreatorView())
             return ['error'=>'It\'s Creator function'];
 
-        $funcs = [];
 
-        foreach ($this->Totum->getModel('ttm__custom_functions')->getAll(order_by: 'function_name') as $func) {
-            $func = Model::getClearValuesWithExtract($func);
-            $funcs[] = [
-                'name' => 'spec'.$func['function_name'],
-                't' => $func['template'],
-                'd' => false,
-                'p' => $func['all_parameters'] ?? [],
-                'm' => $func['multiple']?? [],
-                'n' => $func['required'] ?? [],
-                'D' => $func['description'],
-            ];
-        }
 
-        return ['funcs' => $funcs];
+        return ['funcs' => TableController::getSpecFunctionsArray($this->Totum)];
     }
+
+
 
     public function setThemeClass()
     {
