@@ -335,7 +335,7 @@ class Totum
             die;
         }
 
-        $cacheString = $tableRow['id'] . ';' . $extraData;
+        $cacheString = $tableRow['id'] . ';' . $extraData.';'.$light;
 
         if ($forceNew) {
             unset($this->tablesInstances[$cacheString]);

@@ -56,7 +56,7 @@ class CodeExec extends Command
 
         $Totum->transactionStart();
 
-        $Table = $Totum->getTable(1);
+        $Table = $Totum->getTable(1, null, true);
 
         $calc = new CalculateAction($data['code']);
         $vars = $data['vars'] ?? [];
