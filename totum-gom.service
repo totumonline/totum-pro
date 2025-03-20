@@ -11,4 +11,4 @@ TimeoutStartSec=0
 OOMScoreAdjust=-1000
 
 [Install]
-WantedBy=paths.target
+WantedBy=multi-user.target
