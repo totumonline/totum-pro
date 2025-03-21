@@ -105,7 +105,7 @@ unset($tableConfig['LOGS']);
 if ($isCreatorView) {
     $specFuncs = json_encode(TableController::getSpecFunctionsArray($this->Totum), JSON_UNESCAPED_UNICODE);
 }
-
+$colors = json_encode(TableController::getColorsArray($this->Totum), JSON_UNESCAPED_UNICODE);
 ?>
 <div id="table"></div>
 <script>
@@ -119,6 +119,7 @@ if ($isCreatorView) {
 
     TableConfig.model = TableModel;
     $(function () {
+        App.Colors = <?=$colors?>;
         new App.pcTableMain($('#table'), TableConfig);
     })
     <?php

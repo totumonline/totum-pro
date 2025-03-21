@@ -1,5 +1,7 @@
 <?php
 
+use totum\moduls\Table\TableController;
+
 $isCreatorView = $isCreatorView ?? false;
 
 if (empty($tableConfig)) {
@@ -9,7 +11,15 @@ if (empty($tableConfig)) {
         }
     }
     return;
-} ?>
+}
+
+if ($isCreatorView) {
+    $specFuncs = json_encode(TableController::getSpecFunctionsArray($this->Totum), JSON_UNESCAPED_UNICODE);
+}
+$colors = json_encode(TableController::getColorsArray($this->Totum), JSON_UNESCAPED_UNICODE);
+
+?>
+
 <div id="table"></div>
 <script>
     var TableModel = App.models.table(window.location.href, {'updated': <?=($tableConfig['updated'])?><?=($tableConfig['tableRow']['sess_hash'] ?? null) ? ', sess_hash: "' . $tableConfig['tableRow']['sess_hash'] . '"' : ''?>})
@@ -19,6 +29,15 @@ if (empty($tableConfig)) {
 
     TableConfig.model = TableModel;
     $(function () {
+        App.Colors = <?=$colors?>;
         new App.pcTableMain($('#table'), TableConfig);
     })
+
+    <?php
+    if ($isCreatorView){?>
+    $(function () {
+        App.SpecFuncs = <?=$specFuncs?>;
+    })
+
+    <?php }  ?>
 </script>
