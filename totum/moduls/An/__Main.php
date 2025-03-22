@@ -22,6 +22,13 @@ $colors = json_encode(TableController::getColorsArray($this->Totum), JSON_UNESCA
 
 <div id="table"></div>
 <script>
+    <?php
+    if ($isCreatorView){?>
+    $(function () {
+        App.SpecFuncs = <?=$specFuncs?>; App.reloadAdminFuncs();
+    })
+    <?php }  ?>
+
     var TableModel = App.models.table(window.location.href, {'updated': <?=($tableConfig['updated'])?><?=($tableConfig['tableRow']['sess_hash'] ?? null) ? ', sess_hash: "' . $tableConfig['tableRow']['sess_hash'] . '"' : ''?>})
 </script>
 <script>
@@ -33,11 +40,5 @@ $colors = json_encode(TableController::getColorsArray($this->Totum), JSON_UNESCA
         new App.pcTableMain($('#table'), TableConfig);
     })
 
-    <?php
-    if ($isCreatorView){?>
-    $(function () {
-        App.SpecFuncs = <?=$specFuncs?>;
-    })
 
-    <?php }  ?>
 </script>
