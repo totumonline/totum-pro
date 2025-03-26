@@ -1839,14 +1839,14 @@ class Calculate
 
     protected function execSpecFunc(array $funcRow, array|string $params)
     {
-        $params = $this->getParamsArray($params, $funcRow['multiple']??[]);
+        $params = $this->getParamsArray($params, $multiple = $funcRow['multiple']??[]);
 
         $CA = new static($funcRow['code_totum']);
         try {
             $Vars = [];
             foreach ($funcRow['all_parameters'] as $pName) {
                 if (!in_array($pName, $funcRow['required'])) {
-                    if (in_array($pName, $funcRow['multiple'])) {
+                    if (in_array($pName, $multiple)) {
                         $Vars[$pName] = $params[$pName] ?? [];
                     } else {
                         $Vars[$pName] = $params[$pName] ?? null;
