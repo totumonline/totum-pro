@@ -1206,4 +1206,15 @@ class TableController extends interfaceController
 
         return $funcs;
     }
+
+    static function getColorsArray($Totum):array
+    {
+        $colors = [];
+
+        foreach ($Totum->getModel('ttm__colors')->getAll() as $color) {
+            $color = Model::getClearValuesWithExtract($color);
+            $colors[$color['name']] = [$color['light'], $color['dark']];
+        }
+        return $colors;
+    }
 }

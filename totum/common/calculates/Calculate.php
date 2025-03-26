@@ -531,6 +531,7 @@ class Calculate
                     '|(?<string>"[^"]*")' .            //string
                     '|(?<comparison>!==|==|>=|<=|>|<|=|!=)' .       //comparison
                     '|(?<bool>false|true)' .   //10
+                    '|(?<color>##[a-z]+)' . //color
                     '|(?<param>(?<param_name>(?:\$@|@\$|\$\$|\$\#?|\#(?i:(?:old|s|h|c|l|pnl)\.)?\$?)(?:[a-zA-Z0-9_]+(?:{[^}]*})?))(?<param_items>(?:\[\[?\$?\#?[a-zA-Z0-9_"]+\]?\])*))' . //param,param_name,param_items
                     '|(?<dog>@(?<dog_table>[a-zA-Z0-9_]{3,})\.(?<dog_field>[a-zA-Z0-9_]{2,})(?:\.(?<dog_field2>[a-zA-Z0-9_]{2,}))?(?<dog_items>(?:\[\[?\$?\#?[a-zA-Z0-9_"]+\]?\])*))' .
                     $spesialSections .      //as
@@ -591,7 +592,12 @@ class Calculate
                                     'type' => 'boolean',
                                     'boolean' => $param
                                 ];
-                            } elseif ($param = $matches['param']) {
+                            } elseif ($param = $matches['color']) {
+                                $code[] = [
+                                    'type' => 'color',
+                                    'color' => $param,
+                                ];
+                            }elseif ($param = $matches['param']) {
                                 $code[] = [
                                     'type' => 'param',
                                     'param' => $matches['param_name'],
@@ -932,6 +938,9 @@ class Calculate
                             break;
                         case 'param':
                             $rTmp = $this->getParam($r['param'], $r);
+                            break;
+                            case 'color':
+                            $rTmp = $r['color'];
                             break;
                         case 'stringParam':
                             $spec = substr($this->CodeStrings[$r['string']], 0, 4);
@@ -1562,6 +1571,7 @@ class Calculate
     {
         return match ($paramArray['type']) {
             'param' => $this->getParam($paramArray['param'], $paramArray),
+            'color' => $paramArray['color'],
             'as', 'string' => $paramArray['string'],
             'stringParam' => match ($spec = substr($this->CodeStrings[$paramArray['string']], 0, 4)) {
                 'math' => $this->parseTotumMath(substr($this->CodeStrings[$paramArray['string']], 4)),
@@ -1829,14 +1839,14 @@ class Calculate
 
     protected function execSpecFunc(array $funcRow, array|string $params)
     {
-        $params = $this->getParamsArray($params, $funcRow['multiple']??[]);
+        $params = $this->getParamsArray($params, $multiple = $funcRow['multiple']??[]);
 
         $CA = new static($funcRow['code_totum']);
         try {
             $Vars = [];
             foreach ($funcRow['all_parameters'] as $pName) {
                 if (!in_array($pName, $funcRow['required'])) {
-                    if (in_array($pName, $funcRow['multiple'])) {
+                    if (in_array($pName, $multiple)) {
                         $Vars[$pName] = $params[$pName] ?? [];
                     } else {
                         $Vars[$pName] = $params[$pName] ?? null;
@@ -1870,7 +1880,7 @@ class Calculate
             }
             $this->newLogParent['children'][] = $CA->getLogVar();
 
-            if (is_a($this, CalculcateFormat::class)) {
+            if (is_a($this, CalculateFormat::class)) {
                 return $this->formatArray = array_merge($this->formatArray, $r);
             }
             return $r;
