@@ -6,7 +6,7 @@ namespace totum\moduls\Forms;
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\Auth;
 use totum\common\calculates\Calculate;
-use totum\common\calculates\CalculcateFormat;
+use totum\common\calculates\CalculateFormat;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
 use totum\common\errorException;
@@ -49,11 +49,11 @@ class FormsController extends interfaceController
      */
     private $sections;
     /**
-     * @var CalculcateFormat
+     * @var CalculateFormat
      */
     private $CalcTableFormat;
     /**
-     * @var CalculcateFormat
+     * @var CalculateFormat
      */
     private $CalcRowFormat;
     private $CalcFieldFormat;

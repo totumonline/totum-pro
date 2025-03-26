@@ -5,7 +5,7 @@ namespace totum\config\totum\moduls\Forms;
 
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\calculates\Calculate;
-use totum\common\calculates\CalculcateFormat;
+use totum\common\calculates\CalculateFormat;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\Totum;
@@ -19,11 +19,11 @@ trait FormsTrait
     private $path;
     private $sections;
     /**
-     * @var CalculcateFormat
+     * @var CalculateFormat
      */
     private $CalcTableFormat;
     /**
-     * @var CalculcateFormat
+     * @var CalculateFormat
      */
     private $CalcRowFormat;
     private $CalcFieldFormat;
@@ -39,8 +39,8 @@ trait FormsTrait
         parent::__construct($Request, $modulePath, $Table, $Totum);
         $this->post = json_decode((string)$Request->getBody(), true);
 
-        $this->CalcTableFormat = new CalculcateFormat($this->Table->getTableRow()['table_format']);
-        $this->CalcRowFormat = new CalculcateFormat($this->Table->getTableRow()['row_format']);
+        $this->CalcTableFormat = new CalculateFormat($this->Table->getTableRow()['table_format']);
+        $this->CalcRowFormat = new CalculateFormat($this->Table->getTableRow()['row_format']);
     }
 
     public function addFormsTableData($FormsTableData)
@@ -465,7 +465,7 @@ trait FormsTrait
 
                                  $FieldFormat = $this->CalcFieldFormat[$fieldName]
                                      ?? ($this->CalcFieldFormat[$fieldName]
-                                         = new CalculcateFormat($this->Table->getFields()[$fieldName]['format']));
+                                         = new CalculateFormat($this->Table->getFields()[$fieldName]['format']));
                                  $format = $FieldFormat->getFormat($fieldName,
                                      $row,
                                      $this->Table->getTbl(),
@@ -490,7 +490,7 @@ trait FormsTrait
                             if ($getSectionEditType($section['name']) && ($code = $this->FormsTableData['field_code_formats'][$fieldName] ?? $this->Table->getFields()[$fieldName]['format'] ?? null)) {
                                 $FieldFormat = $this->CalcFieldFormat[$fieldName]
                                     ?? ($this->CalcFieldFormat[$fieldName]
-                                        = new CalculcateFormat($code));
+                                        = new CalculateFormat($code));
                                 $format = $FieldFormat->getFormat(
                                     $fieldName,
                                     $this->Table->getTbl()['params'],

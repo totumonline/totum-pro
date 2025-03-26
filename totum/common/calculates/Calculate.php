@@ -1880,7 +1880,7 @@ class Calculate
             }
             $this->newLogParent['children'][] = $CA->getLogVar();
 
-            if (is_a($this, CalculcateFormat::class)) {
+            if (is_a($this, CalculateFormat::class)) {
                 return $this->formatArray = array_merge($this->formatArray, $r);
             }
             return $r;

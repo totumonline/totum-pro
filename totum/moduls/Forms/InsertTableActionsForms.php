@@ -4,7 +4,7 @@ namespace totum\moduls\Forms;
 
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\calculates\CalculateAction;
-use totum\common\calculates\CalculcateFormat;
+use totum\common\calculates\CalculateFormat;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
 use totum\common\errorException;
@@ -36,8 +36,8 @@ class InsertTableActionsForms extends WriteTableActionsForms
         parent::__construct($Request, $modulePath, $Table, $Totum);
         $this->post = json_decode((string)$Request->getBody(), true);
 
-        $this->CalcTableFormat = new CalculcateFormat($this->Table->getTableRow()['table_format']);
-        $this->CalcRowFormat = new CalculcateFormat($this->Table->getTableRow()['row_format']);
+        $this->CalcTableFormat = new CalculateFormat($this->Table->getTableRow()['table_format']);
+        $this->CalcRowFormat = new CalculateFormat($this->Table->getTableRow()['row_format']);
         $hash = $this->post['sess_hash'] ?? $Request->getQueryParams()['sess_hash'] ?? null;
 
         if (empty($hash) || !str_starts_with($hash,
@@ -238,7 +238,7 @@ class InsertTableActionsForms extends WriteTableActionsForms
                         if ($getSectionEditType($section['name']) && ($code = $this->FormsTableData['field_code_formats'][$fieldName] ?? $this->Table->getFields()[$fieldName]['format'] ?? null)) {
                             $FieldFormat = $this->CalcFieldFormat[$fieldName]
                                 ?? ($this->CalcFieldFormat[$fieldName]
-                                    = new CalculcateFormat($code));
+                                    = new CalculateFormat($code));
                             $format = $FieldFormat->getFormat(
                                 $fieldName,
                                 $rows[0],
