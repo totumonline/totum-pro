@@ -999,15 +999,11 @@ abstract class RealTables extends aTable
 
                 foreach ($modifiedIds as $id) {
                     $row = $this->tbl['rows'][$id];
-                    if (($row['tree']['v'] ?? null) === null) {
-                        $level = 0;
-                    } else {
-                        $level = $Field->getLevelValue(
-                            $row['tree']['v'],
-                            $row,
-                            $this->tbl
-                        );
-                    }
+                    $level = $Field->getLevelValue(
+                        $row['tree']['v'] ?? null,
+                        $row,
+                        $this->tbl
+                    );
                     $sortData[$level][] = $id;
                 }
                 if ($this->fields['tree']['treeViewCalc'] === 'endtoroot') {
