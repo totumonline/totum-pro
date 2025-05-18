@@ -87,7 +87,7 @@ abstract class JsonTables extends aTable
                 if (!array_key_exists($bval, $children)) {
                     $children[$bval] = [];
                 }
-                if ($parent = (string)$row[$parentField]['v']) {
+                if (array_key_exists($parentField, $row) && ($parent = (string)$row[$parentField]['v'])) {
                     if (!array_key_exists($parent, $children)) {
                         $children[$parent] = [];
                     }
