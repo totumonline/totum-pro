@@ -843,6 +843,8 @@ class ReadTableActions extends Actions
                                 } else {
                                     return 'child';
                                 }
+                            }else{
+                                return 'closed';
                             }
                         },
                         ['']
