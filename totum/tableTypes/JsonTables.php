@@ -62,6 +62,9 @@ abstract class JsonTables extends aTable
         if (!empty($inVars['add']) && $this->tableRow['with_order_field'] && !empty($inVars['channel']) && $inVars['channel'] !== 'inner') {
             static::reCalculate(['channel' => $inVars['channel'], 'modify' => $inVars['modify'] ?? []]);
         }
+
+        $this->reCalculateCheckIfModifingTreeNesting($inVars);
+
         if (key_exists('tree', $this->fields) && !empty($this->fields['tree']['treeViewCalc'])) {
             $Field = Field::init($this->fields['tree'], $this);
             $sortData = [];
