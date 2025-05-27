@@ -1063,7 +1063,7 @@ CODE;;
                 if (key_exists('tree', $fields)) {
                     if (!empty($fields['tree'])) {
                         if($fields['tree'] === (string)$id){
-                            errorException::criticalException('Tree nesting error', $this);
+                            errorException::criticalException($this->translate('Tree nesting error'), $this);
                         }
                         $newBranchCnildren = $this->getSelectByParams(
                             ["table" => $this->tableRow['name'], "id" => $id, "parent" => "tree"],
@@ -1072,7 +1072,7 @@ CODE;;
                             $this::class === Calculate::class
                         );
                         if (in_array($fields['tree'], $newBranchCnildren)) {
-                            errorException::criticalException('Tree nesting error', $this);
+                            errorException::criticalException($this->translate('Tree nesting error'), $this);
                         }
                     }
                 }
