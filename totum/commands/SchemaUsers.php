@@ -75,7 +75,7 @@ class SchemaUsers extends Command
                 $email=[];
                 $status='true';
                 foreach ($onUsers as $on) {
-                    if (str_contains($on, '@')) {
+                    if (str_contains(($on??''), '@')) {
                        $email[] = $on;
                     } else {
                         $login[] = $on;
@@ -94,7 +94,7 @@ class SchemaUsers extends Command
                 $email=[];
                 $status='false';
                 foreach ($offUsers as $off) {
-                    if (str_contains($off, '@')) {
+                    if (str_contains($off??'', '@')) {
                         $email[] = $off;
                     } else {
                         $login[] = $off;
