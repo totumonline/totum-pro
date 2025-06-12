@@ -64,6 +64,7 @@ $searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['
                     let reUsers = <?=json_encode($reUsers ?? [], JSON_UNESCAPED_UNICODE); ?>;
                     let UserTables = <?=json_encode($UserTables ?? [], JSON_UNESCAPED_UNICODE); ?>;
                     App.reUserInterface(reUsers, UserTables, <?=!empty($isCreatorNotItself) ? 'true' : 'false'?>, <?=!empty($isCreatorView) ? 'true' : 'false'?>);
+
                 }());
             </script>
         </div><!-- /.navbar-collapse -->

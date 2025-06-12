@@ -33,6 +33,7 @@ abstract class JsonTables extends aTable
     protected static $recalcs = [];
 
     /* Подумать: было бы логично убрать отсюда Cycle и оставить его только для calcs*/
+    protected array|null $treeSortedRowIds;
 
     public function __construct(Totum $Totum, $tableRow, $Cycle = null, $light = false)
     {
@@ -62,6 +63,35 @@ abstract class JsonTables extends aTable
             static::reCalculate(['channel' => $inVars['channel'], 'modify' => $inVars['modify'] ?? []]);
         }
 
+        $this->reCalculateCheckIfModifingTreeNesting($inVars);
+
+        if (key_exists('tree', $this->fields) && !empty($this->fields['tree']['treeViewCalc'])) {
+            $Field = Field::init($this->fields['tree'], $this);
+            $sortData = [];
+
+            foreach ($this->tbl['rows'] as $row) {
+                $savedRow = $this->savedTbl['rows'][$row['id']] ?? [];
+                $level = $Field->getLevelValue(
+                        $savedRow['tree']['v'] ?? null,
+                        $savedRow,
+                        $this->tbl
+                 );
+                $sortData[$level][] = $row;
+            }
+
+            if ($this->fields['tree']['treeViewCalc'] === 'endtoroot') {
+                krsort($sortData);
+            } else {
+                ksort($sortData);
+            }
+            $sortedRowIds = [];
+            foreach ($sortData as $rows) {
+                foreach ($rows as $row) {
+                    $sortedRowIds[$row['id']] = true;
+                }
+            }
+            $this->treeSortedRowIds = $sortedRowIds;
+        }
         parent::reCalculate($inVars);
     }
 
@@ -87,7 +117,7 @@ abstract class JsonTables extends aTable
                 if (!array_key_exists($bval, $children)) {
                     $children[$bval] = [];
                 }
-                if ($parent = (string)$row[$parentField]['v']) {
+                if (array_key_exists($parentField, $row) && ($parent = (string)$row[$parentField]['v'])) {
                     if (!array_key_exists($parent, $children)) {
                         $children[$parent] = [];
                     }
@@ -788,35 +818,18 @@ abstract class JsonTables extends aTable
 
 
         if (key_exists('tree', $this->fields) && !empty($this->fields['tree']['treeViewCalc'])) {
-            $Field = Field::init($this->fields['tree'], $this);
-            $sortData = [];
-
-            foreach ($this->tbl['rows'] as $row) {
-                $savedRow = $this->savedTbl['rows'][$row['id']] ?? [];
-                if (($row['tree']['v'] ?? $savedRow['tree']['v'] ?? null) === null) {
-                    $level = 0;
-                } else {
-                    $level = $Field->getLevelValue(
-                        $savedRow['tree']['v'] ?? null,
-                        $savedRow,
-                        $this->tbl
-                    );
-                }
-                $sortData[$level][] = $row;
+            $rows = $this->tbl['rows'];
+            $newRows=[];
+            foreach ($this->treeSortedRowIds as $id=>$_){
+                $newRows[$id]=$rows[$id];
+                unset($rows[$id]);
             }
-            if ($this->fields['tree']['treeViewCalc'] === 'endtoroot') {
-                krsort($sortData);
-            } else {
-                ksort($sortData);
+            foreach ($rows as $id=>$row){
+                $newRows[$id] = $row;
             }
-            $newModifyedRows = [];
-            foreach ($sortData as $rows) {
-                foreach ($rows as $row) {
-                    $newModifyedRows[$row['id']] = $row;
-                }
-            }
-            $this->tbl['rows'] = $newModifyedRows;
-            unset($newModifyedRows);
+            $this->tbl['rows'] = $newRows;
+            unset($rows);
+            unset($newRows);
         }
 
 

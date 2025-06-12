@@ -1041,6 +1041,44 @@ CODE;;
 
     protected $inAddRecalc = [];
 
+    protected static function isTreeModifiing($inVars): bool
+    {
+        if (empty($inVars['modify'])) {
+            return false;
+        }
+        foreach ($inVars['modify'] as $id => $fields) {
+            if (key_exists('tree', $fields)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected function reCalculateCheckIfModifingTreeNesting($inVars)
+    {
+        if (key_exists('tree', $this->fields)
+            && ($this->fields['tree']['treeViewType'] ?? false) === 'self'
+            && static::isTreeModifiing($inVars) && empty($this->fields['tree']['codeSelectIndividual'])) {
+            foreach ($inVars['modify'] as $id => $fields) {
+                if (key_exists('tree', $fields)) {
+                    if (!empty($fields['tree'])) {
+                        if($fields['tree'] === (string)$id){
+                            errorException::criticalException($this->translate('Tree nesting error'), $this);
+                        }
+                        $newBranchCnildren = $this->getSelectByParams(
+                            ["table" => $this->tableRow['name'], "id" => $id, "parent" => "tree"],
+                            'treeChildren',
+                            $id,
+                            $this::class === Calculate::class
+                        );
+                        if (in_array($fields['tree'], $newBranchCnildren)) {
+                            errorException::criticalException($this->translate('Tree nesting error'), $this);
+                        }
+                    }
+                }
+            }
+        }
+    }
     protected function reCalculate($inVars = [])
     {
         $this->onCalculating = true;
@@ -1637,7 +1675,8 @@ CODE;;
                     'ROW',
                     $rowIn,
                     $this->tbl,
-                    $this
+                    $this,
+                    ['rows' => $this->getRowsForFormat($ids)]
                 );
                 $this->calcLog($Log, 'result', $newRow['f']);
             } else {
