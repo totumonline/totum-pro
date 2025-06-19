@@ -141,7 +141,7 @@ class File extends Field
         list($width, $height) = getimagesize($tmpFileName);
 
         $newwidth = 290;
-        $newheight = $height * $newwidth / $width;
+        $newheight = (int)($height * $newwidth / $width);
 
 
         $thumb = imagecreatetruecolor($newwidth, $newheight);
@@ -461,6 +461,9 @@ class File extends Field
                     $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
                         '$1',
                         $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
+
+
+
                 } elseif (!empty($file['file'])) {
                     $filepath = static::getFilePath($file['file'],
                         $this->table->getTotum()->getConfig(),
@@ -507,9 +510,23 @@ class File extends Field
 
                     $fl['size'] = $file['size'];
                     $fl['ext'] = $file['ext'];
+                    if(!empty($file['rnd'])){
+                        $fl['rnd'] = $file['rnd'];
+                    }
                 }
 
                 $fl['name'] = $file['name'];
+
+                if(empty($fl['rnd']) && self::isImage($fl['name'])){
+                    $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    $charactersLength = strlen($characters);
+                    $randomString = '';
+                    for ($i = 0; $i < 8; $i++) {
+                        $randomString .= $characters[rand(0, $charactersLength - 1)];
+                    }
+
+                    $fl['rnd'] = $randomString;
+                }
                 $vals[] = $fl;
             }
             $val = $vals;
