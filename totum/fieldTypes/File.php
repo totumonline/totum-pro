@@ -23,6 +23,19 @@ class File extends Field
     protected static $transactionCommits = [];
     public const DOC_PREVIEW_POSTFIX = '!docpreview!.pdf';
 
+    protected static function checkAndConvertHeif(Conf $Config, string &$fileName, string $tmpFileName)
+    {
+        if ($Config->isHeifConvert() && preg_match('/\.heic$/i', $fileName)) {
+            $_fileName = $Config->getTmpDir().$tmpFileName;
+            $_jpgFileName = $Config->getTmpDir().$tmpFileName . '.jpg';
+
+            `heif-convert {$_fileName} {$_jpgFileName} && mv $_jpgFileName {$_fileName}`;
+            $fileName .= '.jpg';
+            static::checkAndCreateThumb($Config->getTmpDir().$tmpFileName, $fileName, $Config);
+            return true;
+        }
+    }
+
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
         parent::addViewValues($viewType, $valArray, $row, $tbl);
@@ -193,6 +206,9 @@ class File extends Field
     public static function fileUpload($userId, Conf $Config)
     {
         $tmpFileName = tempnam($Config->getTmpDir(), $Config->getSchema() . '.' . $userId . '.');
+        if (!$tmpFileName) {
+            errorException::criticalException('Can\'t create tmpfile in ' . $Config->getTmpDir(), $Config);
+        }
         if ($_FILES['file']) {
             if (filesize($_FILES['file']['tmp_name']) > Conf::$MaxFileSizeMb * 1024 * 1024) {
                 return ['error' => $Config->getLangObj()->translate('File > ') . Conf::$MaxFileSizeMb . ' Mb'];
@@ -336,6 +352,10 @@ class File extends Field
                 unset($file['filestringbase64']);
             } elseif (empty($file['file']) && empty($file['tmpfile'])) {
                 throw new errorException($this->translate('The data format is not correct for the File field.'));
+            }
+
+            if(empty($file['file']) && !empty($file['tmpfile'])){
+                static::checkAndConvertHeif($this->table->getTotum()->getConfig(), $file['name'], $file['tmpfile']);
             }
         }
         unset($file);
