@@ -131,7 +131,7 @@ class File extends Field
     {
         if (in_array(
             $ext = preg_replace('/^.*\.([a-z0-9]{2,5})$/', '$1', strtolower($name)),
-            ['jpg', 'jpeg', 'png']
+            ['jpg', 'jpeg', 'png', 'gif', 'webp']
         )) {
             return $ext;
         }
@@ -140,11 +140,12 @@ class File extends Field
 
     protected static function getThumb($tmpFileName, $ext, Conf $Config): \GdImage|bool
     {
-        if ($ext === 'png') {
-            $source = @imagecreatefrompng($tmpFileName);
-        } else {
-            $source = @imagecreatefromjpeg($tmpFileName);
-        }
+        $source = match ($ext) {
+            'png' => @imagecreatefrompng($tmpFileName),
+            'gif' => @imagecreatefromgif($tmpFileName),
+            'webp' => @imagecreatefromwebp($tmpFileName),
+            default => @imagecreatefromjpeg($tmpFileName)
+        };
 
         if (!$source) {
             throw new criticalErrorException($Config->getLangObj()->translate('Wrong format file'));
