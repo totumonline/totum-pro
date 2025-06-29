@@ -23,15 +23,18 @@ class File extends Field
     protected static $transactionCommits = [];
     public const DOC_PREVIEW_POSTFIX = '!docpreview!.pdf';
 
-    protected static function checkAndConvertHeif(Conf $Config, string &$fileName, string $tmpFileName)
+    protected static function checkAndConvertHeif(Conf $Config, string &$name, string $tmpFileName)
     {
-        if ($Config->isHeifConvert() && preg_match('/\.heic$/i', $fileName)) {
+        if ($Config->isHeifConvert() && preg_match('/\.heic$/i', $name)) {
             $_fileName = $Config->getTmpDir().$tmpFileName;
             $_jpgFileName = $Config->getTmpDir().$tmpFileName . '.jpg';
 
-            `heif-convert {$_fileName} {$_jpgFileName} && mv $_jpgFileName {$_fileName}`;
-            $fileName .= '.jpg';
-            static::checkAndCreateThumb($Config->getTmpDir().$tmpFileName, $fileName, $Config);
+            `convert {$_fileName} -auto-orient {$_jpgFileName} && mv $_jpgFileName {$_fileName}`;
+            unset($_jpgFileName);
+
+            $name = substr($name, 0, -4).'jpg';
+            static::checkAndCreateThumb($Config->getTmpDir().$tmpFileName, $name, $Config);
+
             return true;
         }
     }
@@ -148,7 +151,7 @@ class File extends Field
         };
 
         if (!$source) {
-            throw new criticalErrorException($Config->getLangObj()->translate('Wrong format file'));
+            throw new \Exception($Config->getLangObj()->translate('Wrong format file'));
         }
 
         // получение нового размера
