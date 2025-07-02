@@ -139,6 +139,13 @@ abstract class ConfParent
         return $this->checkSSLservices;
     }
 
+    public function getSomeHost()
+    {
+        if($this->hostName){
+            return $this->hostName;
+        }
+    }
+
     public function getDefaultSender()
     {
         return $this->getSettings('default_email') ?? 'no-reply@' . $this->getFullHostName();
