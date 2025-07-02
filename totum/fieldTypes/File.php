@@ -23,6 +23,22 @@ class File extends Field
     protected static $transactionCommits = [];
     public const DOC_PREVIEW_POSTFIX = '!docpreview!.pdf';
 
+    protected static function checkAndConvertHeif(Conf $Config, string &$name, string $tmpFileName)
+    {
+        if ($Config->isHeifConvert() && preg_match('/\.heic$/i', $name)) {
+            $_fileName = $Config->getTmpDir().$tmpFileName;
+            $_jpgFileName = $Config->getTmpDir().$tmpFileName . '.jpg';
+
+            `convert {$_fileName} -auto-orient {$_jpgFileName} && mv $_jpgFileName {$_fileName}`;
+            unset($_jpgFileName);
+
+            $name = substr($name, 0, -4).'jpg';
+            static::checkAndCreateThumb($Config->getTmpDir().$tmpFileName, $name, $Config);
+
+            return true;
+        }
+    }
+
     public function addViewValues($viewType, array &$valArray, $row, $tbl = [])
     {
         parent::addViewValues($viewType, $valArray, $row, $tbl);
@@ -118,7 +134,7 @@ class File extends Field
     {
         if (in_array(
             $ext = preg_replace('/^.*\.([a-z0-9]{2,5})$/', '$1', strtolower($name)),
-            ['jpg', 'jpeg', 'png']
+            ['jpg', 'jpeg', 'png', 'gif', 'webp']
         )) {
             return $ext;
         }
@@ -127,21 +143,22 @@ class File extends Field
 
     protected static function getThumb($tmpFileName, $ext, Conf $Config): \GdImage|bool
     {
-        if ($ext === 'png') {
-            $source = @imagecreatefrompng($tmpFileName);
-        } else {
-            $source = @imagecreatefromjpeg($tmpFileName);
-        }
+        $source = match ($ext) {
+            'png' => @imagecreatefrompng($tmpFileName),
+            'gif' => @imagecreatefromgif($tmpFileName),
+            'webp' => @imagecreatefromwebp($tmpFileName),
+            default => @imagecreatefromjpeg($tmpFileName)
+        };
 
         if (!$source) {
-            throw new criticalErrorException($Config->getLangObj()->translate('Wrong format file'));
+            throw new \Exception($Config->getLangObj()->translate('Wrong format file'));
         }
 
         // получение нового размера
         list($width, $height) = getimagesize($tmpFileName);
 
         $newwidth = 290;
-        $newheight = $height * $newwidth / $width;
+        $newheight = (int)($height * $newwidth / $width);
 
 
         $thumb = imagecreatetruecolor($newwidth, $newheight);
@@ -193,6 +210,9 @@ class File extends Field
     public static function fileUpload($userId, Conf $Config)
     {
         $tmpFileName = tempnam($Config->getTmpDir(), $Config->getSchema() . '.' . $userId . '.');
+        if (!$tmpFileName) {
+            errorException::criticalException('Can\'t create tmpfile in ' . $Config->getTmpDir(), $Config);
+        }
         if ($_FILES['file']) {
             if (filesize($_FILES['file']['tmp_name']) > Conf::$MaxFileSizeMb * 1024 * 1024) {
                 return ['error' => $Config->getLangObj()->translate('File > ') . Conf::$MaxFileSizeMb . ' Mb'];
@@ -337,6 +357,10 @@ class File extends Field
             } elseif (empty($file['file']) && empty($file['tmpfile'])) {
                 throw new errorException($this->translate('The data format is not correct for the File field.'));
             }
+
+            if(empty($file['file']) && !empty($file['tmpfile'])){
+                static::checkAndConvertHeif($this->table->getTotum()->getConfig(), $file['name'], $file['tmpfile']);
+            }
         }
         unset($file);
         /*----------------*/
@@ -461,6 +485,9 @@ class File extends Field
                     $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
                         '$1',
                         $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
+
+
+
                 } elseif (!empty($file['file'])) {
                     $filepath = static::getFilePath($file['file'],
                         $this->table->getTotum()->getConfig(),
@@ -507,9 +534,23 @@ class File extends Field
 
                     $fl['size'] = $file['size'];
                     $fl['ext'] = $file['ext'];
+                    if(!empty($file['rnd'])){
+                        $fl['rnd'] = $file['rnd'];
+                    }
                 }
 
                 $fl['name'] = $file['name'];
+
+                if(empty($fl['rnd']) && self::isImage($fl['name'])){
+                    $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    $charactersLength = strlen($characters);
+                    $randomString = '';
+                    for ($i = 0; $i < 8; $i++) {
+                        $randomString .= $characters[rand(0, $charactersLength - 1)];
+                    }
+
+                    $fl['rnd'] = $randomString;
+                }
                 $vals[] = $fl;
             }
             $val = $vals;

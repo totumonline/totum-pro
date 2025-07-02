@@ -77,6 +77,7 @@ abstract class ConfParent
      */
     protected $schemaName;
 
+    protected bool $heifConvert = false;
 
     /**
      * microtime of start script (this config part)
@@ -136,6 +137,13 @@ abstract class ConfParent
     public function isCheckSslServices(): bool
     {
         return $this->checkSSLservices;
+    }
+
+    public function getSomeHost()
+    {
+        if($this->hostName){
+            return $this->hostName;
+        }
     }
 
     public function getDefaultSender()
@@ -325,6 +333,11 @@ abstract class ConfParent
     public function getProGoModuleServiceName(): string
     {
         return $this->proGoModuleServiceName;
+    }
+
+    public function isHeifConvert(): bool
+    {
+        return $this->heifConvert;
     }
 
 
