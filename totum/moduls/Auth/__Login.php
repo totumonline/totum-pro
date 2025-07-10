@@ -1,6 +1,8 @@
 <?php
 
+use totum\common\FormatParamsForSelectFromTable;
 use totum\config\Conf;
+use totum\tableTypes\RealTables;
 
 ?>
 
@@ -78,6 +80,28 @@ use totum\config\Conf;
                                            id="login"
                                            class="form-control"/>
 
+                <?php
+
+
+                $openIds = $this->Config->getSql(true)->getAll
+                ("select button_img->>'v' as img, id from ttm__openid where is_del = false AND status->>'v'='true'");
+
+                foreach ($openIds as $openId){
+                    $img = json_decode($openId['img'], true)[0];
+                   ?>
+                    <div
+                            style="width: auto; cursor:pointer; max-width: 100px; padding: 0px 22px;margin-top:4px; background-image: url('/fls/<?=$img['file'].'?rnd='.$img['rnd']?>');
+                                    background-size: contain;
+                                    background-repeat: no-repeat;
+                                    background-position-x: center;"
+                            id="login_openId"
+                            class="form-control"
+                            onclick="openIdAuth(<?=$openId['id']?>)"
+                    ></div>
+                    <?php
+                }
+?>
+
             </div>
         </form>
         <?php
@@ -93,6 +117,21 @@ use totum\config\Conf;
 </div>
 
 <script>
+    
+    function openIdAuth(openId) {
+        let model = App.getSimpleModel('/Auth/OpenId/')
+        model.getOpenIdRedirect = function (openId) {
+            return this.__ajax('post', {id: openId, method: 'getOpenIdRedirectData'});
+        }
+        model.getOpenIdRedirect(openId).then((json)=>{
+            if(json.uri){
+                window.location.href = json.uri
+            }
+        })
+        return false;
+    }
+    
+    
     $(function () {
 
         try {

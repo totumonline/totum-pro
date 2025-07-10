@@ -397,6 +397,19 @@ class CalculateAction extends Calculate
         }
     }
 
+
+    /**
+     * @param $varName
+     * @param $oldRow
+     * @param $newRow
+     * @param $oldTbl
+     * @param $newTbl
+     * @param aTable $table
+     * @param string $type add|delete|change|click|exec
+     * @param $var
+     * @return mixed
+     * @throws errorException
+     */
     public function execAction($varName, $oldRow, $newRow, $oldTbl, $newTbl, aTable $table, string $type, $var = [])
     {
         $var['tpa'] = $type;
