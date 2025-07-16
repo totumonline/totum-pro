@@ -795,6 +795,14 @@ class AuthController extends interfaceController
         if (!$userId) {
             if (!empty($Users->getChangeIds()['added'])) {
                 $userId = array_keys($Users->getChangeIds()['added'])[0];
+                if($openIdIdData['new_user_action']){
+                        static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                            $Users = $Totum->getTable('users');
+                            $CA = new CalculateAction($openIdIdData['new_user_action']);
+                            $CA->execAction('CODE', [], [], $Users->getTbl(), $Users->getTbl(), $Users, 'exec', ['userId' => $userId]);
+
+                }
+
             } else {
                 $this->answerVars['error'] = 'Strange error: user not inserted';
                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
