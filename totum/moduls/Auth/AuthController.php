@@ -723,6 +723,12 @@ class AuthController extends interfaceController
                             }
                         } catch (\Exception $e) {
                             if (preg_match('/^GOMODULE: User with email ' . $data['email'] . ' is not found$/', $e->getMessage())) {
+                                if (!empty($openIdIdData['rejection_comment'])){
+                                    $this->answerVars['error'] = $openIdIdData['rejection_comment'];
+                                    static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                                    return [];
+                                }
+
                                 $id = $this->addOrUpdateOpenIdUser($data, $openIdIdData, $Table);
                                 $auth($id);
                             }
