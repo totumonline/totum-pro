@@ -5,6 +5,7 @@ namespace totum\common;
 use totum\common\configs\ConfParent;
 use totum\common\Lang\RU;
 use totum\config\Conf;
+use totum\moduls\Auth\AuthController;
 
 class Auth
 {
@@ -29,6 +30,16 @@ class Auth
     public static function loadAuthUserByLogin(Conf $Config, $userLogin, $UpdateActive)
     {
         if ($userRow = $Config->proGoModuleSocketSend(['method' => 'userByLogin', 'login' => $userLogin])) {
+            if ($UpdateActive) {
+                static::updateActiveDatetime($userRow, $Config);
+            }
+            return new User($userRow, $Config);
+        }
+    }
+
+    public static function loadAuthUserByEmail(Conf $Config, $userEmail, $UpdateActive)
+    {
+        if ($userRow = $Config->proGoModuleSocketSend(['method' => 'userByEmail', 'email' => strtolower($userEmail)])) {
             if ($UpdateActive) {
                 static::updateActiveDatetime($userRow, $Config);
             }

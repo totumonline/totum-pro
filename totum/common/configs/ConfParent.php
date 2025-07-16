@@ -1125,6 +1125,7 @@ SQL
         }
 
 
+
         $s = fwrite($this->proGoModuleSocket, json_encode($data, JSON_UNESCAPED_UNICODE));
 
         $result = stream_get_line($this->proGoModuleSocket, 0, "\r\n");

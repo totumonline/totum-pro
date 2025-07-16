@@ -117,7 +117,12 @@ use totum\tableTypes\RealTables;
 </div>
 
 <script>
-    
+
+    if (sessionStorage.getItem('authError')){
+        $('#notifies').after('<div class="panel panel-danger" ><div class="panel-body" id="authError"></div></div>')
+        $('#authError').text(sessionStorage.getItem('authError'))
+        sessionStorage.removeItem('authError')
+    }
     function openIdAuth(openId) {
         let model = App.getSimpleModel('/Auth/OpenId/')
         model.getOpenIdRedirect = function (openId) {

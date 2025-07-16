@@ -12,6 +12,7 @@ use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Psr\Http\Message\ServerRequestInterface;
+use totum\common\calculates\Calculate;
 use totum\common\calculates\CalculateAction;
 use totum\common\controllers\interfaceController;
 use totum\common\Auth;
@@ -22,6 +23,8 @@ use totum\common\Lang\RU;
 use totum\common\Model;
 use totum\common\OnlyOfficeConnector;
 use totum\common\Totum;
+use totum\common\User;
+use totum\config\Conf;
 use totum\tableTypes\aTable;
 
 class AuthController extends interfaceController
@@ -617,12 +620,13 @@ class AuthController extends interfaceController
             };
         }
 
-        if (!empty($_SESSION['openIdData']) && !empty($_GET['state'])) {
-            if ($_GET['state'] != $_SESSION['openIdData']['state']) {
+        if (!empty($_GET['state'])) {
+            $OpedIdSessionData = $_SESSION['openIdData'] ?? [];
+            if ($_GET['state'] != ($OpedIdSessionData['state'] ?? false)) {
+                static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                 return ['error' => 'Session was closed. Return to authorizaion page.'];
             }
-            return $this->getOpenIdData($_SESSION['openIdData']['id'], 'auth', $_GET['code'] ?? '');
-
+            return $this->getOpenIdData($OpedIdSessionData['id'], 'auth', $_GET['code'] ?? '');
         }
 
 
@@ -653,6 +657,7 @@ class AuthController extends interfaceController
 
                     return ['uri' => $openIdIdData['auth_uri'] . '?' . http_build_query(
                             ['response_type' => 'code',
+                                'prompt' => 'login',
                                 'state' => $_SESSION['openIdData']['state'],
                                 'client_id' => $openIdIdData['client_id'],
                                 'redirect_uri' => $openIdIdData['redirect_uri'],
@@ -660,6 +665,8 @@ class AuthController extends interfaceController
                         )];
 
                 case 'auth':
+
+
                     $ch = curl_init();
                     curl_setopt($ch, CURLOPT_URL, $openIdIdData['token_endpoint']);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->Config->isCheckSsl() ? 2 : 0);
@@ -673,7 +680,7 @@ class AuthController extends interfaceController
                         'client_id' => $openIdIdData['client_id'],
                         'code' => $code,
                         'redirect_uri' => $openIdIdData['redirect_uri'],
-                        'client_secret' => 'lfTkcmZ0UdGUzNMjKmEiR0tl0f1GXWTx', //Crypt::getDeCrypted()$openIdIdData['client_secret']
+                        'client_secret' => Crypt::getDeCrypted($openIdIdData['client_secret'], $this->Config->getCryptKeyFileContent())
 
                     ]));
                     $result = curl_exec($ch);
@@ -684,31 +691,48 @@ class AuthController extends interfaceController
                     curl_close($ch);
 
                     $resultData = json_decode($result, true);
-                    $split = explode('.', $resultData['id_token']);
-                    $data = json_decode(base64_decode($split[1]), true);
-//var_dump(base64_decode($split[0]), base64_decode($split[1])); die;
 
-                    /*//Получить сертификат https://keycloak.ttmapp.ru/realms/totum/protocol/openid-connect/certs
-
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_URL, 'https://keycloak.ttmapp.ru/realms/totum/protocol/openid-connect/certs');
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->Config->isCheckSsl() ? 2 : 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->Config->isCheckSsl());
-                    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                    $key = curl_exec($ch);
-                    if ($error = curl_error($ch)) {
-                        curl_close($ch);
-                        return ['error' => $error];
+                    if ($resultData['error'] ?? '') {
+                        static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                        return ['error' => $resultData['error']];
                     }
 
+                    $split = explode('.', $resultData['id_token']);
+                    $data = json_decode(base64_decode($split[1]), true);
+                    $data['id_token_hint'] = $resultData['id_token'];
 
-var_dump($key);
+                    if (!empty($data['email'])) {
 
-                    $data = JWT::decode($resultData['id_token'], new Key($key, 'RS256'));*/
+                        $auth = function ($id) use ($data) {
+                            if ($this->Config->getSettings('h_pro_auth_on_off')) {
+                                $_SESSION['auth_data'] = ['id' => $id, 'login' => $data['email']];
+                                $this->location('/Auth/Verification');
+                            } else {
+                                Auth::isBlockedUserIfTimesOff($data['email'], null, $this->Config, 'write', Auth::$AuthStatuses['OK']);
+                                Auth::webInterfaceSetAuth($id);
+                                $this->location('/');
+                            }
+                            die;
+                        };
 
-                    if(!empty($data['email'])){
-                        die('Здесь ищем пользователя по email '.$data['email']);
+
+                        try {
+                            if ($User = Auth::loadAuthUserByEmail($this->Config, $data['email'], true)) {
+                                $this->addOrUpdateOpenIdUser($data, $openIdIdData, $Table, $User->getId());
+                                $auth($User->getId());
+                            }
+                        } catch (\Exception $e) {
+                            if (preg_match('/^GOMODULE: User with email ' . $data['email'] . ' is not found$/', $e->getMessage())) {
+                                $id = $this->addOrUpdateOpenIdUser($data, $openIdIdData, $Table);
+                                $auth($id);
+                            }
+
+                            $this->answerVars['error'] = $e->getMessage();
+                            static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                            return [];
+                        }
+
+
                     }
 
                     break;
@@ -717,4 +741,63 @@ var_dump($key);
 
         return ['error' => 'OpenId was not found'];
     }
+
+    protected function addOrUpdateOpenIdUser(array $data, $openIdIdData, aTable $Table, int|null $userId = null)
+    {
+        $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
+        $Totum->transactionStart();
+        $Users = $Totum->getTable('users');
+        $RolesCode = new CalculateAction($openIdIdData['roles_code']);
+        $roles = $RolesCode->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec', [
+            'id_token' => $data
+        ]);
+        if (!$userId) {
+            $params['add'] = [[
+                'fio' => $data[$openIdIdData['fio_key']],
+                'ttm__extparams' => [
+                    'id_token' => $data,
+                    'name' => $openIdIdData['name'],
+                    'sid' => $data['sid'],
+                    'sub' => $data['sub'],
+                    'id_token_hint' => $data['id_token_hint']
+                ],
+                'ttm__auth_type' => 'OpenID',
+                'roles' => $roles,
+                'email' => $data['email']
+            ]
+            ];
+        } else {
+            $params['modify'] = [$userId => [
+                'ttm__extparams' => [
+                    'id_token' => $data,
+                    'name' => $openIdIdData['name'],
+                    'sid' => $data['sid'],
+                    'sub' => $data['sub'],
+                    'id_token_hint' => $data['id_token_hint']
+                ],
+
+                'ttm__auth_type' => 'OpenID',
+                'roles' => $roles
+            ]
+            ];
+        }
+
+
+        $Users->reCalculateFromOvers(
+            $params
+        );
+        if (!$userId) {
+            if (!empty($Users->getChangeIds()['added'])) {
+                $userId = array_keys($Users->getChangeIds()['added'])[0];
+            } else {
+                $this->answerVars['error'] = 'Strange error: user not inserted';
+                static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+            }
+        }
+        $Totum->transactionCommit();
+
+        return $userId;
+    }
+
+
 }
