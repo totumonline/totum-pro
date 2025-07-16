@@ -74,30 +74,31 @@ use totum\tableTypes\RealTables;
                 <?php
             } ?>
 
-            <div class="form-group"><input type="submit"
+            <div class="form-group"><div><input type="submit"
                                            value="<?= $this->translate('Log in') ?>"
-                                           style="width: auto; padding: 0px 22px;margin-top:4px;"
+                                           style="width: 100%; padding: 0px 22px;margin-top:4px;"
                                            id="login"
-                                           class="form-control"/>
+                                           class="form-control"/></div>
 
                 <?php
 
 
                 $openIds = $this->Config->getSql(true)->getAll
-                ("select button_img->>'v' as img, id from ttm__openid where is_del = false AND status->>'v'='true'");
+                ("select button_img->>'v' as img, id, button_title->>'v' as button_title from ttm__openid where is_del = false AND status->>'v'='true'");
 
-                foreach ($openIds as $openId){
+                foreach ($openIds as $i=>$openId){
                     $img = json_decode($openId['img'], true)[0];
+                    $button_title = $openId['button_title'];
                    ?>
                     <div
-                            style="width: auto; cursor:pointer; max-width: 100px; padding: 0px 22px;margin-top:4px; background-image: url('/fls/<?=$img['file'].'?rnd='.$img['rnd']?>');
-                                    background-size: contain;
-                                    background-repeat: no-repeat;
-                                    background-position-x: center;"
+                            style="margin-top: <?=$i===0?30:7?>px;width: 100%; text-align: center; cursor:pointer; padding: 0px 22px;"
                             id="login_openId"
                             class="form-control"
                             onclick="openIdAuth(<?=$openId['id']?>)"
-                    ></div>
+                    ><img style="max-height: 100%; max-width: 100px" src='/fls/<?=$img['file'].'?rnd='.$img['rnd']?>'/>
+                    <span style="vertical-align: middle;
+    display: inline-block; box-shadow: none"><?=$button_title?></span>
+                    </div>
                     <?php
                 }
 ?>
