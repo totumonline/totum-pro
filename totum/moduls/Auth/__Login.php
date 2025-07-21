@@ -91,7 +91,7 @@ use totum\tableTypes\RealTables;
                     $button_title = $openId['button_title'];
                    ?>
                     <div
-                            style="margin-top: <?=$i===0?30:7?>px;width: 100%; text-align: center; cursor:pointer; padding: 0px 22px;"
+                            style="margin-top: <?=$i===0?30:7?>px;width: 100%; text-align: center; cursor:pointer; padding: 0px 22px;box-shadow: none"
                             id="login_openId"
                             class="form-control"
                             onclick="openIdAuth(<?=$openId['id']?>)"
