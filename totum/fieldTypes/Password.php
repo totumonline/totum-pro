@@ -78,6 +78,10 @@ class Password extends Field
                 case 'cryptokey':
                     return Crypt::getCrypted($modifyVal, $this->table->getTotum()->getConfig()->getCryptKeyFileContent());
                 case 'argon2id':
+                    $options = $this->table->getTotum()->getConfig()->getSettings('h_pro_argon2_options');
+                    if(!empty($options)){
+                        return password_hash($modifyVal, PASSWORD_ARGON2ID, $options);
+                    }
                     return password_hash($modifyVal, PASSWORD_ARGON2ID);
             }
             return md5($modifyVal);
