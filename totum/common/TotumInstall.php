@@ -778,6 +778,10 @@ CONF;
 
         $this->consoleLog('Add and modify fields for ' . $n . ' "' . $filterDescription . '" tables ', 2);
 
+        $usersPassFieldId = $this->Totum->getConfig()->getSql()->getField("select id from tables_fields where name->>'v'='pass' AND table_name->>'v' = 'users' limit 1");
+        unset($fieldsModify[$usersPassFieldId]['data_src']['cryptoKey']);
+
+
         $heldFields = $this->Config->getSettings('h_held_fields');
         if ($heldFields) {
             $heldParams = $heldWhere = [];

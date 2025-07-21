@@ -5,6 +5,7 @@ namespace totum\common;
 use totum\common\configs\ConfParent;
 use totum\common\Lang\RU;
 use totum\config\Conf;
+use totum\fieldTypes\Password;
 use totum\moduls\Auth\AuthController;
 
 class Auth
@@ -22,9 +23,11 @@ class Auth
     public static $userManageTables = ['users', 'auth_log', 'ttm__users_online'];
     protected static bool $isShadowedCreatorVal;
 
-    public static function checkUserPass($string, $hash)
+    public static function checkUserPass(Conf $Config, string $string, string $hash)
     {
-        return $hash === md5($string);
+        $passData = $Config->getSql()->get("select data->>'v' as data from tables_fields where table_name->>'v' = 'users' and name->>'v' = 'pass' limit 1");
+
+        return Password::checkPassword($Config, $hash, $string, json_decode($passData['data'], true)['cryptoKey'] ?? null);
     }
 
     public static function loadAuthUserByLogin(Conf $Config, $userLogin, $UpdateActive)
@@ -344,7 +347,7 @@ SQL;
         if ($authLogOn && $block_time && $Config->getModel('auth_log')->get(['user_ip' => $ip, 'login' => $login, 'datetime->>\'v\'>=\'' . $block_date . '\'', 'status' => 2])) {
             return static::$AuthStatuses['BLOCKED_BY_CRACKING_PROTECTION'];
         } else {
-            if ($userRow && static::checkUserPass(
+            if ($userRow && static::checkUserPass($Config,
                     $pass,
                     $userRow['pass']
                 )) {
