@@ -104,6 +104,16 @@ use totum\tableTypes\RealTables;
 ?>
 
             </div>
+            <?php
+            if($authText = $this->Config->getSettings('auth_page')){
+                echo <<<HTML
+$authText
+HTML;
+            }
+            ?>
+
+
+
         </form>
         <?php
         if ($with_pass_recover) { ?>
