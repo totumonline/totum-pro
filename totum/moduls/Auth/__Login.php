@@ -106,8 +106,11 @@ use totum\tableTypes\RealTables;
             </div>
             <?php
             if($authText = $this->Config->getSettings('auth_page')){
+
                 echo <<<HTML
+<div style="margin-top: 30px">
 $authText
+</div>
 HTML;
             }
             ?>
