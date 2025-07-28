@@ -103,7 +103,7 @@ unset($tableConfig['FullLOGS']);
 unset($tableConfig['LOGS']);
 
 if ($isCreatorView) {
-    $specFuncs = json_encode(TableController::getSpecFunctionsArray($this->Totum), JSON_UNESCAPED_UNICODE);
+    $specFuncs = json_encode($specFuncs, JSON_UNESCAPED_UNICODE);
 }
 $colors = json_encode(TableController::getColorsArray($this->Totum), JSON_UNESCAPED_UNICODE);
 ?>

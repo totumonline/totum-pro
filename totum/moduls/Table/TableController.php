@@ -651,6 +651,9 @@ class TableController extends interfaceController
 
         $this->__addAnswerVar('error', $error ?? $result['error'] ?? null);
         $this->__addAnswerVar('tableConfig', $result);
+        if($this->User->isCreator()){
+            $this->__addAnswerVar('specFuncs', TableController::getSpecFunctionsArray($this->Totum));
+        }
     }
 
     protected function checkTableByUri(ServerRequestInterface $request, $actionTable = false)
@@ -1187,7 +1190,7 @@ class TableController extends interfaceController
         }
     }
 
-    static function getSpecFunctionsArray($Totum):array
+    static function getSpecFunctionsArray(Totum $Totum):array
     {
         $funcs = [];
 
