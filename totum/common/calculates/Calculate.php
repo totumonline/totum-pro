@@ -525,7 +525,7 @@ class Calculate
                 $done = 0;
                 $i++;
                 $string = preg_replace_callback(
-                    '`(?<func>(?<func_name>[a-zA-Z]{2,}\d*)*\((?<func_params>[^)]*)\))' . //func,func_name,func_params
+                    '`(?<func>(?<func_name>[a-zA-Z]{2}[a-zA-Z0-9]*)*\((?<func_params>[^)]*)\))' . //func,func_name,func_params
                     '|(?<num>\-?[\d.,]+\%?)' .                      //num
                     '|(?<operator>\^|\+|\-|\*|/)' .       //operator
                     '|(?<string>"[^"]*")' .            //string
@@ -1853,6 +1853,9 @@ class Calculate
                     }
                 }elseif (key_exists($pName, $params)){
                     $Vars[$pName] = $params[$pName];
+                }else{
+                    throw new errorException($this->translate('Parametr [[%s]] is required in [[%s]] function.',
+                        [$pName, 'spec'.$funcRow['function_name']]));
                 }
             }
             if (is_a($this, CalculateAction::class)) {

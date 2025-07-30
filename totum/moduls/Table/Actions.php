@@ -703,6 +703,21 @@ class Actions
 
         return ['funcs' => TableController::getSpecFunctionsArray($this->Totum)];
     }
+    public function getSpecFuncsCode()
+    {
+
+        if (!$this->isCreatorView())
+            return ['error'=>'It\'s Creator function'];
+
+        $name = substr($_POST['name'], 4);
+
+        $func = $this->Totum->getModel('ttm__custom_functions')->get(['search_name'=>$name]);
+
+        if($func){
+            return ['code' => json_decode($func['code_totum'], true)['v'], 'id'=>$func['id']];
+        }
+        return ['error'=>'function is not found'];
+    }
 
 
 
