@@ -39,7 +39,7 @@ class SchemaAdd extends Command
             throw new errorException('Enter schema host');
         }
 
-        $Conf->setHostSchema($input->getArgument('host'), $input->getArgument('name'));
+        $Conf->setHostSchema($input->getArgument('host'), $input->getArgument('name'), false);
 
         $TotumInstall=new TotumInstall($Conf, new User(['login' => 'service', 'roles' => ["1"], 'id' => 1], $Conf), $output);
 

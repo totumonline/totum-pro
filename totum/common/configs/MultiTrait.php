@@ -46,7 +46,7 @@ trait MultiTrait
             $host
         );
     }
-    public function setHostSchema($hostName = null, $schemaName = null)
+    public function setHostSchema($hostName = null, $schemaName = null, $withProfilingStart = true)
     {
         if ($hostName) {
             $this->hostName = $hostName;
@@ -56,7 +56,9 @@ trait MultiTrait
             $this->hostName = $hostName ?? array_flip($this->getSchemas())[$schemaName] ?? die($this->getLangObj()->translate('Scheme not found.'));
         }
 
-        $this->profilingStart();
+        if ($withProfilingStart){
+            $this->profilingStart();
+        }
     }
     public function getClearConf()
     {
