@@ -31,10 +31,18 @@ trait FuncDbTrait
         $DbRow = Model::getClearValuesWithExtract($DbRow);
 
         try {
+            if($DbRow['dsn']){
+                $PDO = new \PDO($DbRow['dsn'],
+                    $DbRow['username'],
+                    Crypt::getDeCrypted($DbRow['user_pass'],
+                        $this->Table->getTotum()->getConfig()->getCryptKeyFileContent()), $DbRow['options'] ?? []);
+            }else{
+
             $PDO = new \PDO($DbRow['type'] . ':host=' . $DbRow['host'] . ';port=' . $DbRow['port'] . ';dbname=' . $DbRow['database_name'],
                 $DbRow['username'],
                 Crypt::getDeCrypted($DbRow['user_pass'],
                     $this->Table->getTotum()->getConfig()->getCryptKeyFileContent()), $DbRow['options'] ?? []);
+            }
         } catch (\Exception $e) {
             throw new errorException($e->getMessage());
         }
