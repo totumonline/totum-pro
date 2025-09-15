@@ -37,7 +37,8 @@ class SchemaReplace extends Command
         $this->addOption('without-host',
             '',
             InputOption::VALUE_NONE,
-            'Do not add new host in Conf.php');
+            'Do not add new host in Conf.php')
+            ->addOption('--restart-gom-false', '', InputOption::VALUE_NONE, 'Dont\'t restart go-module');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -178,6 +179,11 @@ class SchemaReplace extends Command
                     $output->writeln($ConfFile . ' replaced. Backup in ' . $ConfFile . '_old');
                 }
             }
+        }
+
+        if (!$input->getOption('restart-gom-false')) {
+            $serviceName = $Conf->getProGoModuleServiceName();
+            passthru('sudo service '.$serviceName.' restart');
         }
 
         if ($result) {
