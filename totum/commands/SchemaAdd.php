@@ -22,7 +22,8 @@ class SchemaAdd extends Command
             ->addArgument('name', InputArgument::REQUIRED, 'Enter schema name')
             ->addArgument('host', InputArgument::REQUIRED, 'Enter schema host')
             ->addArgument('user_login', InputOption::VALUE_REQUIRED, 'Enter totum admin login', 'admin')
-            ->addArgument('user_pass', InputOption::VALUE_REQUIRED, 'Enter totum admin password', '1111');
+            ->addArgument('user_pass', InputOption::VALUE_REQUIRED, 'Enter totum admin password', '1111')
+            ->addOption('--restart-gom-false', '', InputOption::VALUE_NONE, 'Dont\'t restart go-module');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -68,6 +69,11 @@ class SchemaAdd extends Command
         $ConfFileContent= preg_replace('~(\/\*\*\*getSchemas\*\*\*\/[^$]*{[^$]*return\s*)([^$]*)(\}[^$]*/\*\*\*getSchemasEnd\*\*\*/)~', '$1'.var_export($schemas, 1).';$3', $ConfFileContent);
         copy($ConfFile, $ConfFile.'_old');
         file_put_contents($ConfFile, $ConfFileContent);
+
+        if (!$input->getOption('restart-gom-false')) {
+            $serviceName = $Conf->getProGoModuleServiceName();
+            passthru('sudo service '.$serviceName.' restart');
+        }
 
         return 0;
     }

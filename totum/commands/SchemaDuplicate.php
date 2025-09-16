@@ -22,7 +22,8 @@ class SchemaDuplicate extends Command
             ->addArgument('host', InputArgument::OPTIONAL, 'Enter new schema host for connect it in Conf.php')
             ->addOption('no-logs', '', InputOption::VALUE_NONE, 'For not duplicating logs')
             ->addOption('users-off', '', InputOption::VALUE_NONE, 'For off all users except Creator (id = 1)')
-            ->addOption('no-content', '', InputOption::VALUE_OPTIONAL, 'Enter table names separated by commas for not duplicating it\'s content');
+            ->addOption('no-content', '', InputOption::VALUE_OPTIONAL, 'Enter table names separated by commas for not duplicating it\'s content')
+            ->addOption('--restart-gom-false', '', InputOption::VALUE_NONE, 'Dont\'t restart go-module');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -159,6 +160,10 @@ class SchemaDuplicate extends Command
                     copy($ConfFile, $ConfFile . '_old');
                     file_put_contents($ConfFile, $ConfFileContent);
                 }
+            }
+            if (!$input->getOption('restart-gom-false')) {
+                $serviceName = $Conf->getProGoModuleServiceName();
+                passthru('sudo service '.$serviceName.' restart');
             }
         }
 
