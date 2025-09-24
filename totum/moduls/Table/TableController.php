@@ -1103,6 +1103,13 @@ class TableController extends interfaceController
 
 
                 if (!empty($error)) ;
+                if (!empty($request->getQueryParams()['isTmp'])){
+                   if(!str_starts_with($filename, $this->Totum->getConfig()->getSchema(true).'.'.$this->Totum->getUser()->getId().'.')){
+                       $error = $this->translate('The file path is not formed correctly.');
+                   }else{
+                       $filepath = $this->Totum->getConfig()->getTmpDir().$filename;
+                   }
+                }
                 elseif (!empty($request->getQueryParams()['hash']) && ($data = $this->Totum->getNamedModel(TmpTables::class)->getByHash(TmpTables::SERVICE_TABLES['linktoedit'],
                     $this->User,  $request->getQueryParams()['hash'])) && !empty($sessionAccess = $_SESSION['secureLinkToEditAccess'][$request->getQueryParams()['hash']][$matches['table']])
                 && ($fileTable = $this->Totum->getTableRow($matches['table']))
