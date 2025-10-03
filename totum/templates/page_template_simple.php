@@ -9,7 +9,7 @@
           type="text/css"
           href="/css/main.css?v=add4b07">
     <script src="/js/main.js?v=69de07a"></script>
-    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?13"></script>
+    <script src="/js/i18n/<?= $this->Config->getLang() ?>.js?14"></script>
     <script>App.lang = App.langs["<?= $this->Config->getLang() ?>"]</script>
 
     <link rel="shortcut icon" type="image/png" href="/fls/6_favicon.png"/>
