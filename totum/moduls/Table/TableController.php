@@ -1110,7 +1110,7 @@ class TableController extends interfaceController
                        $filepath = $this->Totum->getConfig()->getTmpDir().$filename;
                    }
                 }
-                elseif (!empty($request->getQueryParams()['hash']) && ($data = $this->Totum->getNamedModel(TmpTables::class)->getByHash(TmpTables::SERVICE_TABLES['linktoedit'],
+                elseif (!empty($request->getQueryParams()['hash']) && !empty($matches['table']) && ($data = $this->Totum->getNamedModel(TmpTables::class)->getByHash(TmpTables::SERVICE_TABLES['linktoedit'],
                     $this->User,  $request->getQueryParams()['hash'])) && !empty($sessionAccess = $_SESSION['secureLinkToEditAccess'][$request->getQueryParams()['hash']][$matches['table']])
                 && ($fileTable = $this->Totum->getTableRow($matches['table']))
                 && (!empty($sessionAccess[$fileTable['type'] === 'calcs'?(int)$matches[2]:0][$fileTable['type'] === 'calcs'?(int)$matches[3]:((int)$matches[2]??0)][$fieldName]))
@@ -1118,7 +1118,7 @@ class TableController extends interfaceController
                     $this->Table = $this->Totum->getTable($fileTable, $fileTable['type'] === 'calcs'?(int)$matches[2]:null);
                     list($error, $filepath) = $getFilePath($fieldName, $matches);
 
-                } elseif ($matches['table'] !== (string)$this->Table->getTableRow()['id']
+                } elseif (empty($matches['table']) || $matches['table'] !== (string)$this->Table->getTableRow()['id']
                     || ($this->Table->getTableRow()['type'] === 'calcs' && (int)$matches[2] !== (int)$this->Table->getCycle()->getId())
                 ) {
                     $error = $this->translate('The file path is not formed correctly.');

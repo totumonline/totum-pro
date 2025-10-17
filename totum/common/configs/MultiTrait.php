@@ -62,6 +62,10 @@ trait MultiTrait
     }
     public function getClearConf()
     {
+        if (!empty($GLOBALS[static::$GlobProfilerVarName]) && is_a($GLOBALS[static::$GlobProfilerVarName] ?? false, Profiler::class)) {
+            $GLOBALS[static::$GlobProfilerVarName]->increaseRestarts();
+        }
+
         $Conf= new static($this->env, false);
         $Conf->setHostSchema($this->hostName, $this->schemaName);
         return $Conf;
