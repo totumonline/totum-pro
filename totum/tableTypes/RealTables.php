@@ -592,6 +592,7 @@ abstract class RealTables extends aTable
 
         if (!in_array($this->getTableRow()['actual'], ['off', 'disable', 'disablenotice', 'disablerefresh'])) {
             $where['updated'] = $this->savedUpdated;
+
         }
 
         $update = ['updated' => $this->updated];
@@ -603,6 +604,8 @@ abstract class RealTables extends aTable
             if (!$this->Totum->getNamedModel(Table::class)->update($update, $where)) {
                 errorException::tableUpdatedException($this);
             }
+        } else {
+            $this->updated = $this->savedUpdated;
         }
 
 
