@@ -34,6 +34,8 @@ class Totum
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
     public const FIELD_ROLES_PARAMS = ['addRoles', 'logRoles', 'webRoles', 'xmlRoles', 'editRoles', 'xmlEditRoles', 'removeVersionsRoles'];
     public const FIELD_CODE_PARAMS = ['code', 'codeSelect', 'codeAction', 'format'];
+
+    protected $tableSpecialSaveTypes = [];
     public const TABLE_ROLES_PARAMS = [
         'csv_edit_roles',
         'csv_roles',
@@ -123,6 +125,21 @@ class Totum
         return $this->creatorWarnings;
     }
 
+
+    public function addTableSpecialSaveType(string $tableName, string $type)
+    {
+
+        $this->tableSpecialSaveTypes[$tableName] =
+            match ($this->tableSpecialSaveTypes[$tableName] ?? 'exclude') {
+                'silent' => 'silent',
+                'exclude' => $type === 'silent' ? 'silent' : 'exclude'
+            };
+    }
+
+    public function getTableSpecialSaveType($tableName):string|null
+    {
+        return $this->tableSpecialSaveTypes[$tableName] ?? null;
+    }
 
     public function getMessenger()
     {
@@ -335,7 +352,7 @@ class Totum
             die;
         }
 
-        $cacheString = $tableRow['id'] . ';' . $extraData.';'.$light;
+        $cacheString = $tableRow['id'] . ';' . $extraData . ';' . $light;
 
         if ($forceNew) {
             unset($this->tablesInstances[$cacheString]);
@@ -595,9 +612,10 @@ class Totum
     }
 
     protected array $onEnd = [];
+
     public function addOnEnd(\Closure $param)
     {
-        $this->onEnd[]=$param;
+        $this->onEnd[] = $param;
     }
 
     /*Использовать только для "дернуть гом" и прочих неважных транзакционно штук*/

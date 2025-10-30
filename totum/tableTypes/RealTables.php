@@ -590,7 +590,7 @@ abstract class RealTables extends aTable
     {
         $where = ['id' => $this->tableRow['id']];
 
-        if (!in_array($this->getTableRow()['actual'], ['off', 'disable', 'disablenotice', 'disablerefresh'])) {
+        if (!in_array($this->getTableRow()['actual'], ['off', 'disable', 'disablenotice', 'disablerefresh']) || $this->Totum->getTableSpecialSaveType($this->getTableRow()['name'])) {
             $where['updated'] = $this->savedUpdated;
 
         }
@@ -598,7 +598,7 @@ abstract class RealTables extends aTable
         $update = ['updated' => $this->updated];
         $update['header'] = json_encode($this->getTblForSave(), JSON_UNESCAPED_UNICODE);
 
-        if ($this->getTableRow()['actual'] !== 'off' ||
+        if (($this->getTableRow()['actual'] !== 'off' && $this->Totum->getTableSpecialSaveType($this->getTableRow()['name']) !== 'silent') ||
             $update['header'] !== json_encode($this->savedTbl['params'], JSON_UNESCAPED_UNICODE)) {
 
             if (!$this->Totum->getNamedModel(Table::class)->update($update, $where)) {

@@ -1717,9 +1717,29 @@ class CalculateAction extends Calculate
         $notPrepareParams = $isFieldSimple ? [] : ['field'];
 
         if ($params = $this->getParamsArray($params,
-            ['field', 'var'],
+            ['field', 'var', 'exclude', 'silent'],
             $notPrepareParams,
             ['var', 'where', 'filter', 'key'])) {
+
+            foreach ($params['exclude']??[] as $exclude){
+                foreach ((array)$exclude as $_tableName){
+                    if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)){
+                        throw new errorException($this->translate('[[%s]] format error: [[%s]].', 'exclude'));
+                    }
+                    $this->Table->getTotum()->addTableSpecialSaveType($_tableName, 'exclude');
+                }
+            }
+            foreach ($params['silent']??[] as $exclude){
+                foreach ((array)$exclude as $_tableName){
+                    if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)){
+                        throw new errorException($this->translate('[[%s]] format error: [[%s]].', 'silent'));
+                    }
+                    
+                    $this->Table->getTotum()->addTableSpecialSaveType($_tableName, 'silent');
+                }
+            }
+
+
             if (!empty($params['cycle'])) {
                 foreach ((array)$params['cycle'] as $cycle) {
                     $tmpParams = $params;
