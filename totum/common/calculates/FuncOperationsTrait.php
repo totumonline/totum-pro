@@ -10,11 +10,12 @@ use totum\fieldTypes\File;
 trait FuncOperationsTrait
 {
 
-    protected function funcIsItPRO($params){
+    protected function funcIsItPRO($params)
+    {
         return true;
     }
 
-    protected function cURL($url, string $ref = '', $header = 0, $cookie = '', $post = null, $timeout = null, $headers = null, $method = null): bool|string|null
+    protected function cURL($url, string $ref = '', $header = 0, $cookie = '', $post = null, $timeout = null, $headers = null, $method = null): bool|string|null|array
     {
         if ($headers) {
             $headers = (array)$headers;
@@ -70,7 +71,7 @@ trait FuncOperationsTrait
         }
         curl_setopt($ch, CURLOPT_REFERER, $ref);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, $header);
+        curl_setopt($ch, CURLOPT_HEADER, $header?1:0);
 
         if ($timeout) {
             curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
@@ -99,6 +100,20 @@ trait FuncOperationsTrait
             throw new errorException($error);
         }
         curl_close($ch);
+
+        if ($header === 'json') {
+            list($header, $body) = explode("\r\n\r\n", $result, 2);
+            $headers = [];
+            foreach (explode("\r\n", $header) as $_header) {
+                if (preg_match('/^([^:]+):(.+)$/', $_header, $matches)) {
+                    $headers[$matches[1]] = trim($matches[2]);
+                } else {
+                    $headers[] = $_header;
+                }
+            }
+            return ["headers" => $headers, "body" => $body];
+        }
+
         return $result;
     }
 
@@ -191,7 +206,7 @@ trait FuncOperationsTrait
         return File::getContent($params['file'], $this->Table->getTotum()->getConfig());
     }
 
-    protected function funcGetFromScript(string $params): bool|string|null
+    protected function funcGetFromScript(string $params): bool|string|null|array
     {
         $params = $this->getParamsArray($params, ['post'], ['post']);
 
@@ -219,9 +234,33 @@ trait FuncOperationsTrait
         }
 
         $toBfl = $params['bfl'] ?? in_array(
-                'script',
-                $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
-            );
+            'script',
+            $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
+        );
+
+        $timeout = (($params['ssh'] ?? false) ? 'parallel' : $params['timeout'] ?? null);
+
+        if ($params['request'] ?? false) {
+            $headers = ($params['headers'] ?? []);
+            if ($headers) {
+                $headers = (array)$headers;
+            } else {
+                $headers = [];
+            }
+            if ($params['cookie'] ?? '') {
+                $headers[] = 'Cookie: ' . $params['cookie'];
+            }
+
+            return [
+                'link' => $link,
+                'ref' => 'http://' . $this->Table->getTotum()->getConfig()->getFullHostName(),
+                'header' => $params['header'] ?? 0,
+                'post' => $post,
+                'timeout' => $timeout,
+                'headers' => $headers,
+                'method' => ($params['method'] ?? 'GET')
+            ];
+        }
 
         try {
             $r = $this->cURL(
@@ -230,7 +269,7 @@ trait FuncOperationsTrait
                 $params['header'] ?? 0,
                 $params['cookie'] ?? '',
                 $post,
-                (($params['ssh'] ?? false) ? 'parallel' : $params['timeout'] ?? null),
+                $timeout,
                 ($params['headers'] ?? ''),
                 ($params['method'] ?? ''),
             );
@@ -244,7 +283,7 @@ trait FuncOperationsTrait
                         'headers' => $params['headers'] ?? 0,
                         'cookie' => $params['cookie'] ?? '',
                         'post' => $post,
-                        'timeout' => ($params['timeout'] ?? null),
+                        'timeout' => $timeout,
                         'result' => mb_check_encoding($r, 'utf-8') ? $r : base64_encode($r)
                     ]
                 );
@@ -295,11 +334,11 @@ trait FuncOperationsTrait
     }
 
     protected function funcGlobVar(string $params)
-    {   
+    {
         $params = $this->getParamsArray($params, [], []);
 
         $this->__checkNotEmptyParams($params, 'name');
-            
+
         $_params = [];
         if (key_exists('value', $params)) {
             $_params['value'] = $params['value'];
@@ -343,7 +382,9 @@ trait FuncOperationsTrait
         if (key_exists('value', $params)) {
             $_params['value'] = $params['value'];
         } elseif (key_exists('default', $params)) {
-            $_params['default'] = function () use($params) {return $this->execSubCode($params['default'], 'default');};
+            $_params['default'] = function () use ($params) {
+                return $this->execSubCode($params['default'], 'default');
+            };
         }
 
         return $this->Table->getTotum()->getConfig()->procVar($params['name'], $_params);
