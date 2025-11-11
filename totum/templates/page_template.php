@@ -7,7 +7,7 @@
     <script src="/js/libs.js?v=2923e3e"></script>
     <link rel="stylesheet"
           type="text/css"
-          href="/css/main.css?v=5808df9">
+          href="/css/main.css?v=2e6022b">
 
     <?php
     if ($isCreatorView ?? null) { ?>
