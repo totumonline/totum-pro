@@ -596,7 +596,7 @@ class TableController extends interfaceController
         $result['isCreatorView'] = $Actions->isCreatorView();
         $result['checkIsUpdated'] = (in_array(
             $this->Table->getTableRow()['actual'],
-            ['none', 'disable']
+            ['none', 'disable', 'off']
         )) ? 0 : 1;
 
         $result['isMain'] = true;

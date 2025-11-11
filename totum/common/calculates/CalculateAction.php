@@ -1505,7 +1505,10 @@ class CalculateAction extends Calculate
 
     protected function funcInsert($params)
     {
-        if ($params = $this->getParamsArray($params, ['field'], ['field'])) {
+        if ($params = $this->getParamsArray($params, ['field', 'exclude', 'silent'], ['field'])) {
+
+            $this->__processSpecialSaveTypes($params);
+
             $addedIds = [];
             $funcSet = function ($params) use (&$addedIds) {
                 $table = $this->getSourceTable($params);
@@ -1609,7 +1612,10 @@ class CalculateAction extends Calculate
 
     protected function funcInsertListExt($params)
     {
-        $params = $this->getParamsArray($params, ['field'], ['field']);
+        $params = $this->getParamsArray($params, ['field', 'exclude', 'silent'], ['field']);
+
+        $this->__processSpecialSaveTypes($params);
+
         $MainList = [];
         $tableRow = $this->__checkTableIdOrName($params['table'], 'table');
 
@@ -1712,14 +1718,19 @@ class CalculateAction extends Calculate
         $this->funcInsertListExt($params);
     }
 
-    protected function __doAction($params, $func, $isFieldSimple = false)
+    protected function __doAction($params, $func, $isFieldSimple = false, $withSpecialSaveTypes = false)
     {
         $notPrepareParams = $isFieldSimple ? [] : ['field'];
 
         if ($params = $this->getParamsArray($params,
-            ['field', 'var'],
+            ['field', 'var', 'exclude', 'silent'],
             $notPrepareParams,
             ['var', 'where', 'filter', 'key'])) {
+
+            if ($withSpecialSaveTypes) {
+                $this->__processSpecialSaveTypes($params);
+            }
+
             if (!empty($params['cycle'])) {
                 foreach ((array)$params['cycle'] as $cycle) {
                     $tmpParams = $params;
@@ -1734,6 +1745,7 @@ class CalculateAction extends Calculate
 
     protected function funcSet($params)
     {
+
         $this->__doAction(
             $params,
             function ($params) {
@@ -1771,7 +1783,8 @@ class CalculateAction extends Calculate
                     $where = $params['where'] ?? [];
                     $table->actionSet($fields, $where, 1);
                 }
-            }
+            },
+            withSpecialSaveTypes: true
         );
     }
 
@@ -1793,7 +1806,8 @@ class CalculateAction extends Calculate
                     $table->setDeleteForce();
                 }
                 $table->actionDelete($where, 1);
-            }
+            },
+            withSpecialSaveTypes: true
         );
     }
 
@@ -1888,7 +1902,8 @@ class CalculateAction extends Calculate
                     $table->setDeleteForce();
                 }
                 $table->actionDelete($where, null);
-            }
+            },
+            withSpecialSaveTypes: true
         );
     }
 
@@ -1993,7 +2008,8 @@ class CalculateAction extends Calculate
                 $where = $params['where'] ?? [];
 
                 $table->actionSet($fields, $where, null);
-            }
+            },
+            withSpecialSaveTypes: true
         );
     }
 
@@ -2114,7 +2130,8 @@ class CalculateAction extends Calculate
                         ]
                     );
                 }
-            }
+            },
+            withSpecialSaveTypes: true
         );
     }
 
@@ -2241,6 +2258,28 @@ class CalculateAction extends Calculate
             default:
                 return $this->Table->getTotum()->getTable($tableRow);
         }
+    }
+
+    protected function __processSpecialSaveTypes(array $params)
+    {
+        foreach ($params['exclude']??[] as $exclude){
+            foreach ((array)$exclude as $_tableName){
+                if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)){
+                    throw new errorException($this->translate('[[%s]] format error: [[%s]].', 'exclude'));
+                }
+                $this->Table->getTotum()->addTableSpecialSaveType($_tableName, 'exclude');
+            }
+        }
+        foreach ($params['silent']??[] as $exclude){
+            foreach ((array)$exclude as $_tableName){
+                if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)){
+                    throw new errorException($this->translate('[[%s]] format error: [[%s]].', 'silent'));
+                }
+
+                $this->Table->getTotum()->addTableSpecialSaveType($_tableName, 'silent');
+            }
+        }
+
     }
 
 }

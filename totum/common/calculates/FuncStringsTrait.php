@@ -128,7 +128,7 @@ trait FuncStringsTrait
         $this->__checkRequiredParams($params, ['str']);
         $this->__checkNotArrayParams($params, ['str']);
 
-        return base64_encode($params['str']);
+        return base64_encode($params['str']??'');
     }
 
     protected function funcStrGz(string $params): bool|string
