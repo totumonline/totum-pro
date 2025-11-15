@@ -277,6 +277,11 @@ abstract class aTable
         return $this->Totum->getLangObj();
     }
 
+    public function setSavedUpdated(string $savedUpdated): void
+    {
+        $this->savedUpdated = $savedUpdated;
+    }
+
     protected function execDefaultTableAction(mixed $codeAction, $loadedTbl, $tbl): void
     {
         $Code = new CalculateAction($codeAction);
