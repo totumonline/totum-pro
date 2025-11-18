@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '7.18.65.5-10.8';
+    public const VERSION = '7.18.65.6-10.8';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -554,6 +554,7 @@ class Totum
     {
         $this->tablesInstances = [];
         $this->fieldsCache = [];
+        $this->getConfig()->clearRowsCache();
     }
 
     public function getSpecialInterface()
