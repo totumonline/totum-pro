@@ -10,6 +10,7 @@
 
 namespace totum\common\configs;
 
+use PHPMailer\PHPMailer\PHPMailer;
 use totum\common\calculates\CalculateAction;
 use totum\common\criticalErrorException;
 use totum\common\errorException;
@@ -1147,6 +1148,98 @@ SQL
             errorException::criticalException('GOMODULE error: ' . $e->getMessage() . ':`' . $result . '`', $this);
         }
 
+    }
+
+    public function sendMailWithSMTP(array|string $to, $title, $body, $attachments = [], $from = null, $replyTo = null, $hcopy = null, $smtpData = [])
+    {
+
+        $this->loadListUnsubscribeSettings();
+
+        if ($this->listUnsubscribeSettings['enabled'] && is_array($to)) {
+            foreach ($to as $_to) {
+                $this->sendMail($_to, $title, $body, $attachments, $from, $replyTo, $hcopy);
+                if ($hcopy) {
+                    $hcopy = null;
+                }
+            }
+            return;
+        }
+
+
+        if (!$this->checkMailReceivers($to, $hcopy)) {
+            return;
+        }
+
+        list($body, $attachments) = $this->mailBodyAttachments($body, $attachments);
+
+        if($smtpData['signature']){
+            $body .= "<\br><\br>".$smtpData['signature'];
+        }
+
+        try {
+            $mail = new PHPMailer(true);
+
+            if($smtpData['list_unsubscribe']){
+                $this->addListUnsubscribeHeader($mail, $to, $title, $body);
+            }
+
+
+            $mail->SMTPDebug = $this->env !== static::ENV_LEVELS["production"];
+            $mail->isSMTP();
+
+            $mail->Host = $smtpData['host'];
+            $mail->Port = $smtpData['port'];
+
+            if ($mail->SMTPAuth = !empty($smtpData['login'])) {
+                $mail->Username = $smtpData['login'];
+                $mail->Password = $smtpData['pass'] ?? $smtpData['password'] ?? '';
+            }
+            $mail->CharSet = 'utf-8';
+
+            $from = $smtpData['smtp_from'];
+            //Recipients
+
+            foreach ($smtpData as $k=>$v){
+                if (str_starts_with($k, 'mail_')){
+                    $param = substr($k, 5);
+                    $mail->$param = $v;
+                }
+            }
+
+
+            $mail->setFrom($from, $from);
+            foreach ((array)$to as $_to) {
+                $mail->addAddress($_to);     // Add a recipient
+            }
+
+            if ($replyTo) {
+                $mail->addReplyTo($replyTo);
+            }
+            if ($hcopy) {
+                foreach ((array) $hcopy as $_h){
+                    $mail->addBCC($_h);
+                }
+            }
+
+            foreach ($attachments as $innrName => $fileString) {
+                if (preg_match('/jpg|gif|png$/', $innrName)) {
+                    $mail->addStringEmbeddedImage($fileString, $innrName, $innrName);
+                } else {
+                    $mail->addStringAttachment($fileString, $innrName);
+                }
+            }
+            //Content
+            $mail->isHTML(true);                                  // Set email format to HTML
+            $mail->Subject = $title;
+            $mail->Body = $body;
+
+
+            return $mail->send();
+
+
+        } catch (\Exception $e) {
+            throw new \ErrorException($mail->ErrorInfo);
+        }
     }
 
 }

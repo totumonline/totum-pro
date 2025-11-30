@@ -13,6 +13,7 @@ use totum\common\criticalErrorException;
 use totum\common\Crypt;
 use totum\common\errorException;
 use totum\common\Field;
+use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\Model;
 use totum\common\Totum;
@@ -708,17 +709,55 @@ class CalculateAction extends Calculate
             $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
         );
 
-        try {
-            $r = $this->Table->getTotum()->getConfig()->sendMail(
-                $params['to'],
-                $params['title'],
-                $params['body'],
-                $params['files'] ?? [],
-                $params['from'] ?? null,
-                replyTo: $params['replyto'] ?? null,
-                hcopy: $params['hiddencopy'] ?? null,
+        $smtpData = null;
 
+        if(!empty($params['smtp'])){
+            $params['smtp'] = (string)$params['smtp'];
+
+            $users_smtp = $this->Table->getTotum()->getTable('ttm__users_smtp');
+            $smtpData = $users_smtp->getByParams(
+                (new FormatParamsForSelectFromTable())
+                    ->where('name', $params['smtp'])
+                    ->field("smtp_from")
+                    ->field("smtp_settings")
+                    ->field("signature")
+                    ->field("list_unsubscribe")
+                    ->params(),
+                "row"
             );
+            if(empty($smtpData)){
+                throw new errorException($this->translate('Smtp [[%s]] is not found', $params['smtp']));
+            }
+            foreach ($smtpData['smtp_settings'] as $k=>$v){
+                $smtpData[$k]=$v;
+            }
+        }
+
+        try {
+            if ($smtpData) {
+                $r = $this->Table->getTotum()->getConfig()->sendMailWithSMTP(
+                    $params['to'],
+                    $params['title'],
+                    $params['body'],
+                    $params['files'] ?? [],
+                    $params['from'] ?? null,
+                    replyTo: $params['replyto'] ?? null,
+                    hcopy: $params['hiddencopy'] ?? null,
+                    smtpData: $smtpData,
+                );
+            } else {
+
+                $r = $this->Table->getTotum()->getConfig()->sendMail(
+                    $params['to'],
+                    $params['title'],
+                    $params['body'],
+                    $params['files'] ?? [],
+                    $params['from'] ?? null,
+                    replyTo: $params['replyto'] ?? null,
+                    hcopy: $params['hiddencopy'] ?? null,
+
+                );
+            }
 
             if ($toBfl) {
                 $this->Table->getTotum()->getOutersLogger()->debug('email', $params);
