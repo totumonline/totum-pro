@@ -1173,7 +1173,7 @@ SQL
         list($body, $attachments) = $this->mailBodyAttachments($body, $attachments);
 
         if($smtpData['signature']){
-            $body .= "<\br><\br>".$smtpData['signature'];
+            $body .= "\n\n".$smtpData['signature'];
         }
 
         try {
