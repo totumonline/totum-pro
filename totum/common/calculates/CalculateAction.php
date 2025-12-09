@@ -224,9 +224,9 @@ class CalculateAction extends Calculate
             }
 
             if (key_exists(
-                'ssh',
-                $params
-            ) && $params['ssh'] && ($params['ssh'] === 'true' || $params['ssh'] === true || $params['ssh'] === 'test')) {
+                    'ssh',
+                    $params
+                ) && $params['ssh'] && ($params['ssh'] === 'true' || $params['ssh'] === true || $params['ssh'] === 'test')) {
                 if (!$this->Table->getTotum()->getConfig()->isExecSSHOn('inner')) {
                     throw new criticalErrorException($this->translate('Ssh:true in exec function is disabled. Enable execSSHOn in Conf.php.'));
                 }
@@ -806,9 +806,9 @@ class CalculateAction extends Calculate
     {
         $params = $this->getParamsArray($params, [], []);
         if (array_key_exists(
-            'options',
-            $params
-        ) && !is_array($params['options'])) {
+                'options',
+                $params
+            ) && !is_array($params['options'])) {
             throw new errorException($this->translate('The parameter [[%s]] should be of type row/list.', 'options'));
         }
 
@@ -1303,9 +1303,9 @@ class CalculateAction extends Calculate
         }
         if ($d) {
             return 'd=' . urlencode(Crypt::getCrypted(
-                json_encode($d, JSON_UNESCAPED_UNICODE),
-                $this->Table->getTotum()->getConfig()->getCryptSolt()
-            ));
+                    json_encode($d, JSON_UNESCAPED_UNICODE),
+                    $this->Table->getTotum()->getConfig()->getCryptSolt()
+                ));
         }
     }
 
@@ -1390,9 +1390,9 @@ class CalculateAction extends Calculate
         $params = $this->getParamsArray($params);
 
         if (!key_exists(
-            'num',
-            $params
-        ) || !is_numeric(strval($params['num']))) {
+                'num',
+                $params
+            ) || !is_numeric(strval($params['num']))) {
             throw new errorException($this->translate('Parametr [[%s]] is required and should be a number.', 'num'));
         }
         $tableRow = $this->__checkTableIdOrName($params['table'], 'table');
@@ -1425,9 +1425,9 @@ class CalculateAction extends Calculate
         $q_params = [];
 
         if ($this->Table->getTableRow()['type'] === 'cycles' && str_starts_with(
-            $this->varName,
-            'tab_'
-        ) && !empty($this->row['id']) && $tableDestRow['type'] != 'calcs') {
+                $this->varName,
+                'tab_'
+            ) && !empty($this->row['id']) && $tableDestRow['type'] != 'calcs') {
             $params['cycle'] = $params['cycle'] ?? null;
             $link .= $this->Table->getTableRow()['top'] . '/' . $this->Table->getTableRow()['id'] . '/' . ($params['cycle'] ?: $this->row['id']) . '/' . $tableDestRow['id'];
             $linkedTable = $this->Table->getTotum()->getTable($tableDestRow);
@@ -2373,36 +2373,33 @@ class CalculateAction extends Calculate
         $this->__checkNotEmptyParams($params, ['name', 'folder', 'uid']);
 
         $imapData = $this->__getImapData($params['name'], $params['folder']);
-
         $imap = $imapData['imap'];
-
         $msgno = imap_msgno($imap, $params['uid']);
 
         if (!$msgno) {
-            throw new errorException($this->translate("UID %s not found"), $params['uid']);
+            throw new errorException($this->translate("UID %s not found"), [$params['uid']]);
         }
 
-        $h = imap_headerinfo($imap, $msgno,);
-        $to = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->to ??
-            []);
-        $cc = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->cc ??
-            []);
+        $h = imap_headerinfo($imap, $msgno);
+        $to = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->to ?? []);
+        $cc = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->cc ?? []);
         $from = ($h->from[0]->mailbox ?? '') . '@' . ($h->from[0]->host ?? '');
-
 
         $subject = '';
         if ($h->subject) {
             foreach (imap_mime_header_decode($h->subject) as $part) {
-                $subject .= ($part->charset === 'default' || $part->charset === 'us-ascii')
-                    ? $part->text
-                    : mb_convert_encoding($part->text, 'UTF-8', $part->charset);
+                $charset = strtolower($part->charset ?? 'default');
+                if (in_array($charset, ['default', 'us-ascii'])) {
+                    $subject .= $part->text;
+                } else {
+                    $subject .= mb_convert_encoding($part->text, 'UTF-8', $charset);
+                }
             }
         }
 
         $headers = [];
         $current = '';
         $raw = imap_fetchheader($imap, $msgno);
-
         foreach (explode("\r\n", $raw) as $line) {
             if (preg_match('/^([A-Za-z-]+):\s*(.*)$/', $line, $m)) {
                 $current = $m[1];
@@ -2412,97 +2409,195 @@ class CalculateAction extends Calculate
             }
         }
 
-
         $struct = imap_fetchstructure($imap, $msgno);
 
-
-        $decode_body = function($body, $enc) {
-            return match ($enc) {
-                3 => base64_decode($body),
-                4 => quoted_printable_decode($body),
-                default => $body,
-            };
+        $decode_body = fn($body, $enc) => match($enc) {
+            3 => base64_decode($body),
+            4 => quoted_printable_decode($body),
+            default => $body,
         };
 
-
-        $html = '';
+        $email_body = '';
         $files = [];
+
+        $decode_mime_string = function($string) {
+            $result = '';
+            $parts = imap_mime_header_decode($string ?? '');
+            foreach ($parts ?: [] as $part) {
+                $charset = strtolower($part->charset ?? 'default');
+                $text = $part->text;
+                if (in_array($charset, ['default', 'us-ascii'])) {
+                    $result .= $text;
+                } else {
+                    $result .= @mb_convert_encoding($text, 'UTF-8', $charset) ?: $text;
+                }
+            }
+            return $result;
+        };
+
         if (!isset($struct->parts)) {
-            if ($struct->type == 0 && ($struct->subtype == 'HTML' ||
-                    strpos(strtolower($struct->subtype), 'html') !== false)) {
-                $body = imap_fetchbody($imap, $msgno, 1);
-                $html = mb_convert_encoding(
-                    $decode_body($body, $struct->encoding),
-                    'UTF-8',
-                    'UTF-8, ISO-8859-1, WINDOWS-1251'
-                );
+            $body = imap_fetchbody($imap, $msgno, 1);
+            $content = mb_convert_encoding(
+                $decode_body($body, $struct->encoding),
+                'UTF-8',
+                ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
+            );
+
+            if ($struct->type == 0) {
+                $subtype = strtolower($struct->subtype ?? '');
+                if (strpos($subtype, 'html') !== false) {
+                    $email_body = $content;
+                } elseif (strpos($subtype, 'plain') !== false) {
+                    $email_body = $content;
+                }
             }
         } else {
-            $extract_html_and_attachments = function ($imap, $msgno, $parts, $prefix = 1) use ($decode_body, &$extract_html_and_attachments) {
-                $html = '';
-                $files = [];
+            // Рекурсивная обработка без передачи замыкания по ссылке
+            $process_parts = function($parts, $prefix = '') use (
+                $imap,
+                $msgno,
+                $decode_body,
+                $decode_mime_string,
+                &$email_body,
+                &$files
+            ) {
                 foreach ($parts as $i => $part) {
-                    $num = $prefix + $i;
-                    $disp = $part->disposition ?? '';
-                    $is_attach = in_array(strtoupper($disp), ['ATTACHMENT', 'INLINE']);
-// Имя файла
-                    $name = '';
+                    $part_num = $prefix . ($i + 1);
+                    $disposition = strtoupper($part->disposition ?? '');
+                    $is_attachment = in_array($disposition, ['ATTACHMENT', 'INLINE']);
+
+                    $filename = '';
                     foreach ([$part->dparameters ?? [], $part->parameters ?? []] as $params) {
                         foreach ($params as $p) {
-                            if (strtolower($p->attribute) === 'filename' || strtolower($p->attribute) === 'name') {
-                                $name = decode_mime_string($p->value);
+                            if (in_array(strtolower($p->attribute ?? ''), ['filename', 'name'])) {
+                                $filename = $decode_mime_string($p->value);
                                 break 2;
                             }
                         }
                     }
-// HTML
-                    if ($part->type == 0 && ($part->subtype == 'HTML' || strpos(strtolower($part->subtype), 'html') !== false)) {
-                        if ($html === '') {
-                            $data = imap_fetchbody($imap, $msgno, $num);
-                            $html = mb_convert_encoding($decode_body($data, $part->encoding), 'UTF-
-8', 'UTF-8, ISO-8859-1, WINDOWS-1251');
+
+                    // Обработка текстовых частей
+                    if ($part->type == 0 && !$email_body) {
+                        $data = imap_fetchbody($imap, $msgno, $part_num);
+                        $content = mb_convert_encoding(
+                            $decode_body($data, $part->encoding),
+                            'UTF-8',
+                            ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
+                        );
+
+                        $subtype = strtolower($part->subtype ?? '');
+                        if (strpos($subtype, 'html') !== false) {
+                            $email_body = $content;
+                        } elseif (strpos($subtype, 'plain') !== false) {
+                            $email_body = $content;
                         }
-                    } // Вложение
-                    elseif ($is_attach || ($part->type > 0 && $name)) {
-                        $data = imap_fetchbody($imap, $msgno, $num);
+                    }
+                    // Обработка вложений
+                    elseif ($is_attachment || ($part->type > 0 && $filename)) {
+                        $data = imap_fetchbody($imap, $msgno, $part_num);
                         $files[] = [
-                            'name' => $name ?: "attachment_$num",
+                            'name' => $filename ?: 'attachment_' . bin2hex(random_bytes(3)),
                             'base64' => base64_encode($decode_body($data, $part->encoding))
                         ];
-                    } // Вложенный multipart
-                    elseif (!empty($part->parts)) {
-                        [$sub_html, $sub_files] = $extract_html_and_attachments(
+                    }
+
+                    // Рекурсия для вложенных multipart
+                    if (!empty($part->parts)) {
+                        $this->processPartsRecursive(
                             $imap,
                             $msgno,
                             $part->parts,
-                            "$num."
+                            $part_num . '.',
+                            $decode_body,
+                            $decode_mime_string,
+                            $email_body,
+                            $files
                         );
-                        if ($html === '' && $sub_html) {
-                            $html = $sub_html;
-                        }
-                        $files = array_merge($files, $sub_files);
                     }
                 }
-                return [$html, $files];
             };
-            [$html, $files] = $extract_html_and_attachments(
-                $imap,
-                $msgno,
-                $struct->parts,
-                1
-            );
+
+            $process_parts($struct->parts);
         }
 
-        return ['message_id' => $h->message_id ?? '',
+        return [
+            'message_id' => $h->message_id ?? '',
             'email_to' => implode(', ', $to),
             'email_from' => $from,
             'email_cc' => implode(', ', $cc),
             'email_date' => date('c', strtotime($h->date)),
             'email_subject' => $subject,
-            'email_body' => $html,
+            'email_body' => $email_body,
             'email_files' => $files,
-            'email_headers'=>$headers
+            'email_headers' => $headers
         ];
+    }
+
+// Вспомогательный метод для рекурсии
+    private function processPartsRecursive(
+        $imap,
+        $msgno,
+        $parts,
+        $prefix,
+        $decode_body,
+        $decode_mime_string,
+        &$email_body,
+        &$files
+    ) {
+        foreach ($parts as $i => $part) {
+            $part_num = $prefix . ($i + 1);
+            $disposition = strtoupper($part->disposition ?? '');
+            $is_attachment = in_array($disposition, ['ATTACHMENT', 'INLINE']);
+
+            $filename = '';
+            foreach ([$part->dparameters ?? [], $part->parameters ?? []] as $params) {
+                foreach ($params as $p) {
+                    if (in_array(strtolower($p->attribute ?? ''), ['filename', 'name'])) {
+                        $filename = $decode_mime_string($p->value);
+                        break 2;
+                    }
+                }
+            }
+
+            // Обработка текстовых частей
+            if ($part->type == 0 && !$email_body) {
+                $data = imap_fetchbody($imap, $msgno, $part_num);
+                $content = mb_convert_encoding(
+                    $decode_body($data, $part->encoding),
+                    'UTF-8',
+                    ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
+                );
+
+                $subtype = strtolower($part->subtype ?? '');
+                if (strpos($subtype, 'html') !== false) {
+                    $email_body = $content;
+                } elseif (strpos($subtype, 'plain') !== false) {
+                    $email_body = $content;
+                }
+            }
+            // Обработка вложений
+            elseif ($is_attachment || ($part->type > 0 && $filename)) {
+                $data = imap_fetchbody($imap, $msgno, $part_num);
+                $files[] = [
+                    'name' => $filename ?: 'attachment_' . bin2hex(random_bytes(3)),
+                    'base64' => base64_encode($decode_body($data, $part->encoding))
+                ];
+            }
+
+            // Глубокая рекурсия для вложенных multipart
+            if (!empty($part->parts)) {
+                $this->processPartsRecursive(
+                    $imap,
+                    $msgno,
+                    $part->parts,
+                    $part_num . '.',
+                    $decode_body,
+                    $decode_mime_string,
+                    $email_body,
+                    $files
+                );
+            }
+        }
     }
 
     protected function getActionTable(array $tableRow, array $params): aTable
