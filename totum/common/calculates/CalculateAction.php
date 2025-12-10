@@ -2654,7 +2654,7 @@ class CalculateAction extends Calculate
     {
         $Totum = $this->Table->getTotum();
 
-        $imap_settings = $Totum->getTable('imap_settings')->getByParams(
+        $imap_settings = $Totum->getTable('ttm__imap_settings')->getByParams(
             (new FormatParamsForSelectFromTable())
                 ->where('name', $name)
                 ->field('*ALL*')->params(),
