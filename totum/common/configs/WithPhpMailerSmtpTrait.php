@@ -101,4 +101,6 @@ trait WithPhpMailerSmtpTrait
             throw new \ErrorException($mail->ErrorInfo);
         }
     }
+
+
 }

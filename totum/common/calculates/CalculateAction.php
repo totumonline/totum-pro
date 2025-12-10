@@ -8,11 +8,13 @@
 
 namespace totum\common\calculates;
 
+use DateTime;
 use SoapClient;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
 use totum\common\errorException;
 use totum\common\Field;
+use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Lang\RU;
 use totum\common\Model;
 use totum\common\Totum;
@@ -98,8 +100,10 @@ class CalculateAction extends Calculate
                     }
                 }
                 if ($emails) {
-                    $template = $this->Table->getTotum()->getConfig()->getModel('print_templates')->get(['name' => 'eml_email'],
-                        'styles, html');
+                    $template = $this->Table->getTotum()->getConfig()->getModel('print_templates')->get(
+                        ['name' => 'eml_email'],
+                        'styles, html'
+                    );
 
                     $template['body'] = preg_replace_callback(
                         '/{([a-zA-Z_]+)}/',
@@ -164,8 +168,10 @@ class CalculateAction extends Calculate
 
                             $data = ['code' => $code, 'vars' => $Vars];
 
-                            $data = base64_encode(json_encode($data,
-                                JSON_UNESCAPED_UNICODE));
+                            $data = base64_encode(json_encode(
+                                $data,
+                                JSON_UNESCAPED_UNICODE
+                            ));
 
                             $path = $this->Table->getTotum()->getConfig()->getBaseDir();
 
@@ -201,9 +207,7 @@ class CalculateAction extends Calculate
                     }
                 }
             }
-
         }
-
     }
 
     protected function funcExec(string $params): mixed
@@ -219,9 +223,10 @@ class CalculateAction extends Calculate
                 $code = $this->Table->getFields()[$code]['codeAction'] ?? '';
             }
 
-            if (key_exists('ssh',
-                    $params) && $params['ssh'] && ($params['ssh'] === 'true' || $params['ssh'] === true || $params['ssh'] === 'test')) {
-
+            if (key_exists(
+                    'ssh',
+                    $params
+                ) && $params['ssh'] && ($params['ssh'] === 'true' || $params['ssh'] === true || $params['ssh'] === 'test')) {
                 if (!$this->Table->getTotum()->getConfig()->isExecSSHOn('inner')) {
                     throw new criticalErrorException($this->translate('Ssh:true in exec function is disabled. Enable execSSHOn in Conf.php.'));
                 }
@@ -238,8 +243,10 @@ class CalculateAction extends Calculate
                     $test = '2>&1';
                 }
 
-                $data = base64_encode(json_encode($data,
-                    JSON_UNESCAPED_UNICODE));
+                $data = base64_encode(json_encode(
+                    $data,
+                    JSON_UNESCAPED_UNICODE
+                ));
 
                 $path = $this->Table->getTotum()->getConfig()->getBaseDir();
 
@@ -250,10 +257,7 @@ class CalculateAction extends Calculate
                 }
 
                 return `cd {$path} && bin/totum exec {$schema} {$this->Table->getUser()->getId()} {$data} {$test}`;
-
             } else {
-
-
                 $CA = new static($code);
                 try {
                     $Vars = [];
@@ -456,7 +460,6 @@ class CalculateAction extends Calculate
         $this->Table->getTotum()->addOnEnd(function () use ($serviceName) {
             `sudo service $serviceName restart`;
         });
-
     }
 
     protected function funcLinkToButtons($params)
@@ -479,8 +482,10 @@ class CalculateAction extends Calculate
                 }
             }
             if (key_exists('vars', $btn) && !is_array($btn['vars'])) {
-                throw new errorException($this->translate('The parameter [[%s]] of [[%s]] should be of type row/list.',
-                    ['vars', 'button ' . ($i + 1)]));
+                throw new errorException($this->translate(
+                    'The parameter [[%s]] of [[%s]] should be of type row/list.',
+                    ['vars', 'button ' . ($i + 1)]
+                ));
             }
 
             unset($btn['code']);
@@ -593,12 +598,18 @@ class CalculateAction extends Calculate
 
         if (!key_exists($params['field'], $LinkedTable->getFields())) {
             throw new errorException(
-                $this->translate('The [[%s]] field is not found in the [[%s]] table.',
-                    [$params['field'], $LinkedTable->getTableRow()['name']]));
+                $this->translate(
+                    'The [[%s]] field is not found in the [[%s]] table.',
+                    [$params['field'], $LinkedTable->getTableRow()['name']]
+                )
+            );
         } elseif (in_array($LinkedTable->getFields()[$params['field']]['type'], ['link', 'button', 'fieldParams'])) {
             throw new errorException(
-                $this->translate('Function [[linkToEdit]] not available for [[%s]] field type.',
-                    $LinkedTable->getFields()[$params['field']]['type']));
+                $this->translate(
+                    'Function [[linkToEdit]] not available for [[%s]] field type.',
+                    $LinkedTable->getFields()[$params['field']]['type']
+                )
+            );
         }
 
         $Field = Field::init($LinkedTable->getFields()[$params['field']], $LinkedTable);
@@ -610,11 +621,12 @@ class CalculateAction extends Calculate
                 throw new errorException($this->translate('Row not found'));
             }
             $value = $LinkedTable->getTbl()['rows'][$params['id']][$params['field']] ?? ['v' => null];
-            $Field->addViewValues('edit',
+            $Field->addViewValues(
+                'edit',
                 $value,
                 $LinkedTable->getTbl()['rows'][$params['id']],
-                $LinkedTable->getTbl());
-
+                $LinkedTable->getTbl()
+            );
         } else {
             $value = $LinkedTable->getTbl()['params'][$params['field']] ?? ['v' => null];
         }
@@ -638,9 +650,11 @@ class CalculateAction extends Calculate
         /** @var TmpTables $model */
         $model = $this->Table->getTotum()->getModel('_tmp_tables', true);
 
-        $newHash = $model->getNewHash(TmpTables::SERVICE_TABLES['linktoedit'],
+        $newHash = $model->getNewHash(
+            TmpTables::SERVICE_TABLES['linktoedit'],
             $this->Table->getTotum()->getUser(),
-            $data);
+            $data
+        );
 
         $fieldData = $LinkedTable->getFields()[$params['field']];
         foreach ($fieldData as $k => &$v) {
@@ -654,9 +668,8 @@ class CalculateAction extends Calculate
         if ($fieldData['type'] === 'number') {
             $fieldData['dectimalSeparator'] = $fieldData['dectimalSeparator'] ?? $this->Table->getTotum()->getConfig()->getSettings('numbers_format')['dectimalSeparator'] ?? ',';
         } elseif ($fieldData['type'] === 'file' && $fieldData['secureFile'] === true) {
-
             @session_start();
-            $_SESSION['secureLinkToEditAccess'][$newHash][$LinkedTable->getTableRow()['id']][$LinkedTable->getCycle()?->getId()??0][$params['id']??0][$fieldData['name']] = true;
+            $_SESSION['secureLinkToEditAccess'][$newHash][$LinkedTable->getTableRow()['id']][$LinkedTable->getCycle()?->getId() ?? 0][$params['id'] ?? 0][$fieldData['name']] = true;
             session_write_close();
         }
 
@@ -686,7 +699,6 @@ class CalculateAction extends Calculate
         if ($usleep > 0) {
             usleep($usleep);
         }
-
     }
 
     protected function funcEmailSend($params)
@@ -708,17 +720,53 @@ class CalculateAction extends Calculate
             $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
         );
 
-        try {
-            $r = $this->Table->getTotum()->getConfig()->sendMail(
-                $params['to'],
-                $params['title'],
-                $params['body'],
-                $params['files'] ?? [],
-                $params['from'] ?? null,
-                replyTo: $params['replyto'] ?? null,
-                hcopy: $params['hiddencopy'] ?? null,
+        $smtpData = null;
 
+        if (!empty($params['smtp'])) {
+            $params['smtp'] = (string)$params['smtp'];
+
+            $users_smtp = $this->Table->getTotum()->getTable('ttm__users_smtp');
+            $smtpData = $users_smtp->getByParams(
+                (new FormatParamsForSelectFromTable())
+                    ->where('name', $params['smtp'])
+                    ->field("smtp_from")
+                    ->field("smtp_settings")
+                    ->field("signature")
+                    ->field("list_unsubscribe")
+                    ->params(),
+                "row"
             );
+            if (empty($smtpData)) {
+                throw new errorException($this->translate('Smtp [[%s]] is not found', $params['smtp']));
+            }
+            foreach ($smtpData['smtp_settings'] as $k => $v) {
+                $smtpData[$k] = $v;
+            }
+        }
+
+        try {
+            if ($smtpData) {
+                $r = $this->Table->getTotum()->getConfig()->sendMailWithSMTP(
+                    $params['to'],
+                    $params['title'],
+                    $params['body'],
+                    $params['files'] ?? [],
+                    $params['from'] ?? null,
+                    replyTo: $params['replyto'] ?? null,
+                    hcopy: $params['hiddencopy'] ?? null,
+                    smtpData: $smtpData,
+                );
+            } else {
+                $r = $this->Table->getTotum()->getConfig()->sendMail(
+                    $params['to'],
+                    $params['title'],
+                    $params['body'],
+                    $params['files'] ?? [],
+                    $params['from'] ?? null,
+                    replyTo: $params['replyto'] ?? null,
+                    hcopy: $params['hiddencopy'] ?? null,
+                );
+            }
 
             if ($toBfl) {
                 $this->Table->getTotum()->getOutersLogger()->debug('email', $params);
@@ -852,8 +900,10 @@ class CalculateAction extends Calculate
         if (!empty($params['zip'])) {
             $zip = new \ZipArchive();
             $Config = $this->Table->getTotum()->getConfig();
-            $tmp_file = tempnam($Config->getTmpDir(),
-                $Config->getSchema() . '.FilesDownloadZip' . $this->Table->getTotum()->getUser()->getId() . '.');
+            $tmp_file = tempnam(
+                $Config->getTmpDir(),
+                $Config->getSchema() . '.FilesDownloadZip' . $this->Table->getTotum()->getUser()->getId() . '.'
+            );
             unlink($tmp_file);
             if ($zip->open($tmp_file, \ZipArchive::CREATE)) {
                 foreach ($files as $file) {
@@ -871,7 +921,6 @@ class CalculateAction extends Calculate
             } else {
                 throw new errorException('Creation zip archive error');
             }
-
         } else {
             foreach ($files as &$file) {
                 $checkFile($file);
@@ -959,10 +1008,11 @@ class CalculateAction extends Calculate
                 $link .= $topTableRow['top'] . '/' . $topTableRow['id'] . '/' . $Cycle_id . '/' . $tableRow['id'] . '/';
 
                 if (!empty($params['bfield'])) {
-                    $Table = $this->Table->getTotum()->getCycle($Cycle_id,
-                        $topTableRow['id'])->getTable($tableRow['id']);
+                    $Table = $this->Table->getTotum()->getCycle(
+                        $Cycle_id,
+                        $topTableRow['id']
+                    )->getTable($tableRow['id']);
                 }
-
             } else {
                 throw new errorException($this->translate('The cycles table is specified incorrectly.'));
             }
@@ -970,7 +1020,6 @@ class CalculateAction extends Calculate
             $link .= $tableRow ['top'] . '/' . $tableRow['id'] . '/';
 
             if ($tableRow['type'] === 'tmp') {
-
                 if ($params['hash'] ?? null) {
                     $this->__checkNotArrayParams($params, ['hash']);
                     $hash = $params['hash'];
@@ -983,7 +1032,6 @@ class CalculateAction extends Calculate
                     $link .= '?sess_hash=' . $hash;
                 }
                 $Table = $this->Table->getTotum()->getTable($tableRow['id'], $hash);
-
             } else {
                 $Table = $this->Table->getTotum()->getTable($tableRow['id']);
             }
@@ -1072,7 +1120,6 @@ class CalculateAction extends Calculate
                     throw new errorException($this->translate('Value not found'));
                 }
                 $addLinkToPanel($link, $id, [],);
-
             }
         } elseif (!empty($params['id'])) {
             $ids = (array)$params['id'];
@@ -1087,9 +1134,7 @@ class CalculateAction extends Calculate
             $addLinkToPanel($link, null, $field,);
         } else {
             $addLinkToPanel($link, null, [],);
-
         }
-
     }
 
     protected function funcLinkToPrint($params)
@@ -1308,9 +1353,11 @@ class CalculateAction extends Calculate
             $model = $this->Table->getTotum()->getNamedModel(TmpTables::class);
             $saveData['env'] = $this->getEnvironment();
 
-            $hash = $model->getNewHash(TmpTables::SERVICE_TABLES['linktodatajson'],
+            $hash = $model->getNewHash(
+                TmpTables::SERVICE_TABLES['linktodatajson'],
                 $this->Table->getTotum()->getUser(),
-                $saveData);
+                $saveData
+            );
 
 
             $data['hash'] = $hash;
@@ -1377,16 +1424,16 @@ class CalculateAction extends Calculate
         $link = '/Table/';
         $q_params = [];
 
-        if ($this->Table->getTableRow()['type'] === 'cycles' && str_starts_with($this->varName,
-                'tab_') && !empty($this->row['id']) && $tableDestRow['type'] != 'calcs') {
+        if ($this->Table->getTableRow()['type'] === 'cycles' && str_starts_with(
+                $this->varName,
+                'tab_'
+            ) && !empty($this->row['id']) && $tableDestRow['type'] != 'calcs') {
             $params['cycle'] = $params['cycle'] ?? null;
             $link .= $this->Table->getTableRow()['top'] . '/' . $this->Table->getTableRow()['id'] . '/' . ($params['cycle'] ?: $this->row['id']) . '/' . $tableDestRow['id'];
             $linkedTable = $this->Table->getTotum()->getTable($tableDestRow);
             $q_params['b'] = $this->varName;
-
         } elseif ($tableDestRow['type'] === 'calcs') {
             if ($topTableRow = $this->Table->getTotum()->getTableRow($tableDestRow['tree_node_id'])) {
-
                 if (!empty($params['cycle'])) {
                     $this->__checkNumericParam($params['cycle'], 'cycle');
                     $Cycle_id = $params['cycle'];
@@ -1401,7 +1448,6 @@ class CalculateAction extends Calculate
                 $link .= $topTableRow['top'] . '/' . $topTableRow['id'] . '/' . $Cycle_id . '/' . $tableDestRow['id'];
                 $Cycle = $this->Table->getTotum()->getCycle($Cycle_id, $tableDestRow['tree_node_id']);
                 $linkedTable = $Cycle->getTable($tableDestRow);
-
             } else {
                 throw new errorException($this->translate('The cycles table is specified incorrectly.'));
             }
@@ -1463,7 +1509,7 @@ class CalculateAction extends Calculate
             'hidedots' => $this->__checkBoolOrNull($params['hidedots'] ?? null),
         ];
 
-        if ($params['tabs']??false){
+        if ($params['tabs'] ?? false) {
             $elseData['tabs'] = true;
         }
 
@@ -1506,7 +1552,6 @@ class CalculateAction extends Calculate
     protected function funcInsert($params)
     {
         if ($params = $this->getParamsArray($params, ['field', 'exclude', 'silent'], ['field'])) {
-
             $this->__processSpecialSaveTypes($params);
 
             $addedIds = [];
@@ -1521,8 +1566,10 @@ class CalculateAction extends Calculate
 
                 if ($params['fields'] ?? null) {
                     if (!is_array($params['fields']) || key_exists(0, $params['fields'])) {
-                        throw new errorException($this->translate('The parameter [[%s]] should be of type row.',
-                            'fields'));
+                        throw new errorException($this->translate(
+                            'The parameter [[%s]] should be of type row.',
+                            'fields'
+                        ));
                     }
                     $fields = $params['fields'];
                 }
@@ -1578,8 +1625,10 @@ class CalculateAction extends Calculate
                 throw new errorException($this->translate('Fill in the parameter [[%s]].', 'field'));
             }
             if (!($field = $table->getFields()[$params['field']])) {
-                throw new errorException($this->translate('The [[%s]] field is not found in the [[%s]] table.',
-                    [$params['field'], $table->getTableRow()['name']]));
+                throw new errorException($this->translate(
+                    'The [[%s]] field is not found in the [[%s]] table.',
+                    [$params['field'], $table->getTableRow()['name']]
+                ));
             }
             if ($field['category'] === 'column') {
                 if (!is_numeric($params['id'])) {
@@ -1592,8 +1641,10 @@ class CalculateAction extends Calculate
                     'row'
                 );
                 if (!$valID) {
-                    throw new errorException($this->translate('The row with %s was not found in table %s.',
-                        ['id ' . $params['id'], $table->getTableRow()['name']]));
+                    throw new errorException($this->translate(
+                        'The row with %s was not found in table %s.',
+                        ['id ' . $params['id'], $table->getTableRow()['name']]
+                    ));
                 }
                 $val = $valID[$params['field']];
             } else {
@@ -1621,8 +1672,10 @@ class CalculateAction extends Calculate
 
         if ($params['fields'] ?? null) {
             if (!is_array($params['fields'])) {
-                throw new errorException($this->translate('The parameter [[%s]] should be of type row/list.',
-                    'fields'));
+                throw new errorException($this->translate(
+                    'The parameter [[%s]] should be of type row/list.',
+                    'fields'
+                ));
             }
 
             if (ctype_digit((string)array_keys($params['fields'])[0])) {
@@ -1722,11 +1775,12 @@ class CalculateAction extends Calculate
     {
         $notPrepareParams = $isFieldSimple ? [] : ['field'];
 
-        if ($params = $this->getParamsArray($params,
+        if ($params = $this->getParamsArray(
+            $params,
             ['field', 'var', 'exclude', 'silent'],
             $notPrepareParams,
-            ['var', 'where', 'filter', 'key'])) {
-
+            ['var', 'where', 'filter', 'key']
+        )) {
             if ($withSpecialSaveTypes) {
                 $this->__processSpecialSaveTypes($params);
             }
@@ -2039,8 +2093,10 @@ class CalculateAction extends Calculate
             $params['field'],
             $table->getFields()
         )) {
-            throw new errorException($this->translate('The [[%s]] field is not found in the [[%s]] table.',
-                [$params['field'], $table->getTableRow()['name']]));
+            throw new errorException($this->translate(
+                'The [[%s]] field is not found in the [[%s]] table.',
+                [$params['field'], $table->getTableRow()['name']]
+            ));
         }
 
         $field = $table->getFields()[$params['field']];
@@ -2064,7 +2120,6 @@ class CalculateAction extends Calculate
                     'exec',
                     var: $vars
                 );
-
             }
         } else {
             $CA->execAction(
@@ -2169,8 +2224,6 @@ class CalculateAction extends Calculate
                     } else {
                         $add[] = $row;
                     }
-
-
                 }
 
                 if ($remove || $add || $modify) {
@@ -2232,6 +2285,321 @@ class CalculateAction extends Calculate
         );
     }
 
+    protected function funcProImapGetUidList($params)
+    {
+        $params = $this->getParamsArray($params, [], []);
+
+        if (!key_exists('uidvalidity', $params)) {
+            throw new errorException($this->translate(
+                'Fill in the parameter [[%s]].',
+                ['uidvalidity']
+            ));
+        }
+
+        $this->__checkNotEmptyParams($params, ['name', 'folder']);
+        $this->__checkNotArrayParams($params, ['name', 'folder', 'uidvalidity', 'datefrom', 'lastuid', 'timeout']);
+
+        $imapData = $this->__getImapData($params['name'], $params['folder']);
+
+        $imap = $imapData['imap'];
+        $mailbox = $imapData['mailbox'];
+
+        if ($status = imap_status($imap, $mailbox, SA_UIDVALIDITY)) {
+            $uidvalidity = $status->uidvalidity;
+        }
+
+        $CRETERIA = "ALL";
+        if (!empty($params['datefrom'])) {
+            if (($Datefrom = DateTime::createFromFormat('Y-m-d', $params['datefrom'])) &&
+                $Datefrom->format('Y-m-d') === $params['datefrom']) {
+                $CRETERIA = "SINCE \"{$Datefrom->format('Y-m-d')}\"";
+            } else {
+                throw new errorException($this->translate('Invalid date format. Use YYYY-MM-DD.'));
+            }
+        }
+        $uids = imap_search($imap, $CRETERIA, SE_UID) ?: [];
+
+        imap_close($imap);
+
+        $lastuid = (int)($params['lastuid'] ?? 0);
+
+        if ($uidvalidity != $params['uidvalidity']) {
+            $lastuid = 0;
+        }
+
+        if ($lastuid) {
+            $uids = array_filter($uids, fn($uid) => $uid > $lastuid);
+            sort($uids, SORT_NUMERIC);
+        }
+
+        return [
+            'uids' => array_values($uids),
+            'uidvalidity' => $uidvalidity == $params['uidvalidity'] ? null : $uidvalidity
+        ];
+    }
+
+
+    protected function funcProImapGetFolders($params)
+    {
+        $params = $this->getParamsArray($params);
+        $this->__checkNotEmptyParams($params, ['name']);
+
+        $imapData = $this->__getImapData($params['name'], "");
+
+        $imap = $imapData['imap'];
+
+        $folders = imap_list($imap, $imapData['mailbox'], "*");
+
+        if ($folders === false) {
+            $folders = [];
+        }
+        $cleaned_folders = [];
+        $prefix_len = strlen($imapData['mailbox']);
+        foreach ($folders as $folder) {
+            if (substr($folder, 0, $prefix_len) === $imapData['mailbox']) {
+                $name = substr($folder, $prefix_len);
+            } else {
+                $name = $folder;
+            }
+            $cleaned_folders[] = $name;
+        }
+
+        return $cleaned_folders;
+    }
+
+    protected function funcProImapGetEmail($params)
+    {
+        $params = $this->getParamsArray($params, [], []);
+        $this->__checkNotEmptyParams($params, ['name', 'folder', 'uid']);
+
+        $imapData = $this->__getImapData($params['name'], $params['folder']);
+        $imap = $imapData['imap'];
+        $msgno = imap_msgno($imap, $params['uid']);
+
+        if (!$msgno) {
+            throw new errorException($this->translate("UID %s not found"), [$params['uid']]);
+        }
+
+        $h = imap_headerinfo($imap, $msgno);
+        $to = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->to ?? []);
+        $cc = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->cc ?? []);
+        $from = ($h->from[0]->mailbox ?? '') . '@' . ($h->from[0]->host ?? '');
+
+        $subject = '';
+        if ($h->subject) {
+            foreach (imap_mime_header_decode($h->subject) as $part) {
+                $charset = strtolower($part->charset ?? 'default');
+                if (in_array($charset, ['default', 'us-ascii'])) {
+                    $subject .= $part->text;
+                } else {
+                    $subject .= mb_convert_encoding($part->text, 'UTF-8', $charset);
+                }
+            }
+        }
+
+        $headers = [];
+        $current = '';
+        $raw = imap_fetchheader($imap, $msgno);
+        foreach (explode("\r\n", $raw) as $line) {
+            if (preg_match('/^([A-Za-z-]+):\s*(.*)$/', $line, $m)) {
+                $current = $m[1];
+                $headers[$current] = $m[2];
+            } elseif (preg_match('/^\s+(.+)$/', $line, $m) && $current) {
+                $headers[$current] .= ' ' . $m[1];
+            }
+        }
+
+        $struct = imap_fetchstructure($imap, $msgno);
+
+        $decode_body = fn($body, $enc) => match($enc) {
+            3 => base64_decode($body),
+            4 => quoted_printable_decode($body),
+            default => $body,
+        };
+
+        $email_body = '';
+        $files = [];
+
+        $decode_mime_string = function($string) {
+            $result = '';
+            $parts = imap_mime_header_decode($string ?? '');
+            foreach ($parts ?: [] as $part) {
+                $charset = strtolower($part->charset ?? 'default');
+                $text = $part->text;
+                if (in_array($charset, ['default', 'us-ascii'])) {
+                    $result .= $text;
+                } else {
+                    $result .= @mb_convert_encoding($text, 'UTF-8', $charset) ?: $text;
+                }
+            }
+            return $result;
+        };
+
+        if (!isset($struct->parts)) {
+            $body = imap_fetchbody($imap, $msgno, 1);
+            $content = mb_convert_encoding(
+                $decode_body($body, $struct->encoding),
+                'UTF-8',
+                ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
+            );
+
+            if ($struct->type == 0) {
+                $subtype = strtolower($struct->subtype ?? '');
+                if (strpos($subtype, 'html') !== false) {
+                    $email_body = $content;
+                } elseif (strpos($subtype, 'plain') !== false) {
+                    $email_body = $content;
+                }
+            }
+        } else {
+            // Рекурсивная обработка без передачи замыкания по ссылке
+            $process_parts = function($parts, $prefix = '') use (
+                $imap,
+                $msgno,
+                $decode_body,
+                $decode_mime_string,
+                &$email_body,
+                &$files
+            ) {
+                foreach ($parts as $i => $part) {
+                    $part_num = $prefix . ($i + 1);
+                    $disposition = strtoupper($part->disposition ?? '');
+                    $is_attachment = in_array($disposition, ['ATTACHMENT', 'INLINE']);
+
+                    $filename = '';
+                    foreach ([$part->dparameters ?? [], $part->parameters ?? []] as $params) {
+                        foreach ($params as $p) {
+                            if (in_array(strtolower($p->attribute ?? ''), ['filename', 'name'])) {
+                                $filename = $decode_mime_string($p->value);
+                                break 2;
+                            }
+                        }
+                    }
+
+                    // Обработка текстовых частей
+                    if ($part->type == 0 && !$email_body) {
+                        $data = imap_fetchbody($imap, $msgno, $part_num);
+                        $content = mb_convert_encoding(
+                            $decode_body($data, $part->encoding),
+                            'UTF-8',
+                            ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
+                        );
+
+                        $subtype = strtolower($part->subtype ?? '');
+                        if (strpos($subtype, 'html') !== false) {
+                            $email_body = $content;
+                        } elseif (strpos($subtype, 'plain') !== false) {
+                            $email_body = $content;
+                        }
+                    }
+                    // Обработка вложений
+                    elseif ($is_attachment || ($part->type > 0 && $filename)) {
+                        $data = imap_fetchbody($imap, $msgno, $part_num);
+                        $files[] = [
+                            'name' => $filename ?: 'attachment_' . bin2hex(random_bytes(3)),
+                            'base64' => base64_encode($decode_body($data, $part->encoding))
+                        ];
+                    }
+
+                    // Рекурсия для вложенных multipart
+                    if (!empty($part->parts)) {
+                        $this->processPartsRecursive(
+                            $imap,
+                            $msgno,
+                            $part->parts,
+                            $part_num . '.',
+                            $decode_body,
+                            $decode_mime_string,
+                            $email_body,
+                            $files
+                        );
+                    }
+                }
+            };
+
+            $process_parts($struct->parts);
+        }
+
+        return [
+            'message_id' => $h->message_id ?? '',
+            'email_to' => implode(', ', $to),
+            'email_from' => $from,
+            'email_cc' => implode(', ', $cc),
+            'email_date' => date('c', strtotime($h->date)),
+            'email_subject' => $subject,
+            'email_body' => $email_body,
+            'email_files' => $files,
+            'email_headers' => $headers
+        ];
+    }
+
+// Вспомогательный метод для рекурсии
+    private function processPartsRecursive(
+        $imap,
+        $msgno,
+        $parts,
+        $prefix,
+        $decode_body,
+        $decode_mime_string,
+        &$email_body,
+        &$files
+    ) {
+        foreach ($parts as $i => $part) {
+            $part_num = $prefix . ($i + 1);
+            $disposition = strtoupper($part->disposition ?? '');
+            $is_attachment = in_array($disposition, ['ATTACHMENT', 'INLINE']);
+
+            $filename = '';
+            foreach ([$part->dparameters ?? [], $part->parameters ?? []] as $params) {
+                foreach ($params as $p) {
+                    if (in_array(strtolower($p->attribute ?? ''), ['filename', 'name'])) {
+                        $filename = $decode_mime_string($p->value);
+                        break 2;
+                    }
+                }
+            }
+
+            // Обработка текстовых частей
+            if ($part->type == 0 && !$email_body) {
+                $data = imap_fetchbody($imap, $msgno, $part_num);
+                $content = mb_convert_encoding(
+                    $decode_body($data, $part->encoding),
+                    'UTF-8',
+                    ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
+                );
+
+                $subtype = strtolower($part->subtype ?? '');
+                if (strpos($subtype, 'html') !== false) {
+                    $email_body = $content;
+                } elseif (strpos($subtype, 'plain') !== false) {
+                    $email_body = $content;
+                }
+            }
+            // Обработка вложений
+            elseif ($is_attachment || ($part->type > 0 && $filename)) {
+                $data = imap_fetchbody($imap, $msgno, $part_num);
+                $files[] = [
+                    'name' => $filename ?: 'attachment_' . bin2hex(random_bytes(3)),
+                    'base64' => base64_encode($decode_body($data, $part->encoding))
+                ];
+            }
+
+            // Глубокая рекурсия для вложенных multipart
+            if (!empty($part->parts)) {
+                $this->processPartsRecursive(
+                    $imap,
+                    $msgno,
+                    $part->parts,
+                    $part_num . '.',
+                    $decode_body,
+                    $decode_mime_string,
+                    $email_body,
+                    $files
+                );
+            }
+        }
+    }
+
     protected function getActionTable(array $tableRow, array $params): aTable
     {
         switch ($tableRow['type']) {
@@ -2262,24 +2630,59 @@ class CalculateAction extends Calculate
 
     protected function __processSpecialSaveTypes(array $params)
     {
-        foreach ($params['exclude']??[] as $exclude){
-            foreach ((array)$exclude as $_tableName){
-                if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)){
+        foreach ($params['exclude'] ?? [] as $exclude) {
+            foreach ((array)$exclude as $_tableName) {
+                if (!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)) {
                     throw new errorException($this->translate('[[%s]] format error: [[%s]].', 'exclude'));
                 }
                 $this->Table->getTotum()->addTableSpecialSaveType($_tableName, 'exclude');
             }
         }
-        foreach ($params['silent']??[] as $exclude){
-            foreach ((array)$exclude as $_tableName){
-                if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)){
+        foreach ($params['silent'] ?? [] as $exclude) {
+            foreach ((array)$exclude as $_tableName) {
+                if (!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $_tableName)) {
                     throw new errorException($this->translate('[[%s]] format error: [[%s]].', 'silent'));
                 }
 
                 $this->Table->getTotum()->addTableSpecialSaveType($_tableName, 'silent');
             }
         }
-
     }
 
+
+    protected function __getImapData(string $name, $folder): array
+    {
+        $Totum = $this->Table->getTotum();
+
+        $imap_settings = $Totum->getTable('ttm__imap_settings')->getByParams(
+            (new FormatParamsForSelectFromTable())
+                ->where('name', $name)
+                ->field('*ALL*')->params(),
+            'row'
+        );
+        if (empty($imap_settings)) {
+            throw new criticalErrorException($this->translate('IMAP data by name [[%s]] is not found', $name));
+        }
+
+        $flags = "";
+        if (!empty($imap_settings['flags']) && is_array($imap_settings['flags'])) {
+            $flags = implode('/', $imap_settings['flags']);
+        }
+
+        $mailbox = "{{$imap_settings['server']}:{$imap_settings['port']}/{$imap_settings['protocol']}/{$flags}}{$folder}";
+        $imap = @imap_open(
+            $mailbox,
+            $imap_settings['email'],
+            Crypt::getDeCrypted($imap_settings['password'], $Totum->getConfig()->getCryptKeyFileContent())
+        );
+
+        if (!$imap) {
+            throw new criticalErrorException($this->translate('Imap is not connected: %s', imap_last_error()));
+        }
+
+        return [
+            'imap' => $imap,
+            'mailbox' => $mailbox
+        ];
+    }
 }

@@ -47,7 +47,7 @@ class SchemaUsers extends Command
 
 
         $sql = $Conf->getSql();
-        
+
         if ($onUsers || $offUsers) {
             $Totum = new Totum($Conf, Auth::serviceUserStart($Conf));
 
@@ -55,7 +55,7 @@ class SchemaUsers extends Command
 
             $sql->transactionStart();
 
-            $exec=function ($field, $vars, $status) use ($Table) {
+            $exec = function ($field, $vars, $status) use ($Table) {
                 $Cals = new CalculateAction("=: setListExtended(table: 'users'; field: 'on_off' = $status; where: '$field' = $#vars; log: true)");
 
                 $Cals->execAction("CODE",
@@ -71,130 +71,149 @@ class SchemaUsers extends Command
             };
 
             if ($onUsers) {
-                $login=[];
-                $email=[];
-                $status='true';
+                $login = [];
+                $email = [];
+                $status = 'true';
                 foreach ($onUsers as $on) {
-                    if (str_contains(($on??''), '@')) {
-                       $email[] = $on;
+                    if (str_contains(($on ?? ''), '@')) {
+                        $email[] = $on;
                     } else {
                         $login[] = $on;
                     }
                 }
 
-                if($login){
+                if ($login) {
                     $exec('login', $login, $status);
                 }
-                if($email){
+                if ($email) {
                     $exec('email', $email, $status);
                 }
             }
             if ($offUsers) {
-                $login=[];
-                $email=[];
-                $status='false';
+                $login = [];
+                $email = [];
+                $status = 'false';
                 foreach ($offUsers as $off) {
-                    if (str_contains($off??'', '@')) {
+                    if (str_contains($off ?? '', '@')) {
                         $email[] = $off;
                     } else {
                         $login[] = $off;
                     }
                 }
 
-                if($login){
+                if ($login) {
                     $exec('login', $login, $status);
                 }
-                if($email){
+                if ($email) {
                     $exec('email', $email, $status);
                 }
             }
 
-            try{
+            try {
                 $sql->transactionCommit();
-            }catch (\Exception){}
+            } catch (\Exception) {
+            }
 
             try {
                 $Conf->proGoModuleSocketSend([], true, true);
-            }catch (\Exception){}
+            } catch (\Exception) {
+            }
 
 
         }
 
 
-        if (!empty($list = $input->getOption('list'))){
+        if (!empty($list = $input->getOption('list'))) {
             $table = new Table($output);
             $rows = [];
             $lightUsersCount = 0;
+            $nanoUsersCount = 0;
             $usersCount = 0;
-            $rolesMap=[];
-            $rolesPrepared=$Conf->getSql(true)->getPrepared
+            $rolesMap = [];
+            $rolesPrepared = $Conf->getSql(true)->getPrepared
             ('select tables->>\'v\' as tables, tables_read->>\'v\' as tables_read from roles where is_del = false AND id = ANY (string_to_array(?, \',\')::int[])');
             $isLightUser = function (string $rolesString, string $login, string|null $connections)
-            use ($Conf, &$rolesMap, $rolesPrepared, &$lightUsersCount, &$usersCount):array{
+            use (&$nanoUsersCount, $Conf, &$rolesMap, $rolesPrepared, &$lightUsersCount, &$usersCount): array {
                 $roles = implode(',', json_decode($rolesString, true));
-                if (!key_exists($rolesString, $rolesMap)){
+                if (!key_exists($rolesString, $rolesMap)) {
                     $rolesMap[$rolesString] = [];
-                    if($roles && $rolesPrepared->execute([$roles])){
-                        foreach ($rolesPrepared->fetchAll() as $row){
-                            foreach (json_decode($row['tables']??'[]', true) as $t){
-                                $rolesMap[$rolesString][$t]=true;
+                    if ($roles && $rolesPrepared->execute([$roles])) {
+                        foreach ($rolesPrepared->fetchAll() as $row) {
+                            foreach (json_decode($row['tables'] ?? '[]', true) as $t) {
+                                $rolesMap[$rolesString][$t] = true;
                             }
-                            foreach (json_decode($row['tables_read']??'[]', true) as $t){
-                                $rolesMap[$rolesString][$t]=true;
+                            foreach (json_decode($row['tables_read'] ?? '[]', true) as $t) {
+                                $rolesMap[$rolesString][$t] = true;
                             }
                         }
                     }
 
                 }
-                $connections = abs($connections?:1);
+                $connections = abs($connections ?: 1);
 
-                if(in_array($login, ['admin', 'cron', 'service'])){
+                if (in_array($login, ['admin', 'cron', 'service'])) {
                     $usersCount += $connections - 1;
-                    return [count($rolesMap[$rolesString]),""];
-                }
-                elseif(count($rolesMap[$rolesString])<=8){
-                    $lightUsersCount += $connections;
-                    return [count($rolesMap[$rolesString]),"+"];
-                }else{
+                    return [count($rolesMap[$rolesString]), "", ""];
+                } elseif (count($rolesMap[$rolesString]) <= 13) {
+
+                    if ($isNano = count($rolesMap[$rolesString]) <= 2) {
+                        $nanoUsersCount += $connections;
+                    }else{
+                        $lightUsersCount += $connections;
+                    }
+                    return [count($rolesMap[$rolesString]), "+", $isNano ? "++" : ""];
+                } else {
                     $usersCount += $connections;
-                    return [count($rolesMap[$rolesString]), ""];
+                    return [count($rolesMap[$rolesString]), "", ""];
                 }
-                return ["-",''];
+                return ["-", '', ""];
             };
 
-            $where='';
+            $where = '';
             switch ($input->getOption('list')) {
                 case 'on':
-                    $where='AND on_off->>\'v\'=\'true\'  ';
+                    $where = 'AND on_off->>\'v\'=\'true\'  ';
                     break;
                 case 'off':
-                    $where='AND on_off->>\'v\'=\'false\'  ';
+                    $where = 'AND on_off->>\'v\'=\'false\'  ';
                     break;
             }
             foreach ($sql->getAll('select email->>\'v\' as email,  login->>\'v\' as login, fio->>\'v\' as fio,
                                                 on_off->>\'v\' as on_off, roles->>\'v\' as roles,
                                                 ttm__concurrent_connections->>\'v\' as connections
                                                 from users 
-                                                where  is_del = false '.$where.' order by login->>\'v\'') as $login) {
+                                                where  is_del = false ' . $where . ' order by login->>\'v\'') as $login) {
 
-                list($tablesCount, $isLightUserSign) = $isLightUser(
+                list($tablesCount, $isLightUserSign, $isNanoUserSign) = $isLightUser(
                     $login['roles'],
                     $login['login'] ?? '',
                     $login['connections']
                 );
+                $licenses = $login["connections"];
+                if(in_array($login["login"], ['admin', 'cron', 'service'])){
+                    if(in_array($login["connections"], ['', '1'])){
+                        $licenses = '-';
+                    }else{
+                        if($login['login']==='admin'){
+                            $licenses--;
+                        }
+                    }
+                }
+
                 $rows[] = [
                     $login["login"],
                     $login["fio"],
                     $login['email'],
                     $login["on_off"] == 'true' ? 'ON' : 'OFF',
-                    $login["connections"],
+                    $licenses,
                     $tablesCount,
                     $isLightUserSign,
+                    $isNanoUserSign,
                 ];
             }
-            $rows[] = ["", '', '', "ALL:". count($rows), "FULL:$usersCount", "LIMIT:".$lightUsersCount, 'TOTAL:'.($usersCount+$lightUsersCount)];
+            $rows[] = ["USERS:" . count($rows), "", '', '', 'TOTAL:' . ($usersCount + $lightUsersCount + $nanoUsersCount), "FULL: $usersCount ", "LIMIT:" . $lightUsersCount, "NANO:" . $nanoUsersCount];
             $table
-                ->setHeaders(['Login', 'FIO', 'Email', 'Status', 'Licenses', 'Tables', 'Limit User'])
+                ->setHeaders(['Login', 'FIO', 'Email', 'Status', 'Licenses', 'Tables', 'Limit', 'Nano'])
                 ->setRows($rows);
             $table->render();
         }
