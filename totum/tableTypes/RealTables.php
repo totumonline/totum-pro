@@ -1704,14 +1704,30 @@ abstract class RealTables extends aTable
                     } /*Сравнение с листом*/
                     elseif (is_array($value)) {
                         if ($fields[$fieldName]['type'] === 'listRow') {
-                            $isAssoc = (array_keys($value) !== range(0, count($value) - 1));
+                            $isJsonbFilter = false;
+                            $strategy = "OR";
+                            if (key_exists('ttm__filter', $value) && $value['ttm__filter'] === 'jsonb' && key_exists('ttm__where', $value)) {
+                                $isJsonbFilter = true;
+                                $strategy = match ($value['ttm__type'] ?? '') {
+                                    'or' => 'OR',
+                                    default => 'AND'
+                                };
+
+                                $value = $value['ttm__where'];
+                                $isAssoc = true;
+                            } else {
+                                $isAssoc = (array_keys($value) !== range(0, count($value) - 1));
+                            }
 
                             $where_tmp = '';
                             foreach ($value as $k => $v) {
-                                if ($where_tmp !== '') {
-                                    $where_tmp .= ' OR ';
-                                }
                                 if ($isAssoc) {
+
+                                    if ($where_tmp !== '') {
+                                        $where_tmp .= ' '.$strategy.' ';
+                                    }
+
+                                    $where_tmp .= ' ( ';
                                     if (!is_array($v) && is_numeric((string)$v)) {
                                         $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb OR ";
                                         $params[] = json_encode(
@@ -1719,16 +1735,63 @@ abstract class RealTables extends aTable
                                             JSON_UNESCAPED_UNICODE
                                         );
                                     }
-                                    $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb ";
-                                    $params[] = json_encode([$k => $v], JSON_UNESCAPED_UNICODE);
+                                    if ($isJsonbFilter && is_array($v) && preg_match('/^[a-z0-9_-]+$/i', $k)
+                                        && (key_exists('ttm__interval', $v))
+                                    ) {
+                                            $interval = $v['ttm__interval'];
+
+                                        $type = $interval['type']==='numbers'?'decimal':'text';
+
+                                        $sign = match ($interval['sign'] ?? '') {
+                                            '<=' => '<=',
+                                            default => '<'
+                                        };
+
+                                        $where_tmp .= "($fieldQuotedJsonb ->> '$k')::$type >= ? AND  ($fieldQuotedJsonb ->> '$k')::$type $sign ?)";
+
+                                        if($type==='decimal'){
+                                            $params[] = (float)$interval['value'][0];
+                                            $params[] = (float)$interval['value'][1];
+                                        }else{
+                                            $params[] = (string)$interval['value'][0];
+                                            $params[] = (string)$interval['value'][1];
+                                        }
+
+
+                                    }
+                                    elseif ($isJsonbFilter && is_array($v) && preg_match('/^[a-z0-9_-]+$/i', $k)
+                                        && (key_exists('ttm__or', $v) && is_array($v['ttm__or']) && !empty($v['ttm__or']))
+                                    ) {
+                                        $where_tmp .= " $fieldQuotedJsonb ->> '$k' IN  (";
+                                        foreach (array_values($v['ttm__or']) as $i=>$v){
+                                            if ($i !== 0){
+                                                $where_tmp .= ", ";
+                                            }
+                                            $where_tmp .= " ? ";
+                                            $params[] = (string)$v;
+                                        }
+                                        $where_tmp .= " ) ) ";
+                                    }
+
+                                    else {
+                                        $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb ) ";
+                                        $params[] = json_encode([$k => $v], JSON_UNESCAPED_UNICODE);
+                                    }
+
+                                    
+                                    
                                 } else {
+                                    if ($where_tmp !== '') {
+                                        $where_tmp .= ' OR ';
+                                    }
+
                                     if (!is_array($v) && is_numeric((string)$v)) {
                                         $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb OR ";
                                         $params[] = json_encode(
                                             [is_string($v) ? (float)$v : (string)$v]
                                         );
                                     }
-                                    $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb ";
+                                    $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb";
                                     $params[] = json_encode([$v], JSON_UNESCAPED_UNICODE);
                                 }
                             }
