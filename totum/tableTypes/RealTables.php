@@ -1706,25 +1706,40 @@ abstract class RealTables extends aTable
                         if ($fields[$fieldName]['type'] === 'listRow') {
                             $isJsonbFilter = false;
                             $strategy = "OR";
-                            if (key_exists('ttm__filter', $value) && $value['ttm__filter'] === 'jsonb' && key_exists('ttm__where', $value)) {
+                            $isStrict = false;
+                            if (key_exists('ttm__filter', $value) && $value['ttm__filter'] === 'jsonb' &&
+                                (key_exists('ttm__where', $value) || key_exists('ttm__strict', $value))
+                            ) {
                                 $isJsonbFilter = true;
                                 $strategy = match ($value['ttm__type'] ?? '') {
                                     'or' => 'OR',
                                     default => 'AND'
                                 };
-
-                                $value = $value['ttm__where'];
-                                $isAssoc = true;
+                                if (key_exists('ttm__strict', $value)) {
+                                    $strictValue = $value['ttm__strict'];
+                                }
+                                if (key_exists('ttm__where', $value)) {
+                                    $value = (array)$value['ttm__where'];
+                                    $isAssoc = true;
+                                } else {
+                                    $value = [];
+                                }
                             } else {
                                 $isAssoc = (array_keys($value) !== range(0, count($value) - 1));
                             }
 
+
                             $where_tmp = '';
+                            if (!empty($strictValue)) {
+                                $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb ";
+                                $params[] = json_encode($strictValue, JSON_UNESCAPED_UNICODE);
+                            }
+
                             foreach ($value as $k => $v) {
                                 if ($isAssoc) {
 
                                     if ($where_tmp !== '') {
-                                        $where_tmp .= ' '.$strategy.' ';
+                                        $where_tmp .= ' ' . $strategy . ' ';
                                     }
 
                                     $where_tmp .= ' ( ';
@@ -1738,9 +1753,9 @@ abstract class RealTables extends aTable
                                     if ($isJsonbFilter && is_array($v) && preg_match('/^[a-z0-9_-]+$/i', $k)
                                         && (key_exists('ttm__interval', $v))
                                     ) {
-                                            $interval = $v['ttm__interval'];
+                                        $interval = $v['ttm__interval'];
 
-                                        $type = $interval['type']==='numbers'?'decimal':'text';
+                                        $type = $interval['type'] === 'numbers' ? 'decimal' : 'text';
 
                                         $sign = match ($interval['sign'] ?? '') {
                                             '<=' => '<=',
@@ -1749,37 +1764,33 @@ abstract class RealTables extends aTable
 
                                         $where_tmp .= "($fieldQuotedJsonb ->> '$k')::$type >= ? AND  ($fieldQuotedJsonb ->> '$k')::$type $sign ?)";
 
-                                        if($type==='decimal'){
+                                        if ($type === 'decimal') {
                                             $params[] = (float)$interval['value'][0];
                                             $params[] = (float)$interval['value'][1];
-                                        }else{
+                                        } else {
                                             $params[] = (string)$interval['value'][0];
                                             $params[] = (string)$interval['value'][1];
                                         }
 
 
-                                    }
-                                    elseif ($isJsonbFilter && is_array($v) && preg_match('/^[a-z0-9_-]+$/i', $k)
+                                    } elseif ($isJsonbFilter && is_array($v) && preg_match('/^[a-z0-9_-]+$/i', $k)
                                         && (key_exists('ttm__or', $v) && is_array($v['ttm__or']) && !empty($v['ttm__or']))
                                     ) {
                                         $where_tmp .= " $fieldQuotedJsonb ->> '$k' IN  (";
-                                        foreach (array_values($v['ttm__or']) as $i=>$v){
-                                            if ($i !== 0){
+                                        foreach (array_values($v['ttm__or']) as $i => $v) {
+                                            if ($i !== 0) {
                                                 $where_tmp .= ", ";
                                             }
                                             $where_tmp .= " ? ";
                                             $params[] = (string)$v;
                                         }
                                         $where_tmp .= " ) ) ";
-                                    }
-
-                                    else {
+                                    } else {
                                         $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb ) ";
                                         $params[] = json_encode([$k => $v], JSON_UNESCAPED_UNICODE);
                                     }
 
-                                    
-                                    
+
                                 } else {
                                     if ($where_tmp !== '') {
                                         $where_tmp .= ' OR ';
@@ -1810,7 +1821,8 @@ abstract class RealTables extends aTable
                         }
                         $where[] = "($where_tmp) = $trueFalse";
                     } /*С булевым*/
-                    elseif (is_bool($value) || in_array((string)$value, ["true", "false"])) {
+                    elseif
+                    (is_bool($value) || in_array((string)$value, ["true", "false"])) {
                         if (is_bool($value)) {
                             $value = $value ? "true" : "false";
                         }
