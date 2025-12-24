@@ -2533,6 +2533,76 @@ class CalculateAction extends Calculate
         ];
     }
 
+    protected function funcProIndexAdd($params)
+    {
+        $params = $this->getParamsArray($params, [], []);
+        $this->__checkNotEmptyParams($params, ['name', 'table', 'type', 'field']);
+
+        if(!preg_match('/^[a-zA-Z0-9_]{3,10}$/', $params['name'])){
+            throw new errorException($this->translate('Wrong [[%s]] value', 'name format'));
+        }
+
+        if(!preg_match('/^[a-z][a-z0-9_]{2,30}$/', $params['table'])){
+            throw new errorException($this->translate('Wrong [[%s]] value', 'table format'));
+        }
+
+        $fields = [];
+        foreach ((array)$params['field'] as $n=>$field){
+            if(!is_string($field) || !preg_match('/^[a-z][a-z0-9_]{2,50}$/', $field)){
+                throw new errorException($this->translate('Wrong [[%s]] value', 'field '.$field));
+            }
+            $fields[] = $field;
+        }
+
+
+
+        if ($params['type']==='GIN'){
+            $name="pro__{$params['table']}_gin_{$params['name']}";
+
+            $field = $fields[0];
+            $this->Table->getTotum()->getConfig()->getSql()->exec("CREATE INDEX IF NOT EXISTS $name ON {$params['table']} USING GIN (($field -> 'v') jsonb_path_ops)");
+
+        }else{
+            $name="pro__{$params['table']}_btree_{$params['name']}";
+
+            $_fields='((';
+            foreach ($fields as $n=>$field){
+                if($n!=0){
+                    $_fields.='->>\'v\'),(';
+                }
+                $_fields.=$field;
+            }
+            $_fields.='->>\'v\'))';
+
+            $this->Table->getTotum()->getConfig()->getSql()->exec("CREATE INDEX IF NOT EXISTS $name ON {$params['table']} {$_fields}");
+        }
+    }
+
+    protected function funcProIndexDelete($params)
+    {
+        $params = $this->getParamsArray($params, [], []);
+        $this->__checkNotEmptyParams($params, ['name']);
+
+        if(!preg_match('/^[a-zA-Z0-9_]{3,10}$/', $params['name'])){
+            throw new errorException($this->translate('Wrong [[%s]] value', 'name format'));
+        }
+
+        $data = $this->Table->getTotum()->getTable('ttm__custom_indexes')->getByParams((new FormatParamsForSelectFromTable())->where('name', $params['name'])->field('index_table')->field('index_type')->params(), 'row');
+
+        if(empty($data)){
+            throw new errorException($this->translate('Index not found'));
+        }
+
+        $type = match ($data['index_type'] ?? '') {
+            'GIN' => 'gin',
+            default => 'btree'
+        };
+
+        $name = "pro__{$data['index_table']}_{$type}_{$params['name']}";
+        $this->Table->getTotum()->getConfig()->getSql()->exec("DROP INDEX IF EXISTS $name");
+
+    }
+
 // Вспомогательный метод для рекурсии
     private function processPartsRecursive(
         $imap,
