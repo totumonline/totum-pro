@@ -121,8 +121,8 @@ class AdminTableActions extends WriteTableActions
                 if (count($pagination) < 2) {
                     throw new errorException('Table without pagination');
                 }
-                $pagination[1] = (int)$pagination[1];
-                if ($pagination[1] < 1) {
+                $pagination[0] = (int)$pagination[0];
+                if ($pagination[0] < 1) {
                     throw new errorException('OnPage = 0');
                 }
                 $Actions->editPost('pageCount', $pagination[0]);
