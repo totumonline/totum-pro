@@ -113,10 +113,22 @@ class AdminTableActions extends WriteTableActions
         } else {
             $Actions = new ReadTableActions($request, $this->modulePath, $this->Table, null);
         }
-        match ($this->post['pageType'] ?? false) {
-            'main' => $Actions->getFullTableData(true),
-            default => $Actions->loadPage()
-        };
+        if ('main' == ($this->post['pageType'] ?? false)) {
+            $Actions->getFullTableData(true);
+        } else {
+            if (empty($this->post['pageCount'])){
+                $pagination = explode('/', $Table->getTableRow()['pagination'] ?? '');
+                if (count($pagination) < 2) {
+                    throw new errorException('Table without pagination');
+                }
+                $pagination[1] = (int)$pagination[1];
+                if ($pagination[1] < 1) {
+                    throw new errorException('OnPage = 0');
+                }
+                $Actions->editPost('pageCount', $pagination[0]);
+            }
+            $Actions->loadPage();
+        }
 
         $this->Totum->getConfig()->getSql(true)->transactionRollBack();
         die(json_encode(['ok' => 1, 'fields' => $fields, 'tableId' => $this->Table->getTableRow()['id']], JSON_UNESCAPED_UNICODE));
