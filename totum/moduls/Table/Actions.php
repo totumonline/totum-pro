@@ -51,6 +51,11 @@ class Actions
     public $withLog = true;
     protected array $Cookies = [];
 
+    public function editPost($name, $value)
+    {
+        $this->post[$name] = $value;
+
+    }
 
     public function unblockServices()
     {
