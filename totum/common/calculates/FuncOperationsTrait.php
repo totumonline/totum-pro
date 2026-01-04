@@ -193,6 +193,10 @@ trait FuncOperationsTrait
             setlocale(LC_CTYPE, $localeOld);
         }
 
+        if (!($params['stdin'] ?? '') || !is_string($params['stdin'])) {
+            return shell_exec($string);
+        }
+
         $descriptorspec = [
             0 => ["pipe", "r"], // stdin — туда запишем данные
             1 => ["pipe", "w"], // stdout — оттуда прочитаем ответ
@@ -202,9 +206,8 @@ trait FuncOperationsTrait
         $process = proc_open($string, $descriptorspec, $pipes);
 
         if (is_resource($process)) {
-            if (($params['stdin'] ?? '') && is_string($params['stdin'])) {
-                fwrite($pipes[0], $params['stdin']);
-            }
+            fwrite($pipes[0], $params['stdin']);
+
             fclose($pipes[0]); // Закрываем stdin — это сигнал для Python, что ввод завершён
 
             $output = stream_get_contents($pipes[1]);
