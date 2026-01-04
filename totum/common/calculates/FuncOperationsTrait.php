@@ -192,7 +192,34 @@ trait FuncOperationsTrait
             }
             setlocale(LC_CTYPE, $localeOld);
         }
-        return shell_exec($string);
+
+        $descriptorspec = [
+            0 => ["pipe", "r"], // stdin — туда запишем данные
+            1 => ["pipe", "w"], // stdout — оттуда прочитаем ответ
+            2 => ["pipe", "w"] // stderr — для отладки ошибок
+        ];
+
+        $process = proc_open($string, $descriptorspec, $pipes);
+
+        if (is_resource($process)) {
+            if (($params['stdin'] ?? '') && is_string($params['stdin'])) {
+                fwrite($pipes[0], $params['stdin']);
+            }
+            fclose($pipes[0]); // Закрываем stdin — это сигнал для Python, что ввод завершён
+
+            $output = stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            $errors = stream_get_contents($pipes[2]);
+            fclose($pipes[2]);
+
+            $returnCode = proc_close($process);
+            if ($returnCode !== 0) {
+                echo $errors;
+            } else {
+                echo $output;
+            }
+        }
+        throw new errorException('Script was not started');
     }
 
     protected function funcFileGetContent(string $params): bool|string|null
