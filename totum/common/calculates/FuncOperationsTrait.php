@@ -217,12 +217,14 @@ trait FuncOperationsTrait
 
             $returnCode = proc_close($process);
             if ($returnCode !== 0) {
-                echo $errors;
+                return $errors;
             } else {
-                echo $output;
+                return $output;
             }
         }
-        throw new errorException('Script was not started');
+        else {
+            throw new errorException('Script was not started');
+        }
     }
 
     protected function funcFileGetContent(string $params): bool|string|null
