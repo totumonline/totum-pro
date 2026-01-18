@@ -19,6 +19,7 @@ use totum\common\Lang\RU;
 use totum\common\Model;
 use totum\common\Totum;
 use totum\common\TotumInstall;
+use totum\fieldTypes\File;
 use totum\models\TmpTables;
 use totum\tableTypes\aTable;
 use totum\tableTypes\RealTables;
@@ -888,10 +889,10 @@ class CalculateAction extends Calculate
             if (empty($file['name'])) {
                 throw new errorException($this->translate('Fill in the parameter [[%s]].', 'name'));
             }
-            if (empty($file['filestring'])) {
-                throw new errorException($this->translate('Fill in the parameter [[%s]].', 'filestring'));
+            if (empty($file['filestring']) && empty($file['file'])) {
+                throw new errorException($this->translate('Fill in the parameter [[%s]].', 'filestring || file'));
             }
-            if ($withType && empty($file['type'])) {
+            if ($withType && empty($file['file']) && empty($file['type'])) {
                 throw new errorException($this->translate('Fill in the parameter [[%s]].', 'type'));
             }
         };
@@ -924,8 +925,19 @@ class CalculateAction extends Calculate
         } else {
             foreach ($files as &$file) {
                 $checkFile($file);
-                $file['string'] = base64_encode($file['filestring']);
-                unset($file['filestring']);
+                if ($file['file'] ?? false) {
+                    $fileData = File::getContent($file['file'], $this->Table->getTotum()->getConfig(), true);
+                    if (!is_array($fileData)) {
+                        throw new errorException($this->translate('File [[%s]] is not found.', $file['file']));
+                    }
+                    list($fileContent, $mime) = $fileData;
+                    $file['string'] = base64_encode($fileContent);
+                    $file['type'] = $mime;
+                    unset($file['filestring']);
+                } else {
+                    $file['string'] = base64_encode($file['filestring']);
+                    unset($file['filestring']);
+                }
             }
             unset($file);
         }

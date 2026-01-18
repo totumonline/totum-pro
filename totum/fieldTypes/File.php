@@ -598,7 +598,7 @@ class File extends Field
         );
     }
 
-    public static function getContent($fname, Conf $Config): bool|string|null
+    public static function getContent($fname, Conf $Config, $withMime = false): bool|string|null|array
     {
         $filepath = static::getFilePath($fname, $Config);
         if (key_exists($filepath, static::$transactionCommits)) {
@@ -607,6 +607,12 @@ class File extends Field
         if (!is_file($filepath)) {
             return null;
         }
-        return file_get_contents($filepath);
+        $content = file_get_contents($filepath);
+
+        if($content !== false && $withMime){
+            $mime = trim(`file -b --mime-type {$filepath}`);
+            return [$content, $mime];
+        }
+        return $content;
     }
 }
