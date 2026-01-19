@@ -219,6 +219,13 @@ class File extends Field
             }
 
             if (copy($_FILES['file']['tmp_name'], $tmpFileName)) {
+                $mime = trim(`file -b --mime-type {$tmpFileName}`);
+
+                if(preg_match('/^image\//', $mime)){
+                    $mimeExt = preg_replace('/^.*\/([a-z0-9]{1,10})$/', '$1', strtolower($mime));
+                    $_FILES['file']['name']=preg_replace("/.[^.]+$/i", '.'.$mimeExt, $_FILES['file']['name']);
+                }
+
                 static::checkAndCreateThumb($tmpFileName, $_FILES['file']['name'], $Config);
                 return ['fname' => preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName)];
             }
@@ -435,27 +442,39 @@ class File extends Field
                     throw new criticalErrorException($this->translate('The data format is not correct for the File field.'));
                 }
 
-                $file['ext'] = preg_replace('/^.*\.([a-z0-9]{1,10})$/', '$1', strtolower($file['name']));
 
-                if (empty($file['ext'])) {
-                    throw new criticalErrorException($this->translate('The file must have an extension.'));
-                }
-                if (in_array(
-                    $file['ext'],
-                    ['php', 'phtml']
-                )) {
-                    throw new criticalErrorException($this->translate('Restricted to add executable files to the server.'));
-                }
-
-                if ($file['ext'] === 'jpeg') {
-                    $file['ext'] = 'jpg';
-                }
 
 
                 if (!empty($file['tmpfile'])) {
                     if (!is_file($ftmpname = $this->table->getTotum()->getConfig()->getTmpDir() . $file['tmpfile'])) {
                         die('{"error":"Временный файл не найден"}');
                     }
+
+                    $file['mime'] = trim(`file -b --mime-type {$ftmpname}`);
+
+                    $file['ext'] = preg_replace('/^.*\.([a-z0-9]{1,10})$/', '$1', strtolower($file['name']));
+
+                    if(preg_match('/^image\//', $file['mime'])){
+                        $mimeExt = preg_replace('/^.*\/([a-z0-9]{1,10})$/', '$1', strtolower($file['mime']));
+                        $file['ext'] = $mimeExt;
+                        $file['name']=preg_replace("/.[^.]+$/i", '.'.$mimeExt, $file['name']);
+                    }
+
+
+                    if (empty($file['ext'])) {
+                        throw new criticalErrorException($this->translate('The file must have an extension.'));
+                    }
+                    if (in_array(
+                        $file['ext'],
+                        ['php', 'phtml']
+                    )) {
+                        throw new criticalErrorException($this->translate('Restricted to add executable files to the server.'));
+                    }
+
+                    if ($file['ext'] === 'jpeg') {
+                        $file['ext'] = 'jpg';
+                    }
+
                     $fname = $funcGetFname($file['ext']);
 
                     static::$transactionCommits[$fname] = $ftmpname;
@@ -482,6 +501,7 @@ class File extends Field
 
                     $fl['size'] = filesize($ftmpname);
                     $fl['ext'] = $file['ext'];
+                    $fl['mime'] = $file['mime'];
                     $fl['file'] = $folder ? preg_replace('~.*?/(' . preg_quote($folder, '~') . '[^/]+$)~',
                         '$1',
                         $fname) : preg_replace('/^.*\/([^\/]+)$/', '$1', $fname);
@@ -534,6 +554,8 @@ class File extends Field
 
                     $fl['size'] = $file['size'];
                     $fl['ext'] = $file['ext'];
+                    $fl['mime'] = $file['mime'] ?? null;
+
                     if(!empty($file['rnd'])){
                         $fl['rnd'] = $file['rnd'];
                     }
@@ -576,7 +598,7 @@ class File extends Field
         );
     }
 
-    public static function getContent($fname, Conf $Config): bool|string|null
+    public static function getContent($fname, Conf $Config, $withMime = false): bool|string|null|array
     {
         $filepath = static::getFilePath($fname, $Config);
         if (key_exists($filepath, static::$transactionCommits)) {
@@ -585,6 +607,12 @@ class File extends Field
         if (!is_file($filepath)) {
             return null;
         }
-        return file_get_contents($filepath);
+        $content = file_get_contents($filepath);
+
+        if($content !== false && $withMime){
+            $mime = trim(`file -b --mime-type {$filepath}`);
+            return [$content, $mime];
+        }
+        return $content;
     }
 }
