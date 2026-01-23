@@ -97,6 +97,28 @@ class Calculate
         return preg_match('/^([a-z0-9]*=\s*)\s*(?<catch>[a-zA-Z0-9_]*)\s*:(.*)$/m', $code);
     }
 
+    protected function funcProCookie($params)
+    {
+        $params = $this->getParamsArray($params, [], []);
+        $this->__checkNotEmptyParams($params, ['name']);
+        $this->__checkNotArrayParams($params, ['name']);
+
+        $name = 'ttm__' . $params['name'];
+        $value = !is_string($params['value'] ?? '') ? json_encode($params['value'], JSON_UNESCAPED_UNICODE) : ($params['value'] ?? '');
+
+        if (key_exists($name, $_COOKIE)) {
+            if ($_COOKIE[$name] !== $value) {
+                setcookie($name, $value, ['path' => '/']);
+            }
+        } elseif (key_exists('value', $params)) {
+            setcookie($name, $value, ['path' => '/']);
+        } elseif (key_exists('default', $params)) {
+            $default = !is_string($params['default'] ?? '') ?json_encode($params['default'], JSON_UNESCAPED_UNICODE): ($params['default'] ?? '');
+            setcookie($name, $default, ['path' => '/']);
+        }
+
+    }
+
     public function setStartSections($sections)
     {
         $this->startSections = [];
