@@ -107,7 +107,14 @@ class Calculate
         $value = !is_string($params['value'] ?? '') ? json_encode($params['value'], JSON_UNESCAPED_UNICODE) : ($params['value'] ?? '');
 
         if (key_exists($name, $_COOKIE)) {
-            if ($_COOKIE[$name] !== $value) {
+            if(!key_exists('value', $params) && !key_exists('default', $params)){
+                $data = json_decode($_COOKIE[$name]);
+                if (json_last_error() === JSON_ERROR_NONE){
+                    return $data;
+                }
+                return $_COOKIE[$name];
+            }
+            if (key_exists('value', $params) && $_COOKIE[$name] !== $value) {
                 setcookie($name, $value, ['path' => '/']);
             }
         } elseif (key_exists('value', $params)) {
