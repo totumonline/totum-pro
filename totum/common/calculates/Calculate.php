@@ -106,21 +106,20 @@ class Calculate
         $name = 'ttm__' . $params['name'];
         $value = !is_string($params['value'] ?? '') ? json_encode($params['value'], JSON_UNESCAPED_UNICODE) : ($params['value'] ?? '');
 
-        if (key_exists($name, $_COOKIE)) {
-            if(!key_exists('value', $params) && !key_exists('default', $params)){
+
+        if (!key_exists('value', $params) && !key_exists('default', $params)) {
+            if (key_exists($name, $_COOKIE)) {
                 $data = json_decode($_COOKIE[$name]);
-                if (json_last_error() === JSON_ERROR_NONE){
+                if (json_last_error() === JSON_ERROR_NONE) {
                     return $data;
                 }
                 return $_COOKIE[$name];
             }
-            if (key_exists('value', $params) && $_COOKIE[$name] !== $value) {
-                setcookie($name, $value, ['path' => '/']);
-            }
+            return '';
         } elseif (key_exists('value', $params)) {
             setcookie($name, $value, ['path' => '/']);
         } elseif (key_exists('default', $params)) {
-            $default = !is_string($params['default'] ?? '') ?json_encode($params['default'], JSON_UNESCAPED_UNICODE): ($params['default'] ?? '');
+            $default = !is_string($params['default'] ?? '') ? json_encode($params['default'], JSON_UNESCAPED_UNICODE) : ($params['default'] ?? '');
             setcookie($name, $default, ['path' => '/']);
         }
 
