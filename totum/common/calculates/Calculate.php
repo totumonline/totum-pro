@@ -102,6 +102,12 @@ class Calculate
         $params = $this->getParamsArray($params, [], []);
         $this->__checkNotEmptyParams($params, ['name']);
         $this->__checkNotArrayParams($params, ['name']);
+        $options = ['path'=>'/'];
+        if (!empty($params['options'])){
+            if (is_array($params['options'])){
+                $options = array_intersect_key($params['options'], array_flip(['expires', 'path', 'domain', 'secure', 'httponly','samesite']));
+            }
+        }
 
         $name = 'ttm__' . $params['name'];
         $value = !is_string($params['value'] ?? '') ? json_encode($params['value'], JSON_UNESCAPED_UNICODE) : ($params['value'] ?? '');
@@ -117,10 +123,10 @@ class Calculate
             }
             return '';
         } elseif (key_exists('value', $params)) {
-            setcookie($name, $value, ['path' => '/']);
+            setcookie($name, $value, $options);
         } elseif (key_exists('default', $params)) {
             $default = !is_string($params['default'] ?? '') ? json_encode($params['default'], JSON_UNESCAPED_UNICODE) : ($params['default'] ?? '');
-            setcookie($name, $default, ['path' => '/']);
+            setcookie($name, $default, $options);
         }
 
     }
