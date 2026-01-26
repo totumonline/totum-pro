@@ -99,6 +99,9 @@ class Calculate
 
     protected function funcProCookie($params)
     {
+        if (!function_exists('setcookie')){
+            return '';
+        }
         $params = $this->getParamsArray($params, [], []);
         $this->__checkNotEmptyParams($params, ['name']);
         $this->__checkNotArrayParams($params, ['name']);
@@ -122,7 +125,10 @@ class Calculate
                 return $_COOKIE[$name];
             }
             return '';
-        } elseif (key_exists('value', $params)) {
+        } elseif(headers_sent()){
+            return 'headers_sent';
+        }
+        elseif (key_exists('value', $params)) {
             setcookie($name, $value, $options);
         } elseif (key_exists('default', $params)) {
             $default = !is_string($params['default'] ?? '') ? json_encode($params['default'], JSON_UNESCAPED_UNICODE) : ($params['default'] ?? '');
