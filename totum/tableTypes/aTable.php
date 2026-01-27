@@ -2012,6 +2012,52 @@ CODE;;
      */
     public function orderParamsForLoadRows($asStr = false)
     {
+
+
+        if (($this->fields['fl_pro_sort'] ?? false) && $this->fields['fl_pro_sort']['category'] === 'filter' && $this->fields['fl_pro_sort']['type'] === 'listRow' && $this->tbl['params']['fl_pro_sort']['v'] ?? false) {
+            $customSorterStr = '';
+            $customSorter = [];
+            if (is_array($sortedVal = $this->tbl['params']['fl_pro_sort']['v'])) {
+                $withIds = false;
+                foreach ($sortedVal as $_sort) {
+                    if (is_array($_sort)) {
+                        if (key_exists('field', $_sort)) {
+                            if (key_exists($_sort['field'], $this->fields) && $this->fields[$_sort['field']]['category'] === 'column') {
+                                if ($customSorterStr) {
+                                    $customSorterStr .= ',';
+                                }
+                                $direction = ($_sort['direction'] ?? 'asc') == 'desc' ? 'desc' : 'asc';
+                                if ($_sort['field'] === 'id') {
+                                    $withIds = true;
+                                    $field = "id";
+                                    $customSorter[] = ['field' => 'id', 'ad' => $direction];
+                                } else {
+                                    $sortType = ($_sort['type'] ?? ($this->fields[$_sort['field']]['type'] === 'number' ? 'num' : 'str')) == 'num' ? 'number' : '';
+                                    $field = "{$_sort['field']}->>'v'";
+                                    $field = "($field)" . ($sortType ? ':NUMBER' : '');
+
+                                    $customSorter[] = ['field' => $_sort['field'], 'ad' => $direction, 'type' => $sortType === 'number' ? 'number' : 'string'];
+                                }
+                                $customSorterStr .= $field . ($direction === 'desc' ? ' desc NULLS LAST' : ' asc NULLS FIRST');
+                            }
+                        }
+                    }
+                }
+                if ($customSorterStr) {
+                    if (!$withIds) {
+                        $customSorterStr .= ', id asc';
+                    } else {
+                        $customSorter[] = ['field' => 'id', 'ad' => 'asc'];
+                    }
+                    if ($asStr) {
+                        return $customSorterStr;
+                    }
+                    return $customSorter;
+                }
+            }
+        }
+
+
         $sortFieldName = 'id';
         if ($this->tableRow['order_field'] === 'n') {
             $sortFieldName = 'n';
@@ -2587,7 +2633,11 @@ CODE;;
                 $params[] = ['field' => 'is_del', 'operator' => '=', 'value' => true];
             }
 
+
+
             if (!is_null($onPage)) {
+
+
                 $orderFN = $this->getOrderFieldName();
 
                 if (is_subclass_of($this, JsonTables::class) ||

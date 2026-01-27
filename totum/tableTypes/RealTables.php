@@ -307,7 +307,11 @@ abstract class RealTables extends aTable
                 if (in_array($field, Model::serviceFields)) {
                     $order .= $field . ' ' . $AscDesc;
                 } else {
-                    $orderType = ($fields[$field]['type'] === 'number' ? 'NUMERIC' : 'TEXT');
+                    if(!empty($of['type'])){
+                        $orderType = ($of['type'] === 'number' ? 'NUMERIC' : 'TEXT');
+                    }else{
+                        $orderType = ($fields[$field]['type'] === 'number' ? 'NUMERIC' : 'TEXT');
+                    }
                     $order .= "($field->>'v')::$orderType $AscDesc";
                 }
             }
