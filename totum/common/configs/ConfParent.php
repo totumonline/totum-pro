@@ -181,8 +181,9 @@ abstract class ConfParent
         if (!empty($GLOBALS[static::$GlobProfilerVarName]) && is_a($GLOBALS[static::$GlobProfilerVarName] ?? false, Profiler::class)) {
             $GLOBALS[static::$GlobProfilerVarName]->increaseRestarts();
         }
-
-        return new static($this->env);
+        $Conf = new static($this->env);
+        $Conf->setInterfaceData($this->getInterfaceData());
+        return $Conf;
     }
 
     public function cronErrorActions($cronRow, $User, $exception)
@@ -1301,6 +1302,11 @@ SQL
     public function getInterfaceData(): array|null
     {
         return $this->interfaceData;
+    }
+
+    public function setInterfaceData(?array $interfaceData): void
+    {
+        $this->interfaceData = $interfaceData;
     }
 
 }
