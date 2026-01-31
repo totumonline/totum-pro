@@ -249,8 +249,17 @@ class AuthController extends interfaceController
         $this->Config->setSessionCookieParams();
         session_start();
         if (!empty($_SESSION['userId'])) {
-            $this->location();
-            die;
+            if($this->Config->isInterfacesSwitchedOn()){
+                $User = Auth::getUserById($this->Config, $_SESSION['userId']);
+                if($User->login !== 'webuser'){
+                    $this->location();
+                    die;
+                }
+
+            }else{
+                $this->location();
+                die;
+            }
         }
         $Totum = new Totum($this->Config);
 

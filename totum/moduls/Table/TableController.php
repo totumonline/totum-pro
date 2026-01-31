@@ -62,6 +62,8 @@ class TableController extends interfaceController
      */
     protected ?string $tabButton;
 
+    protected array|null $interface;
+
     public function __construct(Conf $Config, $totumPrefix = '')
     {
         $this->Config = $Config;
@@ -1189,6 +1191,13 @@ class TableController extends interfaceController
             }
         } else {
             $this->User = Auth::webInterfaceSessionStart($this->Config);
+
+            if($this->interface = $this->Config->getInterfaceData()){
+                if(!$this->User && $this->interface['interface']['webuser']){
+                    $this->User = Auth::loadAuthUserByLogin($this->Config, 'webuser', false);
+                }
+                static::$pageTemplate=$this->Config->getBaseDir().'interfaces/'.$this->interface['interface']['name'].'/'.$this->interface['template'];
+            }
         }
         if (!$this->User) {
             $this->__UnauthorizedAnswer($request);

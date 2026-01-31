@@ -16,6 +16,7 @@ use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Lang\LangInterface;
 use totum\common\logs\Log;
+use totum\common\Model;
 use totum\common\Services\Services;
 use totum\common\Services\ServicesVarsInterface;
 use totum\common\sql\Sql;
@@ -23,6 +24,7 @@ use totum\common\sql\SqlException;
 use totum\common\Totum;
 use totum\common\User;
 use totum\fieldTypes\File;
+use totum\tableTypes\RealTables;
 
 abstract class ConfParent
 {
@@ -106,6 +108,8 @@ abstract class ConfParent
      */
     protected mixed $langLangsJsonTranslates;
     protected $checkSSLservices = true;
+    protected $interfacesSwitchedOn = false;
+    protected array|null $interfaceData = null;
 
     public function __construct($env = self::ENV_LEVELS['production'])
     {
@@ -492,6 +496,53 @@ abstract class ConfParent
             $split[0] = '';
             $split[1] = $uri;
         }
+
+        if($this->interfacesSwitchedOn){
+            if(!$split[0]){
+                $interface = $this->getSql()->get('select * from ttm__interfaces where is_del = false AND status->>\'v\' = \'true\' and main->>\'v\' = \'true\'');
+                if($interface){
+                    $interface=Model::getClearValuesWithExtract($interface);
+                    foreach ($interface['paths'] as $path){
+                        if($path['path_regexp']==='/'){
+                            $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], ];
+                            return ['Table', $split[1] ?? ''];
+                        }
+                    }
+                }
+            }else{
+                $interfaces = $this->getSql()->getAll('select * from ttm__interfaces where is_del = false AND status->>\'v\' = \'true\'');
+                foreach ($interfaces as $interface){
+                    $interface=Model::getClearValuesWithExtract($interface);
+                    if(!$interface['main']){
+                        if($split[0]!==$interface['name']){
+                            continue;
+                        }
+                        $pathToCheck = $split[1];
+                    }else{
+                        $pathToCheck = $uri;
+                    }
+
+                    $pathToCheck ='/'.$pathToCheck;
+
+                    foreach ($interface['paths'] as $path) {
+                        if (!$path['regexp']) {
+                            if ($pathToCheck === $path['path_regexp']) {
+                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name']];
+                                return ['Table', $uri, ];
+                            }
+                        } else {
+                            if (preg_match('~'.$path['path_regexp'].'~', $pathToCheck)) {
+                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name']];
+                                return ['Table', '', ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
         if ($split[0] === $this->getAnonymModul()) {
             $split[0] = 'An';
         } elseif ($split[0] === 'An') {
@@ -1240,6 +1291,16 @@ SQL
         } catch (\Exception $e) {
             throw new \ErrorException($mail->ErrorInfo);
         }
+
+
+    }
+    public function isInterfacesSwitchedOn():bool
+    {
+        return $this->interfacesSwitchedOn;
+    }
+    public function getInterfaceData(): array|null
+    {
+        return $this->interfaceData;
     }
 
 }
