@@ -2034,7 +2034,7 @@ CODE;;
                                 } else {
                                     $sortType = ($_sort['type'] ?? ($this->fields[$_sort['field']]['type'] === 'number' ? 'num' : 'str')) == 'num' ? 'number' : '';
                                     $field = "{$_sort['field']}->>'v'";
-                                    $field = "($field)" . ($sortType ? ':NUMBER' : '');
+                                    $field = "($field)" . ($sortType ? '::DECIMAL' : '');
 
                                     $customSorter[] = ['field' => $_sort['field'], 'ad' => $direction, 'type' => $sortType === 'number' ? 'number' : 'string'];
                                 }
