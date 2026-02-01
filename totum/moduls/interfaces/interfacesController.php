@@ -1,6 +1,6 @@
 <?php
 
-namespace totum\config\totum\moduls\interfaces;
+namespace totum\moduls\interfaces;
 
 use Psr\Http\Message\ServerRequestInterface;
 use totum\common\controllers\interfaceController;
@@ -21,7 +21,7 @@ use totum\common\Totum;
 use totum\config\Conf;
 use totum\models\UserV;
 
-class InterfacesController extends interfaceController
+class interfacesController extends interfaceController
 {
     use WithAuthTrait;
 
@@ -49,19 +49,21 @@ class InterfacesController extends interfaceController
         if (!$this->User) {
             $this->__UnauthorizedAnswer($request);
         }
+
     }
 
     public function doIt(ServerRequestInterface $request, bool $output)
     {
-        $this->Totum = new Totum($this->Config, $this->User);
-        $this->Totum->transactionStart();
+
         try {
             try {
-
+                $this->__run('', $request);
+                $this->Totum = new Totum($this->Config, $this->User);
+                $this->Totum->transactionStart();
                 $this->outputHtmlTemplate();
                 $this->Totum->transactionCommit();
             } catch (tableSaveOrDeadLockException $exception) {
-                $this->Totum->transactionRollback();
+                $this->Totum?->transactionRollback();
                 if (++$this->totumTries < 5) {
                     $this->Config = $this->Config->getClearConf();
                     $this->answerVars = [];
@@ -71,13 +73,14 @@ class InterfacesController extends interfaceController
                 }
             }
         } catch (\Exception $e) {
-
+            $this->Totum?->transactionRollback();
             $message = $e->getMessage();
             if ($this->User && $this->User->isCreator() && method_exists($e, 'getPathMess') && $e->getPathMess()) {
                 $message .= '<br/>' . $e->getPathMess();
             }
             $this->__addAnswerVar('error', $message);
 
+            var_dump($message);
             static::$pageTemplate = $this->Config->getBaseDir() .
                 'interfaces/' . $this->interface['interface']['name'] . '/error';
 

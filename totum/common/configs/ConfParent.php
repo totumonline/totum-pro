@@ -506,7 +506,7 @@ abstract class ConfParent
                     foreach ($interface['paths'] as $path){
                         if($path['path_regexp']==='/'){
                             $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], ];
-                            return ['Table', $split[1] ?? ''];
+                            return ['interfaces', $split[1] ?? ''];
                         }
                     }
                 }
@@ -529,12 +529,12 @@ abstract class ConfParent
                         if (!$path['regexp']) {
                             if ($pathToCheck === $path['path_regexp']) {
                                 $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name']];
-                                return ['Table', $uri, ];
+                                return ['interfaces', $uri, ];
                             }
                         } else {
                             if (preg_match('~'.$path['path_regexp'].'~', $pathToCheck)) {
                                 $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name']];
-                                return ['Table', '', ];
+                                return ['interfaces', '', ];
                             }
                         }
                     }
@@ -1295,7 +1295,7 @@ SQL
 
 
     }
-    public function isInterfacesSwitchedOn():bool
+    public function isinterfacesSwitchedOn():bool
     {
         return $this->interfacesSwitchedOn;
     }
