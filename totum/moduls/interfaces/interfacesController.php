@@ -3,6 +3,7 @@
 namespace totum\moduls\interfaces;
 
 use Psr\Http\Message\ServerRequestInterface;
+use totum\common\calculates\CalculateAction;
 use totum\common\controllers\interfaceController;
 use totum\common\controllers\WithAuthTrait;
 use totum\common\criticalErrorException;
@@ -20,6 +21,7 @@ use totum\common\tableSaveOrDeadLockException;
 use totum\common\Totum;
 use totum\config\Conf;
 use totum\models\UserV;
+
 
 class interfacesController extends interfaceController
 {
@@ -87,5 +89,137 @@ class interfacesController extends interfaceController
             $this->outputHtmlTemplate();
             $this->Totum->transactionRollback();
         }
+    }
+    public function getSearchResults($post)
+    {
+
+
+        $Table = $this->Totum->getTable('ttm__search_settings');
+
+
+        $facetFilters = [];
+
+        $settings = $Table->getByParams(['field' => ['table_id', 'buttons']], 'rows');
+        $tables_buttons = [];
+        $tables = [];
+        $column_delete = function (&$list) {
+            unset($list['code']);
+        };
+        array_walk($settings,
+            function ($row) use (&$tables_buttons, &$tables, $column_delete) {
+                $tables_buttons[$row['table_id']] = $row['buttons'] && array_walk($row['buttons'],
+                    $column_delete) ? $row['buttons'] : [];
+                $tables[] = $row['table_id'];
+            });
+
+        $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
+        if ($tables_cleared != $tables) {
+            foreach ($tables_cleared as $table) {
+                $facetFilters[] = 'table = ' . $table;
+            }
+            if (empty($facetFilters)) {
+                return ['hits' => []];
+            }
+        }
+
+        if (!empty($post['cats'])) {
+            $catsFilters = [];
+            foreach ($post['cats'] as $name) {
+                $catsFilters[] = 'catalog = ' . $name;
+            }
+            if ($facetFilters) {
+                $facetFilters = [$facetFilters, $catsFilters];
+            } else {
+                $facetFilters = [$catsFilters];
+            }
+        } elseif ($facetFilters) {
+            $facetFilters = [$facetFilters];
+        }
+
+        $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
+        $posts = [
+            "q" => $post['q'] ?? '',
+            "attributesToHighlight" => ["index", "title"],
+            "highlightPreTag" => "-highlightPreTag-",
+            "highlightPostTag" => "-highlightPostTag-",
+        ];
+        if ($facetFilters) {
+            $posts["filter"] = $facetFilters;
+        }
+
+
+        $tables = [];
+        $getTable = function ($tableId) use (&$tables) {
+            if (!key_exists($tableId, $tables)) {
+                $tables[$tableId] = $this->Totum->getTable($tableId);
+                $tables[$tableId]->reCalculateFilters('web');
+                $params = $tables[$tableId]->filtersParamsForLoadRows('web', [], [], true);
+                if (empty($params)) {
+                    $tables[$tableId] = false;
+                }
+            }
+            return $tables[$tableId];
+        };
+
+
+        $i = -1;
+        $limit = $Table->getTbl()['params']['h_search_limit']['v'];
+        if (empty($limit)) {
+            $limit = 20;
+        }
+        $offset = 0;
+        $hits = [];
+        do {
+            $i++;
+            $removed = false;
+            $posts['offset'] = $offset;
+            $posts['limit'] = $limit - count($hits);
+            $resIn = $Calc->execAction('KOD',
+                $Table->getTbl()['params'],
+                $Table->getTbl()['params'],
+                $Table->getTbl(),
+                $Table->getTbl(),
+                $Table,
+                'exec',
+                [
+                    'posts' => json_encode(
+                        $posts,
+                        JSON_UNESCAPED_UNICODE)
+                ]);
+
+            $res = json_decode($resIn, true);
+
+            if (($res['code'] ?? false)) {
+                throw new errorException($res['message']);
+            }
+
+            foreach ($res['hits'] as $k => $_h) {
+                $offset++;
+                list($tableId, $rowId) = explode('-', $_h['pk']);
+                if ($_Table = $getTable($tableId)) {
+                    try {
+                        $_Table->checkIsUserCanViewIds('web', [$rowId], isCritical: false);
+                    } catch (\Exception $exception) {
+                        $removed = true;
+                        continue;
+                    }
+                }
+
+                foreach ($_h['_formatted'] as &$match) {
+                    $match = htmlspecialchars($match);
+                    $match = str_replace('-highlightPreTag-', '<span class="marker">', $match);
+                    $match = str_replace('-highlightPostTag-', '</span>', $match);
+                }
+                unset($match);
+
+                if (key_exists($tableId, $tables_buttons)) {
+                    $_h['buttons'] = $tables_buttons[$tableId];
+                }
+                $hits[] = $_h;
+            }
+            unset($_h);
+        } while ($removed);
+
+        return ['hits' => array_values($hits)];
     }
 }
