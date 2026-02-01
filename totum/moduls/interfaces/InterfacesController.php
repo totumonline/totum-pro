@@ -54,11 +54,14 @@ class InterfacesController extends interfaceController
     public function doIt(ServerRequestInterface $request, bool $output)
     {
         $this->Totum = new Totum($this->Config, $this->User);
-
+        $this->Totum->transactionStart();
         try {
             try {
+
                 $this->outputHtmlTemplate();
+                $this->Totum->transactionCommit();
             } catch (tableSaveOrDeadLockException $exception) {
+                $this->Totum->transactionRollback();
                 if (++$this->totumTries < 5) {
                     $this->Config = $this->Config->getClearConf();
                     $this->answerVars = [];
@@ -79,6 +82,7 @@ class InterfacesController extends interfaceController
                 'interfaces/' . $this->interface['interface']['name'] . '/error';
 
             $this->outputHtmlTemplate();
+            $this->Totum->transactionRollback();
         }
     }
 }
