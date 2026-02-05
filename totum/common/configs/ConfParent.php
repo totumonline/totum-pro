@@ -492,11 +492,7 @@ abstract class ConfParent
      */
     public function getActivationData($uri)
     {
-        $split = explode('/', substr($uri, 1), 2);
-        if (!preg_match('/^[a-z0-9_]+$/i', $split[0])) {
-            $split[0] = '';
-            $split[1] = $uri;
-        }
+        $split = explode('/', substr(explode('?', $uri)[0], 1), 2);
 
         if($this->interfacesSwitchedOn){
             if(!$split[0]){
@@ -562,8 +558,6 @@ abstract class ConfParent
                 }
             }
         }
-
-
 
         if ($split[0] === $this->getAnonymModul()) {
             $split[0] = 'An';
