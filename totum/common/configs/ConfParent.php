@@ -505,7 +505,7 @@ abstract class ConfParent
                     $interface=Model::getClearValuesWithExtract($interface);
                     foreach ($interface['paths'] as $path){
                         if($path['path_regexp']==='/'){
-                            $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], ];
+                            $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
                             return ['interfaces', $split[1] ?? ''];
                         }
                     }
@@ -519,25 +519,37 @@ abstract class ConfParent
                             continue;
                         }
                         $pathToCheck = $split[1];
+                        $pathToCheck = '/' . $pathToCheck;
                     }else{
                         $pathToCheck = $uri;
                     }
+                    $paths = $interface['paths'];
+                    foreach ($paths as $i => $path) {
+                        $_pathToCheck = $pathToCheck;
 
-                    $pathToCheck ='/'.$pathToCheck;
 
-                    foreach ($interface['paths'] as $path) {
                         if (!$path['regexp']) {
-                            if ($pathToCheck === $path['path_regexp']) {
-                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name']];
-                                return ['interfaces', $uri, ];
+                            if ($path['section'] && preg_match("`^/{$path['section']}`", $pathToCheck)) {
+                                $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
+                                if ($_pathToCheck === $path['path_regexp']) {
+                                    $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                                    return ['interfaces', $uri,];
+                                }
                             }
-                        } else {
-                            if (preg_match('~'.$path['path_regexp'].'~', $pathToCheck)) {
-                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name']];
-                                return ['interfaces', '', ];
+                            unset($paths[$i]);
+                        }
+                    }
+                    foreach ($paths as $i => $path) {
+                        $_pathToCheck = $pathToCheck;
+                        if ($path['section'] && preg_match("`^/{$path['section']}`", $pathToCheck)) {
+                            $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
+                            if (preg_match('~' . $path['path_regexp'] . '~', $_pathToCheck)) {
+                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                                return ['interfaces', '',];
                             }
                         }
                     }
+
                 }
             }
         }

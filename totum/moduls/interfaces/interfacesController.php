@@ -41,8 +41,13 @@ class interfacesController extends interfaceController
         $this->User = Auth::webInterfaceSessionStart($this->Config);
 
         if ($this->interface = $this->Config->getInterfaceData()) {
-            if (!$this->User && $this->interface['interface']['webuser']) {
-                $this->User = Auth::loadAuthUserByLogin($this->Config, 'webuser', false);
+            if (!$this->User) {
+                if ($this->interface['auth']){
+                    $this->location($this->interface['interface']['auth_path'] ?: '/');
+                }
+                if ($this->interface['interface']['webuser']){
+                    $this->User = Auth::loadAuthUserByLogin($this->Config, 'webuser', false);
+                }
             }
             static::$pageTemplate = $this->Config->getBaseDir() . 'interfaces/' . $this->interface['interface']['name'] . '/' . $this->interface['template'];
         }else{
