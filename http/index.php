@@ -41,6 +41,14 @@ if (empty($module)) {
     $lastPath = '';
 }
 $controllerClass = 'totum\\moduls\\' . $module . '\\' . $module . 'Controller';
+
+if(!class_exists($controllerClass) && $Config && $Config->isinterfacesSwitchedOn()){
+    list($interfaceModule) = $Config->getTemplate404();
+    if($interfaceModule){
+        $controllerClass = 'totum\\moduls\\' . $module . '\\' . $module . 'Controller';
+    }
+}
+
 if (class_exists($controllerClass)) {
     if ($Config && !empty($Config->getHiddenHosts()[$Config->getFullHostName()]) && empty($Config->getHiddenHosts()[$Config->getFullHostName()][$module])) {
         die($Config->getLangObj()->translate('The module is not available for this host.'));

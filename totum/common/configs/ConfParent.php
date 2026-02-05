@@ -576,6 +576,20 @@ abstract class ConfParent
         return [$split[0], $split[1] ?? ''];
     }
 
+    public function getTemplate404()
+    {
+        $interface = $this->getSql()->get('select * from ttm__interfaces where is_del = false AND status->>\'v\' = \'true\' and main->>\'v\' = \'true\'');
+        if($interface){
+            $interface=Model::getClearValuesWithExtract($interface);
+            foreach ($interface['paths'] as $path){
+                if($path['path_regexp']==='/'){
+                    $this->interfaceData = ['interface' => $interface, 'template' => $path['template_404'], 'auth' => $path['auth'] ?? false];
+                    return ['interfaces', $split[1] ?? ''];
+                }
+            }
+        }
+    }
+
 
     /********************* LOGGERS SECTION **************/
 
