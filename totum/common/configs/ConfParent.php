@@ -529,24 +529,33 @@ abstract class ConfParent
 
 
                         if (!$path['regexp']) {
-                            if ($path['section'] && preg_match("`^/{$path['section']}`", $pathToCheck)) {
-                                $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
-                                if ($_pathToCheck === $path['path_regexp']) {
-                                    $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
-                                    return ['interfaces', $uri,];
+                            if ($path['section']) {
+                                if (preg_match("`^/{$path['section']}`", $pathToCheck)) {
+                                    $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
+                                } else {
+                                    continue;
                                 }
                             }
+                            if ($_pathToCheck === $path['path_regexp']) {
+                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                                return ['interfaces', $uri,];
+                            }
+
                             unset($paths[$i]);
                         }
                     }
                     foreach ($paths as $i => $path) {
                         $_pathToCheck = $pathToCheck;
-                        if ($path['section'] && preg_match("`^/{$path['section']}`", $pathToCheck)) {
-                            $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
-                            if (preg_match('~' . $path['path_regexp'] . '~', $_pathToCheck)) {
-                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
-                                return ['interfaces', '',];
+                        if ($path['section']) {
+                            if (preg_match("`^/{$path['section']}`", $pathToCheck)) {
+                                $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
+                            } else {
+                                continue;
                             }
+                        }
+                        if (preg_match('~' . $path['path_regexp'] . '~', $_pathToCheck)) {
+                            $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                            return ['interfaces', '',];
                         }
                     }
 
