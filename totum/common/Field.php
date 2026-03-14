@@ -207,6 +207,11 @@ class Field
         );
     }
 
+    public static function getSomeField($model, $fieldData, $table)
+    {
+        return new $model($fieldData, $table);
+    }
+
     public function getValueFromCsv($val)
     {
         return $val;
@@ -237,7 +242,12 @@ class Field
                 $tbl,
                 $this->table,
                 Vars: $vars)) {
+
                 $valArray['f'] = $format;
+                if(key_exists('v_', $format['fieldParams']??[])){
+                    $valArray['v_']=$format['fieldParams']['v_'];
+                    unset($format['v_']);
+                }
             }
             $this->table->calcLog($Log, 'result', $format);
         }

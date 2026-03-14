@@ -987,11 +987,29 @@ class ReadTableActions extends Actions
             $field['type'],
             ['select', 'tree']
         )) {
-            throw new errorException($this->translate('Field not of type select/tree'));
+            if($field['type'] === 'listRow' && !empty($field['format'])){
+                $Format = new CalculateFormat($field['format']);
+                            $formatArray = $Format->getFormat(
+                                $field['name'],
+                                $row,
+                                $this->Table->getTbl(),
+                                $this->Table
+                            );
+                if (key_exists('fieldParams', $formatArray) && key_exists('type', $formatArray['fieldParams'])
+                    && $formatArray['fieldParams']['type'] === 'select') {
+                    $formatArray['fieldParams']['name'] = $field['name'];
+                    $formatArray['fieldParams']['category'] = $field['category'];
+                    $Field = Field::getSomeField(Select::class, $formatArray['fieldParams'], $this->Table);
+                }
+            }
+
+            if (empty($Field)){
+                throw new errorException($this->translate('Field not of type select/tree'));
+            }
         }
 
         /** @var Select $Field */
-        $Field = Field::init($field, $Table);
+        $Field = $Field ?? Field::init($field, $Table);
 
         $list = $Field->calculateSelectList($row[$field['name']], $row, $Table->getTbl());
 
