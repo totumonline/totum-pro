@@ -68,6 +68,7 @@ trait MultiTrait
 
         $Conf= new static($this->env, false);
         $Conf->setHostSchema($this->hostName, $this->schemaName);
+        $Conf->setInterfaceData($this->getInterfaceData());
         return $Conf;
     }
 

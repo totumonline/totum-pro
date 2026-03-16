@@ -62,6 +62,8 @@ class TableController extends interfaceController
      */
     protected ?string $tabButton;
 
+    protected array|null $interface;
+
     public function __construct(Conf $Config, $totumPrefix = '')
     {
         $this->Config = $Config;

@@ -97,6 +97,46 @@ class Calculate
         return preg_match('/^([a-z0-9]*=\s*)\s*(?<catch>[a-zA-Z0-9_]*)\s*:(.*)$/m', $code);
     }
 
+    protected function funcProCookie($params)
+    {
+        if (!function_exists('setcookie')){
+            return '';
+        }
+        $params = $this->getParamsArray($params, [], []);
+        $this->__checkNotEmptyParams($params, ['name']);
+        $this->__checkNotArrayParams($params, ['name']);
+        $options = ['path'=>'/'];
+        if (!empty($params['options'])){
+            if (is_array($params['options'])){
+                $options = array_intersect_key($params['options'], array_flip(['expires', 'path', 'domain', 'secure', 'httponly','samesite']));
+            }
+        }
+
+        $name = 'ttm__' . $params['name'];
+        $value = !is_string($params['value'] ?? '') ? json_encode($params['value'], JSON_UNESCAPED_UNICODE) : ($params['value'] ?? '');
+
+
+        if (!key_exists('value', $params) && !key_exists('default', $params)) {
+            if (key_exists($name, $_COOKIE)) {
+                $data = json_decode($_COOKIE[$name]);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return $data;
+                }
+                return $_COOKIE[$name];
+            }
+            return '';
+        } elseif(headers_sent()){
+            return 'headers_sent';
+        }
+        elseif (key_exists('value', $params)) {
+            setcookie($name, $value, $options);
+        } elseif (key_exists('default', $params)) {
+            $default = !is_string($params['default'] ?? '') ? json_encode($params['default'], JSON_UNESCAPED_UNICODE) : ($params['default'] ?? '');
+            setcookie($name, $default, $options);
+        }
+
+    }
+
     public function setStartSections($sections)
     {
         $this->startSections = [];

@@ -16,6 +16,7 @@ use totum\common\criticalErrorException;
 use totum\common\errorException;
 use totum\common\Lang\LangInterface;
 use totum\common\logs\Log;
+use totum\common\Model;
 use totum\common\Services\Services;
 use totum\common\Services\ServicesVarsInterface;
 use totum\common\sql\Sql;
@@ -23,6 +24,7 @@ use totum\common\sql\SqlException;
 use totum\common\Totum;
 use totum\common\User;
 use totum\fieldTypes\File;
+use totum\tableTypes\RealTables;
 
 abstract class ConfParent
 {
@@ -106,6 +108,8 @@ abstract class ConfParent
      */
     protected mixed $langLangsJsonTranslates;
     protected $checkSSLservices = true;
+    protected $interfacesSwitchedOn = false;
+    protected array|null $interfaceData = null;
 
     public function __construct($env = self::ENV_LEVELS['production'])
     {
@@ -177,8 +181,9 @@ abstract class ConfParent
         if (!empty($GLOBALS[static::$GlobProfilerVarName]) && is_a($GLOBALS[static::$GlobProfilerVarName] ?? false, Profiler::class)) {
             $GLOBALS[static::$GlobProfilerVarName]->increaseRestarts();
         }
-
-        return new static($this->env);
+        $Conf = new static($this->env);
+        $Conf->setInterfaceData($this->getInterfaceData());
+        return $Conf;
     }
 
     public function cronErrorActions($cronRow, $User, $exception)
@@ -487,18 +492,102 @@ abstract class ConfParent
      */
     public function getActivationData($uri)
     {
-        $split = explode('/', substr($uri, 1), 2);
-        if (!preg_match('/^[a-z0-9_]+$/i', $split[0])) {
-            $split[0] = '';
-            $split[1] = $uri;
+        $split = explode('/', substr(explode('?', $uri)[0], 1), 2);
+
+        if($this->interfacesSwitchedOn){
+            if(!$split[0]){
+                $interface = $this->getSql()->get('select * from ttm__interfaces where is_del = false AND status->>\'v\' = \'true\' and main->>\'v\' = \'true\'');
+                if($interface){
+                    $interface=Model::getClearValuesWithExtract($interface);
+                    foreach ($interface['paths'] as $path){
+                        if($path['path_regexp']==='/'){
+                            $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                            return ['interfaces', $split[1] ?? ''];
+                        }
+                    }
+                }
+            }else{
+                $interfaces = $this->getSql()->getAll('select * from ttm__interfaces where is_del = false AND status->>\'v\' = \'true\'');
+                foreach ($interfaces as $interface){
+                    $interface=Model::getClearValuesWithExtract($interface);
+                    if(!$interface['main']){
+                        if($split[0]!==$interface['name']){
+                            continue;
+                        }
+                        $pathToCheck = $split[1];
+                        $pathToCheck = '/' . $pathToCheck;
+                    }else{
+                        $pathToCheck = $uri;
+                    }
+                    $paths = $interface['paths'];
+                    foreach ($paths as $i => $path) {
+                        $_pathToCheck = $pathToCheck;
+
+
+                        if (!$path['regexp']) {
+                            if ($path['section']) {
+                                if (preg_match("`^/{$path['section']}`", $pathToCheck)) {
+                                    $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
+                                } else {
+                                    continue;
+                                }
+                            }
+                            if ($_pathToCheck === $path['path_regexp']) {
+                                $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                                return ['interfaces', $uri,];
+                            }
+
+                            unset($paths[$i]);
+                        }
+                    }
+                    foreach ($paths as $i => $path) {
+                        $_pathToCheck = $pathToCheck;
+                        if ($path['section']) {
+                            if (preg_match("`^/{$path['section']}`", $pathToCheck)) {
+                                $_pathToCheck = preg_replace("`^/{$path['section']}`", '', $pathToCheck);
+                            } else {
+                                continue;
+                            }
+                        }
+                        if (preg_match('~' . $path['path_regexp'] . '~', $_pathToCheck)) {
+                            $this->interfaceData = ['interface' => $interface, 'template' => $path['template_name'], 'auth' => $path['auth'] ?? false];
+                            return ['interfaces', '',];
+                        }
+                    }
+
+                }
+            }
         }
+
         if ($split[0] === $this->getAnonymModul()) {
             $split[0] = 'An';
         } elseif ($split[0] === 'An') {
             die($this->translate('Error accessing the anonymous tables module.'));
         }
 
+        if(empty($split[0]) && !str_starts_with($split[1]??'', '/totum')){
+            header('location: /totum');
+            die;
+        }
+        elseif(str_starts_with($uri, '/totum')){
+            $split[0] = 'Table';
+        }
+
         return [$split[0], $split[1] ?? ''];
+    }
+
+    public function getTemplate404()
+    {
+        $interface = $this->getSql()->get('select * from ttm__interfaces where is_del = false AND status->>\'v\' = \'true\' and main->>\'v\' = \'true\'');
+        if($interface){
+            $interface=Model::getClearValuesWithExtract($interface);
+            foreach ($interface['paths'] as $path){
+                if($path['path_regexp']==='/'){
+                    $this->interfaceData = ['interface' => $interface, 'template' => $path['template_404'], 'auth' => $path['auth'] ?? false];
+                    return ['interfaces', $split[1] ?? ''];
+                }
+            }
+        }
     }
 
 
@@ -1240,6 +1329,21 @@ SQL
         } catch (\Exception $e) {
             throw new \ErrorException($mail->ErrorInfo);
         }
+
+
+    }
+    public function isinterfacesSwitchedOn():bool
+    {
+        return $this->interfacesSwitchedOn;
+    }
+    public function getInterfaceData(): array|null
+    {
+        return $this->interfaceData;
+    }
+
+    public function setInterfaceData(?array $interfaceData): void
+    {
+        $this->interfaceData = $interfaceData;
     }
 
 }

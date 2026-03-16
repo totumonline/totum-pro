@@ -249,8 +249,17 @@ class AuthController extends interfaceController
         $this->Config->setSessionCookieParams();
         session_start();
         if (!empty($_SESSION['userId'])) {
-            $this->location();
-            die;
+            if($this->Config->isInterfacesSwitchedOn()){
+                $User = Auth::getUserById($this->Config, $_SESSION['userId']);
+                if($User->login !== 'webuser'){
+                    $this->location();
+                    die;
+                }
+
+            }else{
+                $this->location();
+                die;
+            }
         }
         $Totum = new Totum($this->Config);
 
@@ -327,7 +336,7 @@ class AuthController extends interfaceController
                                 `cd {$baseDir} && bin/totum check-service-notifications {$schema} > /dev/null 2>&1 &`;
                             }
 
-                            $this->location($_GET['from'] && $_GET['from'] !== '/' ? $_GET['from'] : Auth::getUserById($this->Config,
+                        $this->location($_GET['from'] && $_GET['from'] !== '/'  && $_GET['from'] !== '/totum'? $_GET['from'] : Auth::getUserById($this->Config,
                                 $userRow['id'])->getUserStartPath(),
                                 !key_exists('from', $_GET));
                         }

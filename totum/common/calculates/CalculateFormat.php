@@ -10,10 +10,12 @@ namespace totum\common\calculates;
 
 use totum\common\controllers\Controller;
 use totum\common\errorException;
+use totum\common\Field;
 use totum\common\Lang\RU;
 use totum\common\sql\SqlException;
 use totum\moduls\Forms\FormsController;
 use totum\tableTypes\aTable;
+use totum\fieldTypes\Select;
 
 class CalculateFormat extends Calculate
 {
@@ -81,6 +83,33 @@ class CalculateFormat extends Calculate
         }
     }
 
+    protected function funcSetFieldParams($params)
+    {
+        if ($params = $this->getParamsArray($params, ['condition'], ['condition', 'params'])) {
+            if ($this->getConditionsResult($params)) {
+                if (key_exists('params', $params) && is_array($fieldParams = $this->execSubCode($params['params'],
+                        'params'))) {
+                    if (($fieldParams['type'] ?? '') === 'select') {
+                        if (!empty($fieldParams['codeSelect']) || !empty($fieldParams['values'])) {
+                            $fieldData = $this->Table->getFields()[$this->varName];
+                            $fullFieldParams = [...$fieldParams, 'name' => $fieldData['name'], 'category' => $fieldData['category']];
+
+                            $selectField = Field::getSomeField(Select::class, $fullFieldParams, $this->Table);
+                            $valArray = $this->row[$this->varName];
+
+                            $selectField->addViewValues('web', $valArray, $this->row, $this->tbl);
+                            unset($fieldParams['codeSelect']);
+                            $fieldParams = [...$fieldParams, ...$valArray];
+                            unset($fieldParams['v']);
+                        }
+                    }
+                    unset($_params);
+                    $this->formatArray['fieldParams'] = $fieldParams;
+                }
+            }
+        }
+    }
+    
     protected function funcSetRowsOrder($params)
     {
         if ($params = $this->getParamsArray($params, ['condition'], ['condition', 'ids'])) {
