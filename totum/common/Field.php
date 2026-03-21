@@ -207,8 +207,9 @@ class Field
         );
     }
 
-    public static function getSomeField($model, $fieldData, $table)
+    public static function getSomeField($model, $fieldData, aTable $table)
     {
+        $Totum = $table->getTotum();
         return new $model($fieldData, $table);
     }
 
