@@ -131,6 +131,11 @@ class Actions
         return $this->User->isCreator();
     }
 
+    public function getNavTreeBranch()
+    {
+        return ['data'=>'test'];
+    }
+
     #[ArrayShape(['default' => "bool", 'userLinks' => "array"])]
     public function getUserHelpLinks()
     {
