@@ -94,7 +94,7 @@ class CalculateFormat extends Calculate
                             $fieldData = $this->Table->getFields()[$this->varName];
                             $fullFieldParams = [...$fieldParams, 'name' => $fieldData['name'], 'category' => $fieldData['category']];
 
-                            $selectField = Field::getSomeField(Select::class, $fullFieldParams, $this->Table);
+                            $selectField = $this->Table->getTotum()->getSomeField(Select::class, $fullFieldParams, $this->Table);
                             $valArray = $this->row[$this->varName];
 
                             $selectField->addViewValues('web', $valArray, $this->row, $this->tbl);

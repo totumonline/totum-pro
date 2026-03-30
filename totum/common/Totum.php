@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '7.20.66.2-13.1';
+    public const VERSION = '7.20.66.3-13.1';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -59,7 +59,9 @@ class Totum
     private $User;
     private $tablesInstances = [];
     protected $fieldsCache = [];
+    protected $someFieldCache = [];
     protected $changedTables = [];
+
     protected $totumLogger;
     protected $cacheCycles = [];
     /**
@@ -82,6 +84,7 @@ class Totum
     protected array $orderFieldCodeErrors = [];
     protected array $creatorWarnings = [];
     protected mixed $tablesUpdated;
+
 
 
     /**
@@ -554,6 +557,7 @@ class Totum
     {
         $this->tablesInstances = [];
         $this->fieldsCache = [];
+        $this->someFieldCache = [];
         $this->getConfig()->clearRowsCache();
     }
 
@@ -625,5 +629,13 @@ class Totum
         foreach ($this->onEnd as $f) {
             $f();
         }
+    }
+
+    public function getSomeField($model, $fieldData, aTable $table)
+    {
+        $cashString = implode('/',
+            [$table->getTableRow()['name'], $table->getTableRow()['__version']??'', json_encode($fieldData, JSON_UNESCAPED_UNICODE)]);
+       return $this->someFieldCache[$cashString] = $this->someFieldCache[$cashString]
+           ?? Field::getSomeField($model, $fieldData,  $table);
     }
 }

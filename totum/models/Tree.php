@@ -53,7 +53,7 @@ class Tree extends Model
         return $r;
     }
 
-    public function getBranchesByTables($branchId = null, array $tables = null, array $roles = null)
+    public function getBranchesByTables($branchId = null, array $tables = null, array $roles = null, $onlyBranch = false)
     {
         if (empty($roles)){
             return [];
@@ -87,6 +87,8 @@ SQL;
     ) 
 SQL;
 
+     // !!!  $onlyBranch
+
         $r = $this->Sql->getAll($q = 'WITH RECURSIVE r AS (
     SELECT parent_id, id, title, ord, top, default_table, type, icon, link
     FROM tree__v
@@ -117,4 +119,5 @@ SQL;
     )
     select * FROM r where top!=0 AND (parent_id is null ' . ($branchId ? ' OR top=' . $branchId : '') . ') order by ord');
     }
+
 }

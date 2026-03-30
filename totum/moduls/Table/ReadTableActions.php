@@ -999,7 +999,7 @@ class ReadTableActions extends Actions
                     && $formatArray['fieldParams']['type'] === 'select') {
                     $formatArray['fieldParams']['name'] = $field['name'];
                     $formatArray['fieldParams']['category'] = $field['category'];
-                    $Field = Field::getSomeField(Select::class, $formatArray['fieldParams'], $this->Table);
+                    $Field = $this->Table->getTotum()->getSomeField(Select::class, $formatArray['fieldParams'], $this->Table);
                 }
             }
 
