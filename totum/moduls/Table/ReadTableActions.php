@@ -989,12 +989,13 @@ class ReadTableActions extends Actions
         )) {
             if($field['type'] === 'listRow' && !empty($field['format'])){
                 $Format = new CalculateFormat($field['format']);
-                            $formatArray = $Format->getFormat(
-                                $field['name'],
-                                $row,
-                                $this->Table->getTbl(),
-                                $this->Table
-                            );
+                $formatArray = $Format->getFormat(
+                    $field['name'],
+                    $row,
+                    $this->Table->getTbl(),
+                    $this->Table,
+                    ['_fieldParamsType'=>'getCodes']
+                );
                 if (key_exists('fieldParams', $formatArray) && key_exists('type', $formatArray['fieldParams'])
                     && $formatArray['fieldParams']['type'] === 'select') {
                     $formatArray['fieldParams']['name'] = $field['name'];
