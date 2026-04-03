@@ -598,9 +598,9 @@ class File extends Field
         );
     }
 
-    public static function getContent($fname, Conf $Config, $withMime = false): bool|string|null|array
+    public static function getContent($fname, Conf $Config, $withMime = false, bool|null $isSecure = false): bool|string|null|array
     {
-        $filepath = static::getFilePath($fname, $Config);
+        $filepath = static::getFilePath($fname, $Config, fileData: $isSecure ? true : null);
         if (key_exists($filepath, static::$transactionCommits)) {
             $filepath = static::$transactionCommits[$filepath];
         }

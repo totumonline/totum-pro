@@ -235,7 +235,12 @@ trait FuncOperationsTrait
         }
         $this->__checkNotArrayParams($params, ['file']);
 
-        return File::getContent($params['file'], $this->Table->getTotum()->getConfig());
+        $isSecure = null;
+        if (!empty($params['secure']) && ($params['secure'] === 'true' || $params['secure']===true)){
+            $isSecure= true;
+        }
+
+        return File::getContent($params['file'], $this->Table->getTotum()->getConfig(), isSecure: $isSecure);
     }
 
     protected function funcGetFromScript(string $params): bool|string|null|array
