@@ -97,8 +97,10 @@ class CalculateFormat extends Calculate
                             $selectField = $this->Table->getTotum()->getSomeField(Select::class, $fullFieldParams, $this->Table);
                             $valArray = $this->row[$this->varName];
 
-                            $selectField->addViewValues('web', $valArray, $this->row, $this->tbl);
-                            unset($fieldParams['codeSelect']);
+                            if(empty($this->vars['_fieldParamsType']) || $this->vars['_fieldParamsType'] !== 'getCodes'){
+                                $selectField->addViewValues('web', $valArray, $this->row, $this->tbl);
+                                unset($fieldParams['codeSelect']);
+                            }
                             $fieldParams = [...$fieldParams, ...$valArray];
                             unset($fieldParams['v']);
                         }
