@@ -2616,6 +2616,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
     protected function getTreeTopLevel($load, $open)
     {
 
+        if (method_exists($this->Table, 'withoutNotLoaded')) {
+            $this->Table->withoutNotLoaded();
+        }
 
         $result = $this->getResultTree(
             function ($k, $v) use ($load, $open) {
@@ -2753,7 +2756,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                             }
 
                             $tree = [];
-                            if ($Tree->getData('treeViewType') !== 'self' && !is_null($t = $Tree->getData('withEmptyVal'))) {
+                            if (/*$Tree->getData('treeViewType') !== 'self' &&*/ !is_null($t = $Tree->getData('withEmptyVal'))) {
                                 $tree[] = ['v' => null, 't' => $t];
                             }
                             foreach ($list as $k => $v) {
