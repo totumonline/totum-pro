@@ -140,7 +140,7 @@ class Tree extends Field
         $arrayVal = ['v' => $val];
         $list = $this->calculateSelectList($arrayVal, $row, $tbl);
 
-        $calcLevel = function ($v, $level = 0) use (&$calcLevel) {
+        $calcLevel = function ($v, $level = 1) use (&$calcLevel) {
             return key_exists('path', $v) ? $calcLevel($v['path'], $level + 1) : $level;
         };
 
@@ -465,6 +465,14 @@ class Tree extends Field
             }
         }
         unset($v);
+
+        $sortTemplate = array_flip(array_keys($list));
+        $sortArray = [];
+        foreach ($objMain as $id=>$_){
+            $sortArray[$id] = $sortTemplate[$id];
+        }
+        $sortArray = array_values($sortArray);
+        array_multisort( $sortArray, $objMain);
 
         $r = ['list' => array_values($objMain)];
         if (key_exists('selectTable', $this->data) &&
