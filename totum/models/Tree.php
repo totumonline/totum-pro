@@ -103,8 +103,13 @@ SQL;
         return $r;
     }
 
-    public function getBranchesForCreator($branchId = null)
+    public function getBranchesForCreator($branchId = null, $onlyBranch = false)
     {
+
+        $parent = '(parent_id is null ' . ($branchId ? ' OR top=' . $branchId : '') . ')';
+        if($branchId && $onlyBranch){
+            $parent = '(top=' . $branchId.')';
+        }
         return $this->Sql->getAll('WITH RECURSIVE r AS (
     SELECT parent_id, id, title, ord, top,default_table, type, icon,link
     FROM tree__v
@@ -117,7 +122,7 @@ SQL;
     FROM tree__v JOIN r ON tree__v.id = r.parent_id 
     
     )
-    select * FROM r where top!=0 AND (parent_id is null ' . ($branchId ? ' OR top=' . $branchId : '') . ') order by ord');
+    select * FROM r where top!=0 AND '.$parent.' order by ord');
     }
 
 }

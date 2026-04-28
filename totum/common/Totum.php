@@ -638,4 +638,84 @@ class Totum
        return $this->someFieldCache[$cashString] = $this->someFieldCache[$cashString]
            ?? Field::getSomeField($model, $fieldData,  $table);
     }
+
+    public function getTreeForBranch($branchId, $branchesArray, $modulePath)
+    {
+        $anchors = [];
+        $tree = [];
+        $branchIds = [];
+
+        foreach ($branchesArray as $t) {
+
+            if ($t['type'] === 'anchor') {
+                $anchors[$t['parent_id']][$t['default_table']][] = count($tree);
+            }
+
+            $tree[] =
+                ($t['type'] === 'link' ? ['link' => $t['link']] : []) + [
+                    'id' => 'tree' . $t['id']
+                    , 'text' => $t['title']
+                    , 'type' => $t['type'] ? ($t['type'] === 'anchor' ? "link" : $t['type']) : 'folder'
+                    , 'link' => $t['type'] == 'anchor' ? ($modulePath . $t['id'] . '/') : null
+                    , 'parent' => ($parent = (!$t['parent_id'] ? '#' : 'tree' . $t['parent_id']))
+                    , 'ord' => $t['ord']
+                    , 'state' => [
+                        'selected' =>  false
+                    ]
+                ]
+                + (
+                $t['icon'] ? ['icon' => 'fa fa-' . $t['icon']] : []
+                );
+            if ($t['type'] !== "link") {
+                $branchIds[] = $t['id'];
+            }
+        }
+        if ($branchIds) {
+            foreach (Table::init($this->Config)->getAll(
+                ['tree_node_id' => ($branchIds), 'id' => array_keys($this->User->getTreeTables())],
+                'id, title, type, tree_node_id, sort, icon, name',
+                '(sort->>\'v\')::numeric'
+            ) as $t) {
+                if ($t['type'] === 'calcs') {
+                    continue;
+                }
+                $tree[] = [
+                    'id' => 'table' . $t['id']
+                    , 'href' => '/Table/'.$branchId.'/'.$t['id']
+                    , 'text' => $t['title']
+                    , 'type' => 'table_' . $t['type']
+                    , 'name' => $t['name']
+                    , 'icon' => ($t['icon'] ?? null)
+                    , 'parent' => 'tree' . $t['tree_node_id']
+                    , 'ord' => (int)$t['sort']
+                    , 'state' => [
+                        'selected' => false
+                    ]
+                ];
+
+                if (!empty($anchors[$t['tree_node_id']][$t['id']])) {
+                    foreach ($anchors[$t['tree_node_id']][$t['id']] as $index) {
+                        $tree[$index]['parent'] = 'table' . $t['id'];
+                    }
+                }
+            }
+        };
+
+        foreach ($tree as $i=>$item){
+            if($item['parent']==='#'){
+                unset($tree[$i]);
+            }else{
+                if($item['parent'] === 'tree'.$branchId){
+                    $tree[$i]['parent'] = '#';
+                }
+            }
+        }
+        /*sort through folders and tables*/
+        {
+            $ords = array_column($tree, 'ord');
+            array_multisort($ords, $tree);
+        }
+
+        return array_values($tree);
+    }
 }
