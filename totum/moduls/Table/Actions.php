@@ -133,7 +133,19 @@ class Actions
 
     public function getNavTreeBranch()
     {
-        return ['data'=>'test'];
+        $branchesArray=[];
+        if(!empty($this->post['id']) && ($branchId = (int)$this->post['id'])){
+            if ($this->User->isCreator()) {
+                $branchesArray = Tree::init($this->Totum->getConfig())->getBranchesForCreator($branchId, true);
+            } else {
+                $branchesArray = Tree::init($this->Totum->getConfig())->getBranchesByTables(
+                    $branchId,
+                    array_keys($this->User->getTreeTables()),
+                    $this->User->getRoles()
+                );
+            }
+        }
+        return ['data'=>$this->Totum->getTreeForBranch($branchId, $branchesArray, $this->modulePath)];
     }
 
     #[ArrayShape(['default' => "bool", 'userLinks' => "array"])]

@@ -73,7 +73,6 @@ class ReadTableActions extends Actions
     }
 
 
-
     protected function __getKanbanHtml()
     {
         if (!$this->kanban_bases) {
@@ -843,7 +842,7 @@ class ReadTableActions extends Actions
                                 } else {
                                     return 'child';
                                 }
-                            }else{
+                            } else {
                                 return 'closed';
                             }
                         },
@@ -877,7 +876,7 @@ class ReadTableActions extends Actions
                         if ($this->Table->getTableRow()['with_order_field']) {
                             $result['chdata']['nsorted_ids'] = array_column($result['chdata']['rows'], 'id');
                         }
-                       // break; !Do NOT DELETE
+                    // break; !Do NOT DELETE
                     default:
                         if ($this->isPagingView()) {
                             $params = $this->Table->filtersParamsForLoadRows('web');
@@ -987,14 +986,14 @@ class ReadTableActions extends Actions
             $field['type'],
             ['select', 'tree']
         )) {
-            if($field['type'] === 'listRow' && !empty($field['format'])){
+            if ($field['type'] === 'listRow' && !empty($field['format'])) {
                 $Format = new CalculateFormat($field['format']);
                 $formatArray = $Format->getFormat(
                     $field['name'],
                     $row,
                     $this->Table->getTbl(),
                     $this->Table,
-                    ['_fieldParamsType'=>'getCodes']
+                    ['_fieldParamsType' => 'getCodes']
                 );
                 if (key_exists('fieldParams', $formatArray) && key_exists('type', $formatArray['fieldParams'])
                     && $formatArray['fieldParams']['type'] === 'select') {
@@ -1004,7 +1003,7 @@ class ReadTableActions extends Actions
                 }
             }
 
-            if (empty($Field)){
+            if (empty($Field)) {
                 throw new errorException($this->translate('Field not of type select/tree'));
             }
         }
@@ -2781,7 +2780,6 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                     }
                     break;
                 case 'counts':
-
                     if ($tree) {
                         $this->Table->reCalculateFilters('web');
                         $params = $this->Table->filtersParamsForLoadRows('web');
@@ -2828,6 +2826,48 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                                     $addBranch($_['v']);
                                 }
                             }
+
+                            foreach ($tree as $k => $v) {
+                                /*Без удаленных*/
+                                if (!key_exists($v['v'], $treeBranches)) {
+                                    unset($tree[$k]);
+                                }
+                            }
+                            $tree = array_values($tree);
+                        }
+                    }
+                    break;
+
+                default:
+                    if ($tree) {
+                        $this->Table->reCalculateFilters('web');
+
+                        /*TreeBranchesFilter*/
+                        $TreeBranchesFilter = false;
+                        foreach ($this->Table->getSortedFields()['filter'] ?? [] as $fName => $field) {
+                            if (!empty($field['showInWeb']) && !empty($field['column'])
+                                && !empty($this->Table->getTbl()['params'][$field['name']]['v'])
+                                && $this->Table->getTbl()['params'][$field['name']]['v'] !== '*ALL*'
+                                && $this->Table->getTbl()['params'][$field['name']]['v'] !== ['*ALL*']
+                            ) {
+                                $TreeBranchesFilter = true;
+                                break 1;
+                            }
+                        }
+
+                        if ($TreeBranchesFilter) {
+
+                            $treeBranches = [];
+
+                            $treeOld = $tree;
+                            $addBranch = function ($treeId) use (&$addBranch, $list, &$treeBranches) {
+                                if (!key_exists($treeId, $treeBranches)) {
+                                    $treeBranches[$treeId] = true;
+                                    if (!empty($list[$treeId][3])) {
+                                        $addBranch($list[$treeId][3]);
+                                    }
+                                }
+                            };
 
                             foreach ($tree as $k => $v) {
                                 /*Без удаленных*/
@@ -2940,7 +2980,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         }
 
         foreach ($data as &$v) {
-            $v = json_decode($v??'', true);
+            $v = json_decode($v ?? '', true);
         }
         if (is_array($data['tables'])) {
             if (in_array('*ALL*', $data['tables'])) {

@@ -21,7 +21,7 @@ $searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['
                     <li class="<?= $branch['active'] ?? false ? 'active' : '' ?>">
                         <a href="<?= $branch['href'] ?>">
                             <?= $branch['title'] ?>
-                        <button class="btn btn-default btn-xxs" tabindex="-1" data-original-title="" title=""><i class="fa fa-caret-down"></i></button>
+                        <button class="btn btn-default btn-xxs crt" tabindex="-1" data-original-title="" title=""><i class="fa fa-caret-down"></i></button>
                         </a></li>
                     <?php
                 }
