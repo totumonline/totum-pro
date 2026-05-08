@@ -87,7 +87,10 @@ SQL;
     ) 
 SQL;
 
-     // !!!  $onlyBranch
+        $parent = '(parent_id is null ' . ($branchId ? ' OR top=' . $branchId : '') . ')';
+        if($branchId && $onlyBranch){
+            $parent = '(top=' . $branchId.')';
+        }
 
         $r = $this->Sql->getAll($q = 'WITH RECURSIVE r AS (
     SELECT parent_id, id, title, ord, top, default_table, type, icon, link
@@ -99,7 +102,7 @@ SQL;
     SELECT tree__v.parent_id, tree__v.id, tree__v.title, tree__v.ord, tree__v.top, tree__v.default_table, tree__v.type, tree__v.icon, tree__v.link
     FROM tree__v JOIN r ON tree__v.id = r.parent_id
     )
-    select * FROM r where top!=0 AND (parent_id is null ' . ($branchId ? ' OR top=' . $branchId : '') . ') order by ord');
+    select * FROM r where top!=0 AND '.$parent.' order by ord');
         return $r;
     }
 

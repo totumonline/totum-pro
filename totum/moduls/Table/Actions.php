@@ -141,7 +141,8 @@ class Actions
                 $branchesArray = Tree::init($this->Totum->getConfig())->getBranchesByTables(
                     $branchId,
                     array_keys($this->User->getTreeTables()),
-                    $this->User->getRoles()
+                    $this->User->getRoles(),
+                    true
                 );
             }
         }
