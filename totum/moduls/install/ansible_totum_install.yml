@@ -7,15 +7,6 @@
 
   # Ubuntu version, local and timezone
 
-  - name: Check if the distribution is Ubuntu and version is 24.04
-    fail:
-      msg: "This playbook only supports Ubuntu 24.04."
-    when: ansible_distribution != 'Ubuntu' or ansible_distribution_version != '24.04'
-
-  - name: Continue with tasks if the distribution and version are correct
-    debug:
-      msg: "The distribution is Ubuntu 24.04. Proceeding with tasks."
-
   - name: Ensure locales package is installed
     apt:
       name: locales
@@ -46,25 +37,72 @@
         - wget
         - certbot
         - ufw
+        - gnupg
+        - tzdata
+        - openssl
+        - imagemagick
       state: latest
 
-  - name: Add PHP repository
-    apt_repository:
-      repo: ppa:ondrej/php
-      state: present
+  # Add ondrej/php
+
+  - name: Ensure /usr/share/keyrings directory exists
+    file:
+      path: /usr/share/keyrings
+      state: directory
+      owner: root
+      group: root
+      mode: '0755'
+
+  - name: Check if ondrej_php gpg key exists
+    stat:
+      path: /usr/share/keyrings/ondrej-php.gpg
+    register: ondrej_php
+
+  - name: Download GPG key if not exists
+    get_url:
+      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc
+      dest: /root/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc
+      owner: root
+      group: root
+      mode: '0644'
+    when: not ondrej_php.stat.exists
+
+  - name: Import ondrej GPG key to /usr/share/keyrings
+    command: >
+      bash -c "cat /root/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc |
+      gpg --dearmor > /usr/share/keyrings/ondrej-php.gpg"
+    when: not ondrej_php.stat.exists
+
+  - name: Add ondrej/php repository to sources list
+    lineinfile:
+      path: /etc/apt/sources.list.d/ondrej-php.list
+      line: "deb [signed-by=/usr/share/keyrings/ondrej-php.gpg] http://ppa.launchpad.net/ondrej/php/ubuntu noble main"
+      create: yes
+      owner: root
+      group: root
+      mode: '0644'
+
+  # Add PostgreSQL
+
+  - name: Check if postgresql gpg key exists
+    stat:
+      path: /usr/share/keyrings/postgresql-archive-keyring.gpg
+    register: postgresql_gpg
+
+  - name: Download PostgreSQL GPG key and convert to .gpg format
+    command: >
+      bash -c "curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc |
+      gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg"
+    when: not postgresql_gpg.stat.exists
 
   - name: Add PostgreSQL repository to sources list
     lineinfile:
       path: /etc/apt/sources.list.d/pgdg.list
-      line: "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt noble-pgdg main"
+      line: "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt noble-pgdg main"
       create: yes
-
-  - name: Add the MeiliSearch repository to the sources list
-    lineinfile:
-      path: /etc/apt/sources.list.d/fury.list
-      line: 'deb [trusted=yes] https://apt.fury.io/meilisearch/ /'
-      create: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
+      owner: root
+      group: root
+      mode: '0644'
 
   - name: Apt update
     apt:
@@ -323,13 +361,6 @@
       group: root
     when: not totum_fpm_conf.stat.exists
 
-  - name: Replace timezone in totum.conf
-    replace:
-      path: /etc/php/8.3/fpm/pool.d/totum.conf
-      regexp: 'Europe/London'
-      replace: "{{ lookup('env', 'TOTUMTIMEZONE') }}"
-    when: not totum_fpm_conf.stat.exists
-
   - name: Create sessions_totum directory
     file:
       path: /var/lib/php/sessions_totum
@@ -427,7 +458,7 @@
 
   - name: apt install postgresql
     apt:
-      name: postgresql-17
+      name: postgresql-18
       state: present
 
   - name: apt install python3-psycopg2
@@ -525,6 +556,47 @@
       path: /home/totum/totum-mit/CLI.totum.php.ini
       regexp: 'Europe/London'
       replace: "{{ lookup('env', 'TOTUMTIMEZONE') }}"
+
+  - name: Check if FPM.totum.php.ini file exists
+    stat:
+      path: /home/totum/totum-mit/FPM.totum.php.ini
+    register: fpm_totum_php_ini
+
+  - name: Create FPM.totum.php.ini file
+    copy:
+      dest: /home/totum/totum-mit/FPM.totum.php.ini
+      content: |
+        memory_limit = 512M
+        upload_max_filesize = 10M
+        post_max_size = 0
+        opcache.enable = 1
+        opcache.memory_consumption = 256M
+        date.timezone = Europe/London
+        session.gc_maxlifetime = 3600
+        session.save_path = /var/lib/php/sessions_totum
+        display_errors = stderr
+        log_errors = On
+      owner: totum
+      group: totum
+      mode: '0664'
+    when: not fpm_totum_php_ini.stat.exists
+
+  - name: Replace timezone in FPM.totum.php.ini
+    replace:
+      path: /home/totum/totum-mit/FPM.totum.php.ini
+      regexp: 'Europe/London'
+      replace: "{{ lookup('env', 'TOTUMTIMEZONE') }}"
+
+  - name: Create symlink for Totum PHP-FPM INI configuration
+    file:
+      src: /home/totum/totum-mit/FPM.totum.php.ini
+      dest: /etc/php/8.3/fpm/conf.d/90-FPM.totum.php.ini
+      state: link
+
+  - name: Restart PHP FPM service
+    service:
+      name: php8.3-fpm
+      state: restarted
 
   - name: Check if Conf.php file exists
     stat:
@@ -677,6 +749,14 @@
 
   # Add Crons
 
+  - name: Initialize empty crontab for root if missing
+    shell: crontab -u root -l >/dev/null 2>&1 || echo '' | crontab -u root -
+    become: true
+
+  - name: Initialize empty crontab for totum if missing
+    shell: crontab -u totum -l >/dev/null 2>&1 || echo '' | crontab -u totum -
+    become: true
+
   - name: Generate a random minute for cron job
     set_fact:
       random_minute: "{{ 1 + (59 | random) }}"
@@ -773,63 +853,6 @@
       path: "{{ playbook_dir }}/totum_install_vars"
       line: "export TOTUMEXECSSH=true"
     when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro'
-
-  # Install Meilisearch
-
-  - name: apt install meilisearch-http
-    apt:
-      name: meilisearch-http
-      state: present
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Hold meilisearch-http package
-    command: apt-mark hold meilisearch-http
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Check if meili_masterkey file exists
-    stat:
-      path: /home/totum/meili_masterkey
-    register: meili_masterkey
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Generate a random masterkey
-    set_fact:
-      random_string: "{{ lookup('password', '/dev/null', length=24) }}"
-    when: meili_masterkey.stat is defined and not meili_masterkey.stat.exists and lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Write the masterkey to a file
-    copy:
-      content: "{{ random_string }}"
-      dest: /home/totum/meili_masterkey
-    become_user: totum
-    when: meili_masterkey.stat is defined and not meili_masterkey.stat.exists and lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Check if MeiliSearch is running
-    shell: ps aux | grep meilisearch | grep -v grep | wc -l
-    register: meilisearch_running
-    ignore_errors: true
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Display Meilisearch process count
-    debug:
-      msg: "{{ meilisearch_running.stdout }}"
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Start MeiliSearch if not running
-    shell: meilisearch --no-analytics --db-path ./meilifiles --env production --master-key $(cat meili_masterkey) &
-    become_user: totum
-    args:
-      chdir: /home/totum
-      executable: /bin/bash
-    when: meilisearch_running.stdout is defined and meilisearch_running.stdout | int == 0 and lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Add MeiliSearch start command to crontab for user totum
-    cron:
-      name: "Start MeiliSearch at reboot"
-      user: totum
-      special_time: reboot
-      job: "cd ~ && exec meilisearch --no-analytics --db-path ./meilifiles --env production --master-key $(cat meili_masterkey) > /dev/null 2>&1 &"
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   # Change IP to DOMAIN
 
