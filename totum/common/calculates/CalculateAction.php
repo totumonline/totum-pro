@@ -1426,6 +1426,39 @@ class CalculateAction extends Calculate
         }
     }
 
+    protected function funcProTrigramIndexAdd($params)
+    {
+        $params = $this->getParamsArray($params);
+        $tableRow = $this->__checkTableIdOrName($params['table'], 'table');
+
+        /** @var RealTables $table */
+        $table = $this->Table->getTotum()->getTable($tableRow);
+        if (!is_a(
+            $table,
+            RealTables::class
+        )) {
+            throw new errorException($this->translate('For simple and cycles tables only.'));
+        }
+
+         $table->trigramIndex(true);
+    }
+    protected function funcProTrigramIndexDelete($params)
+    {
+        $params = $this->getParamsArray($params);
+        $tableRow = $this->__checkTableIdOrName($params['table'], 'table');
+
+        /** @var RealTables $table */
+        $table = $this->Table->getTotum()->getTable($tableRow);
+        if (!is_a(
+            $table,
+            RealTables::class
+        )) {
+            throw new errorException($this->translate('For simple and cycles tables only.'));
+        }
+
+         $table->trigramIndex(false);
+    }
+
     protected function funcLinkToTable($params)
     {
         $params = $this->getParamsArray($params, ['field'], ['field']);

@@ -1080,6 +1080,15 @@ abstract class RealTables extends aTable
         $this->saveTable();
     }
 
+    public function trigramIndex(bool $isAdding)
+    {
+        if($isAdding){
+            $this->model->exec('CREATE INDEX trigram_' . $this->tableRow['name'] . '_ttm_idx ON "' . $this->tableRow['name'] . '" USING GIN (lower(ttm_search -> \'v\' ->> \'index\') gin_trgm_ops)');
+        }else{
+            $this->model->exec('DROP INDEX IF EXISTS trigram_' . $this->tableRow['name'] . '_ttm_idx ');
+        }
+    }
+
     protected function getNewTblForRecalc()
     {
         return [
