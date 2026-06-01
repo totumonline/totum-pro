@@ -465,12 +465,12 @@ class Actions
             $q = <<<SQL
 SELECT ttm_search -> 'v' ->> 'index' as index, ttm_search -> 'v' ->> 'title' as title , ttm_search -> 'v' ->> 'catalog' as catalog , id, 118 as table_id
 FROM totum.trigram_search_test
-WHERE lower(?) <% lower(ttm_search -> 'v' ->> 'index') $cats
-ORDER BY lower(?) <<-> lower(ttm_search -> 'v' ->> 'index')
+WHERE lower(?) OPERATOR(public.<%) lower(ttm_search -> 'v' ->> 'index') $cats
+ORDER BY lower(?) OPERATOR(public.<<->) lower(ttm_search -> 'v' ->> 'index')
 LIMIT 20 OFFSET ?
 SQL
                 ;
-            $prep = $Table->getTotum()->getConfig()->getSql(false, false)->getPrepared($q);
+            $prep = $Table->getTotum()->getConfig()->getSql(true)->getPrepared($q);
 
             $vars = [$this->post['q'] ?? '', ...$catsVar , $this->post['q'] ?? ''];
             $offset = 0;
