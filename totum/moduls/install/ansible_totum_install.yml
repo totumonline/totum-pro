@@ -59,7 +59,7 @@
   - name: Add PostgreSQL repository to sources list
     lineinfile:
       path: /etc/apt/sources.list.d/pgdg.list
-      line: "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt noble-pgdg main"
+      line: "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt resolute-pgdg main"
       create: yes
       owner: root
       group: root
@@ -113,7 +113,7 @@
 
   - name: Determine external IP if CERTBOTDOMAIN and TOTUMSERVIP are empty
     set_fact:
-      external_ip: "{{ ansible_default_ipv4.address }}"
+      external_ip: "{{ ansible_facts.default_ipv4.address }}"
     when: check_domain == "" and check_ip == ""
 
   - name: Show determined external IP and confirm
@@ -301,13 +301,11 @@
         - php8.5-fpm
         - php8.5-gd
         - php8.5-mbstring
-        - php8.5-opcache
         - php8.5-pgsql
         - php8.5-xml
         - php8.5-zip
         - php8.5-soap
         - php8.5-ldap
-        - php8.5-imap
       state: latest
 
   - name: Check if totum_fpm.conf file exists
@@ -560,52 +558,6 @@
       name: php8.5-fpm
       state: restarted
 
-  - name: Check if Conf.php file exists
-    stat:
-      path: /home/totum/totum-mit/Conf.php
-    register: conf_php
-
-  - name: Set install_url based on check_domain
-    set_fact:
-      install_url: "{{ lookup('env', 'CERTBOTDOMAIN') if check_domain != '' else ip_for_install }}"
-
-  - name: Show install_url variable
-    debug:
-      msg: "The install_url is: {{ install_url }}"
-
-  - name: Install totum via bin/totum install tool
-    shell: bin/totum install --pgdump=pg_dump --psql=psql -e -- {{ lookup('env', 'TOTUMLANG') }} totum {{ lookup('env', 'CERTBOTEMAIL') }} {{ install_url }} admin {{ lookup('env', 'TOTUMADMINPASS') }} totum localhost totum {{ lookup('env', 'TOTUMBASEPASS') }}
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-      executable: /bin/bash
-    when: not conf_php.stat.exists
-    register: totum_install_output
-
-  - name: Display totum install output
-    debug:
-      msg: "{{ totum_install_output.stdout }}"
-    when: not conf_php.stat.exists
-
-  - name: Check if Crypto.key file exists
-    stat:
-      path: /home/totum/totum-mit/Crypto.key
-    register: crypto_key
-
-  - name: Generate Crypto.key
-    shell: openssl rand -base64 64 > /home/totum/totum-mit/Crypto.key
-    become_user: totum
-    args:
-      executable: /bin/bash
-    when: not crypto_key.stat.exists
-
-  - name: Update secure setting in Conf.php if check_domain is not empty
-    replace:
-      path: /home/totum/totum-mit/Conf.php
-      regexp: "\\/\\*'secure' => true,\\*\\/"
-      replace: "'secure' => true,"
-    when: check_domain != ""
-
   # Add totum-gom service
 
   - name: Create symlink for Totum service configuration
@@ -661,6 +613,54 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom status'
       create: yes
       mode: '0440'
+
+  # AInstall Totum PRO
+
+  - name: Check if Conf.php file exists
+    stat:
+      path: /home/totum/totum-mit/Conf.php
+    register: conf_php
+
+  - name: Set install_url based on check_domain
+    set_fact:
+      install_url: "{{ lookup('env', 'CERTBOTDOMAIN') if check_domain != '' else ip_for_install }}"
+
+  - name: Show install_url variable
+    debug:
+      msg: "The install_url is: {{ install_url }}"
+
+  - name: Install totum via bin/totum install tool
+    shell: bin/totum install --pgdump=pg_dump --psql=psql -e -- {{ lookup('env', 'TOTUMLANG') }} totum {{ lookup('env', 'CERTBOTEMAIL') }} {{ install_url }} admin {{ lookup('env', 'TOTUMADMINPASS') }} totum localhost totum {{ lookup('env', 'TOTUMBASEPASS') }}
+    become_user: totum
+    args:
+      chdir: /home/totum/totum-mit
+      executable: /bin/bash
+    when: not conf_php.stat.exists
+    register: totum_install_output
+
+  - name: Display totum install output
+    debug:
+      msg: "{{ totum_install_output.stdout }}"
+    when: not conf_php.stat.exists
+
+  - name: Check if Crypto.key file exists
+    stat:
+      path: /home/totum/totum-mit/Crypto.key
+    register: crypto_key
+
+  - name: Generate Crypto.key
+    shell: openssl rand -base64 64 > /home/totum/totum-mit/Crypto.key
+    become_user: totum
+    args:
+      executable: /bin/bash
+    when: not crypto_key.stat.exists
+
+  - name: Update secure setting in Conf.php if check_domain is not empty
+    replace:
+      path: /home/totum/totum-mit/Conf.php
+      regexp: "\\/\\*'secure' => true,\\*\\/"
+      replace: "'secure' => true,"
+    when: check_domain != ""
 
   # Add Crons
 
