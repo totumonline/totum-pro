@@ -43,45 +43,6 @@
         - imagemagick
       state: latest
 
-  # Add ondrej/php
-
-  - name: Ensure /usr/share/keyrings directory exists
-    file:
-      path: /usr/share/keyrings
-      state: directory
-      owner: root
-      group: root
-      mode: '0755'
-
-  - name: Check if ondrej_php gpg key exists
-    stat:
-      path: /usr/share/keyrings/ondrej-php.gpg
-    register: ondrej_php
-
-  - name: Download GPG key if not exists
-    get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc
-      dest: /root/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc
-      owner: root
-      group: root
-      mode: '0644'
-    when: not ondrej_php.stat.exists
-
-  - name: Import ondrej GPG key to /usr/share/keyrings
-    command: >
-      bash -c "cat /root/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc |
-      gpg --dearmor > /usr/share/keyrings/ondrej-php.gpg"
-    when: not ondrej_php.stat.exists
-
-  - name: Add ondrej/php repository to sources list
-    lineinfile:
-      path: /etc/apt/sources.list.d/ondrej-php.list
-      line: "deb [signed-by=/usr/share/keyrings/ondrej-php.gpg] http://ppa.launchpad.net/ondrej/php/ubuntu noble main"
-      create: yes
-      owner: root
-      group: root
-      mode: '0644'
-
   # Add PostgreSQL
 
   - name: Check if postgresql gpg key exists
@@ -330,33 +291,34 @@
 
   # Install PHP and modules
 
-  - name: apt install PHP 8.3 and modules
+  - name: apt install PHP 8.5 and modules
     apt:
       name:
-        - php8.3
-        - php8.3-bcmath
-        - php8.3-cli
-        - php8.3-curl
-        - php8.3-fpm
-        - php8.3-gd
-        - php8.3-mbstring
-        - php8.3-opcache
-        - php8.3-pgsql
-        - php8.3-xml
-        - php8.3-zip
-        - php8.3-soap
-        - php8.3-ldap
+        - php8.5
+        - php8.5-bcmath
+        - php8.5-cli
+        - php8.5-curl
+        - php8.5-fpm
+        - php8.5-gd
+        - php8.5-mbstring
+        - php8.5-opcache
+        - php8.5-pgsql
+        - php8.5-xml
+        - php8.5-zip
+        - php8.5-soap
+        - php8.5-ldap
+        - php8.5-imap
       state: latest
 
   - name: Check if totum_fpm.conf file exists
     stat:
-      path: /etc/php/8.3/fpm/pool.d/totum.conf
+      path: /etc/php/8.5/fpm/pool.d/totum.conf
     register: totum_fpm_conf
 
   - name: Download totum_fpm.conf
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_pool.conf
-      dest: /etc/php/8.3/fpm/pool.d/totum.conf
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum_pool.conf
+      dest: /etc/php/8.5/fpm/pool.d/totum.conf
       owner: root
       group: root
     when: not totum_fpm_conf.stat.exists
@@ -371,12 +333,12 @@
 
   - name: Remove default www.conf
     file:
-      path: /etc/php/8.3/fpm/pool.d/www.conf
+      path: /etc/php/8.5/fpm/pool.d/www.conf
       state: absent
 
   - name: Restart PHP FPM service
     service:
-      name: php8.3-fpm
+      name: php8.5-fpm
       state: restarted
 
   # Install Nginx
@@ -420,7 +382,7 @@
 
   - name: Download totum.online.conf
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum.online.conf
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum.online.conf
       dest: /etc/nginx/sites-available/totum.online.conf
       owner: root
       group: root
@@ -428,7 +390,7 @@
 
   - name: Download totum.online.conf.ip
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum.online.conf.ip
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum.online.conf.ip
       dest: /etc/nginx/sites-available/totum.online.conf
       owner: root
       group: root
@@ -499,9 +461,9 @@
 
   - name: Clone Totum repository
     git:
-      repo: https://github.com/totumonline/totum-mit.git
+      repo: https://github.com/totumonline/totum-pro.git
       dest: /home/totum/totum-mit
-      version: master
+      version: pro
       update: yes
     become_user: totum
     when: not totum_mit.stat.exists
@@ -590,12 +552,12 @@
   - name: Create symlink for Totum PHP-FPM INI configuration
     file:
       src: /home/totum/totum-mit/FPM.totum.php.ini
-      dest: /etc/php/8.3/fpm/conf.d/90-FPM.totum.php.ini
+      dest: /etc/php/8.5/fpm/conf.d/90-FPM.totum.php.ini
       state: link
 
   - name: Restart PHP FPM service
     service:
-      name: php8.3-fpm
+      name: php8.5-fpm
       state: restarted
 
   - name: Check if Conf.php file exists
@@ -644,44 +606,6 @@
       replace: "'secure' => true,"
     when: check_domain != ""
 
-  # Switch to the PRO repository
-
-  - name: Set Git remote URL to PRO repository
-    shell: git remote set-url origin https://github.com/totumonline/totum-pro.git
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Check current Git branch
-    shell: git rev-parse --abbrev-ref HEAD
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    register: current_branch
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Fetch data from origin pro
-    shell: git fetch origin pro
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro' and current_branch.stdout != "pro"
-
-  - name: Checkout to new branch pro
-    shell: git checkout -b pro origin/pro -t
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro' and current_branch.stdout != "pro"
-
-  - name: Pull latest scripts
-    shell: git pull
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
   # Add totum-gom service
 
   - name: Create symlink for Totum service configuration
@@ -689,31 +613,26 @@
       src: /home/totum/totum-mit/totum-gom.service
       dest: /etc/systemd/system/totum-gom.service
       state: link
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Reload systemd manager configuration
     systemd:
       daemon_reload: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Enable totum-gom service
     systemd:
       name: totum-gom
       enabled: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Start totum-gom service
     systemd:
       name: totum-gom
       state: started
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Check totum-gom service status
     systemd:
       name: totum-gom
       state: started
       enabled: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom restart
     lineinfile:
@@ -721,7 +640,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom restart'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom start
     lineinfile:
@@ -729,7 +647,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom start'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom stop
     lineinfile:
@@ -737,7 +654,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom stop'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom status
     lineinfile:
@@ -745,7 +661,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom status'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   # Add Crons
 
@@ -833,26 +748,25 @@
   - name: Check TOTUMEXECSSH environment variable
     set_fact:
       exec_ssh: "{{ lookup('env', 'TOTUMEXECSSH') }}"
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Confirm activating execSSH
     pause:
       prompt: "If you want to activate execSSH type (A), if not (N)"
     register: check_exec_ssh
-    when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro'
+    when: exec_ssh is defined and exec_ssh == ""
 
   - name: Activating execSSH in Conf.php
     replace:
       path: /home/totum/totum-mit/Conf.php
       regexp: "'inner'"
       replace: "true"
-    when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro' and (check_exec_ssh.user_input | lower) == 'a'
+    when: exec_ssh is defined and exec_ssh == "" and (check_exec_ssh.user_input | lower) == 'a'
 
   - name: Append execSSH to totum_install_vars
     lineinfile:
       path: "{{ playbook_dir }}/totum_install_vars"
       line: "export TOTUMEXECSSH=true"
-    when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro'
+    when: exec_ssh is defined and exec_ssh == ""
 
   # Change IP to DOMAIN
 
@@ -874,7 +788,7 @@
 
   - name: Switch IP to Domain - Download totum.online.conf
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum.online.conf
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum.online.conf
       dest: /etc/nginx/sites-available/totum.online.conf
       owner: root
       group: root
