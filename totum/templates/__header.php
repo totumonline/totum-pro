@@ -3,8 +3,8 @@
 if (is_null($isCreatorView ?? null)) {
     return;
 }
-
-$searchButton = (json_decode($this->Totum->getTableRow('ttm__search_settings')['header'], true)['h_get_updates']['v'] ?? null) === true ? '<span class="btn btn-default btn-sm" style="margin-top: -3px;" id="search-button"><i
+$searchSettings = json_decode($this->Totum->getTableRow('ttm__search_settings')['header'], true);
+$searchButton = (($searchSettings['h_get_updates']['v'] ?? null) || ($searchSettings['h_use_trgm_search']['v'] ?? null)) === true ? '<span class="btn btn-default btn-sm" style="margin-top: -3px;" id="search-button"><i
                                     class="fa fa-search"></i></span>' : '';
 
 ?>

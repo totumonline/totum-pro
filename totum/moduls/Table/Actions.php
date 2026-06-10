@@ -320,23 +320,42 @@ class Actions
 
 
 
-        $settings = $Table->getByParams(['field' => ['table_id', 'buttons']], 'rows');
+        $settings = $Table->getByParams(['field' => ['table_id', 'table_name', 'buttons']], 'rows');
         $tables_buttons = [];
         $tables = [];
+        $tablesMap = [];
         $column_delete = function (&$list) {
             unset($list['code']);
         };
         array_walk($settings,
-            function ($row) use (&$tables_buttons, &$tables, $column_delete) {
+            function ($row) use (&$tables_buttons, &$tables, $column_delete, &$tablesMap) {
                 $tables_buttons[$row['table_id']] = $row['buttons'] && array_walk($row['buttons'],
                     $column_delete) ? $row['buttons'] : [];
                 $tables[] = $row['table_id'];
+                $tablesMap[$row['table_id']] = $row['table_name'];
             });
 
         $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
+        $limit = $Table->getTbl()['params']['h_search_limit']['v'];
+        if (empty($limit)) {
+            $limit = 20;
+        }
+
+        $tablesParams=[];
+        $getTable = function ($tableId) use (&$tablesParams) {
+            if (!key_exists($tableId, $tablesParams)) {
+                $tablesParams[$tableId] = $this->Totum->getTable($tableId);
+                $tablesParams[$tableId]->reCalculateFilters('web');
+                $params = $tablesParams[$tableId]->filtersParamsForLoadRows('web', [], [], true);
+                if (empty($params)) {
+                    $tablesParams[$tableId] = false;
+                }
+            }
+            return $tablesParams[$tableId];
+        };
 
 
-        $SeachInMeili = function () use ($tables_buttons, $Table, $tables, $tables_cleared) {
+        $SeachInMeili = function () use ($tables_buttons, $Table, $tables, $tables_cleared, $limit, $getTable) {
             $facetFilters = [];
 
             if ($tables_cleared != $tables) {
@@ -375,24 +394,12 @@ class Actions
 
 
             $tables = [];
-            $getTable = function ($tableId) use (&$tables) {
-                if (!key_exists($tableId, $tables)) {
-                    $tables[$tableId] = $this->Totum->getTable($tableId);
-                    $tables[$tableId]->reCalculateFilters('web');
-                    $params = $tables[$tableId]->filtersParamsForLoadRows('web', [], [], true);
-                    if (empty($params)) {
-                        $tables[$tableId] = false;
-                    }
-                }
-                return $tables[$tableId];
-            };
+
 
 
             $i = -1;
-            $limit = $Table->getTbl()['params']['h_search_limit']['v'];
-            if (empty($limit)) {
-                $limit = 20;
-            }
+
+
             $offset = 0;
             $hits = [];
             do {
@@ -449,7 +456,7 @@ class Actions
             return ['hits' => array_values($hits)];
         };
 
-        $SeachInTrgm = function () use ($tables_buttons, $Table, $tables, $tables_cleared) {
+        $SeachInTrgm = function () use ($limit, $tables_buttons, $Table, $tables, $tables_cleared, $tablesMap, $getTable) {
             if (empty($tables_cleared)) {
                 return ['hits' => []];
             }
@@ -462,24 +469,71 @@ class Actions
                 $cats = "AND ttm_search -> 'v' ->> 'catalog' IN (".str_repeat('?, ', count($this->post['cats'])-1)."?)";
             }
 
+            $tablesSQL = '';
+            $vars = [];
+            foreach ($tables_cleared as $tableId){
+                if($tablesSQL!=''){
+                    $tablesSQL.=' UNION ALL ';
+                }
+
+
+                $tablesSQL.=<<<SQL
+SELECT 
+        ttm_search -> 'v' ->> 'index' AS index, 
+        ttm_search -> 'v' ->> 'title' AS title, 
+        ttm_search -> 'v' ->> 'catalog' AS catalog, 
+        id, 
+        $tableId AS table_id,
+        lower(?) OPERATOR(public.<<->) lower(ttm_search -> 'v' ->> 'index')  AS distance
+    FROM $tablesMap[$tableId]
+    WHERE lower(?) OPERATOR(public.<%) lower(ttm_search -> 'v' ->> 'index')  $cats
+SQL;
+
+                $vars=[...$vars, $this->post['q'] ?? '', ...$catsVar , $this->post['q'] ?? ''];
+
+            }
+
             $q = <<<SQL
-SELECT ttm_search -> 'v' ->> 'index' as index, ttm_search -> 'v' ->> 'title' as title , ttm_search -> 'v' ->> 'catalog' as catalog , id, 118 as table_id
-FROM totum.trigram_search_test
-WHERE lower(?) OPERATOR(public.<%) lower(ttm_search -> 'v' ->> 'index') $cats
-ORDER BY lower(?) OPERATOR(public.<<->) lower(ttm_search -> 'v' ->> 'index')
-LIMIT 20 OFFSET ?
-SQL
-                ;
+WITH combined_search AS (
+    $tablesSQL
+)
+SELECT index, title, catalog, id, table_id, distance
+FROM combined_search
+ORDER BY distance ASC  -- Сортируем общий результат по близости триграмм
+LIMIT $limit OFFSET ?;  
+SQL;
+
             $prep = $Table->getTotum()->getConfig()->getSql(true)->getPrepared($q);
 
-            $vars = [$this->post['q'] ?? '', ...$catsVar , $this->post['q'] ?? ''];
             $offset = 0;
             $result = [];
-            while(count($result) < 20){
+            $formatMatches = function ($text){
+                if(empty($this->post['q'])){
+                    return $text;
+                }
+                // Флаг PREG_SPLIT_NO_EMPTY убирает пустые элементы из-за лишних пробелов
+                $search_array = preg_split('/[\s,]+/u', $this->post['q'], -1, PREG_SPLIT_NO_EMPTY);
+                $escaped_array = array_map('preg_quote', $search_array);
+                $pattern = '#(' . implode('|', $escaped_array) . ')#u';
+                $replacement = '<span class="marker">$1</span>';
+                return  $result = preg_replace($pattern, $replacement, $text);
+            };
+
+
+            while(count($result) < $limit){
                 $prep->execute([...$vars, $offset]);
-                while (count($result) < 20 && $row = $prep->fetch(\PDO::FETCH_ASSOC)) {
+
+                $withRows = false;
+
+                while (count($result) < $limit && ($row = $prep->fetch(\PDO::FETCH_ASSOC))) {
+                    $withRows = true;
                     $offset++;
-                    //Здесь дб проверка на то, доступна ли строка челу
+                    if ($_Table = $getTable($row['table_id'])) {
+                        if(empty($_Table->checkIsUserCanViewIds('web', [$row['id']], isCritical: 'FILTER'))){
+                            continue;
+                        }
+                    }
+
                     $result[]=[
                       "pk"=>$row['table_id'].'-'.$row['id'],
                         "index"=>$row['index'],
@@ -487,14 +541,14 @@ SQL
                         "catalog"=>$row['catalog'],
                         "_formatted"=>[
                             "pk"=>$row['table_id'].'-'.$row['id'],
-                            "index"=>$row['index'],
+                            "index"=>$formatMatches($row['index']),
                             "title"=>$row['title'],
                             "catalog"=>$row['catalog']
                         ]
                         ,"buttons"=>$tables_buttons[$row['table_id']] ??[]
                     ];
                 }
-                if($prep->fetch() === false){
+                if(!$withRows){
                     break;
                 }
             }
@@ -503,8 +557,15 @@ SQL
             return ['hits'=>$result];
 
         };
-        return $SeachInTrgm();
-        //return $SeachInMeili();
+
+        if($Table->getTbl()['params']['h_get_updates']['v']){
+            return $SeachInMeili();
+        }
+        if($Table->getTbl()['params']['h_use_trgm_search']['v']){
+            return $SeachInTrgm();
+        }
+
+        throw new errorException('Seach machine is not defined');
 
     }
 

@@ -769,20 +769,24 @@ abstract class aTable
         $this->anchorFilters = $anchorFilters;
     }
 
-    public function checkIsUserCanViewIds($channel, $ids, $removed = false, $isCritical = true)
+    public function checkIsUserCanViewIds($channel, $ids, $removed = false, bool|string $isCritical = true)
     {
         $getFiltered = [];
         if ($channel !== 'inner') {
-            $getFiltered = $this->loadFilteredRows($channel, $ids, $removed);
+            $loaded = $this->loadFilteredRows($channel, $ids, $removed);
             foreach ($ids as $id) {
-                if (!in_array($id, $getFiltered)) {
-                    $mess = $this->translate('The row %s does not exist or is not available for your role.',
-                        (string)$id);
-                    if ($isCritical) {
-                        errorException::criticalException($mess, $this);
-                    } else {
-                        throw new errorException($mess);
+                if (!in_array($id, $loaded)) {
+                    if($isCritical !== 'FILTER'){
+                        $mess = $this->translate('The row %s does not exist or is not available for your role.',
+                            (string)$id);
+                        if ($isCritical) {
+                            errorException::criticalException($mess, $this);
+                        } else {
+                            throw new errorException($mess);
+                        }
                     }
+                }else{
+                    $getFiltered[] = $id;
                 }
             }
         }
