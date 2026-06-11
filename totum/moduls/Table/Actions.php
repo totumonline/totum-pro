@@ -514,7 +514,7 @@ SQL;
                 // Флаг PREG_SPLIT_NO_EMPTY убирает пустые элементы из-за лишних пробелов
                 $search_array = preg_split('/[\s,]+/u', $this->post['q'], -1, PREG_SPLIT_NO_EMPTY);
                 $escaped_array = array_map('preg_quote', $search_array);
-                $pattern = '#(' . implode('|', $escaped_array) . ')#u';
+                $pattern = '#(' . implode('|', $escaped_array) . ')#ui';
                 $replacement = '<span class="marker">$1</span>';
                 return  $result = preg_replace($pattern, $replacement, $text);
             };
