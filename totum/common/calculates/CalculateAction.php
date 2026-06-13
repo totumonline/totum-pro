@@ -182,7 +182,7 @@ class CalculateAction extends Calculate
                                 $schema = '--schema "' . $this->Table->getTotum()->getConfig()->getSchema() . '"';
                             }
 
-                            `cd {$path} && bin/totum exec {$schema} {$this->Table->getUser()->getId()} {$data} > /dev/null 2>&1 &`;
+                            shell_exec("cd {$path} && bin/totum exec {$schema} {$this->Table->getUser()->getId()} {$data} > /dev/null 2>&1 &");
                         }
                     } else {
                         $CA = new static($code);
@@ -257,7 +257,7 @@ class CalculateAction extends Calculate
                     $schema = '--schema "' . $this->Table->getTotum()->getConfig()->getSchema() . '"';
                 }
 
-                return `cd {$path} && bin/totum exec {$schema} {$this->Table->getUser()->getId()} {$data} {$test}`;
+                return shell_exec("cd {$path} && bin/totum exec {$schema} {$this->Table->getUser()->getId()} {$data} {$test}");
             } else {
                 $CA = new static($code);
                 try {
@@ -349,7 +349,7 @@ class CalculateAction extends Calculate
         );
 
         file_put_contents($tmpFileName, $params['gzstring']);
-        ` zcat {$tmpFileName} > $tmpFileName2`;
+        shell_exec("zcat {$tmpFileName} > $tmpFileName2");
 
         file_put_contents(
             $tmpFileName,
@@ -366,7 +366,7 @@ class CalculateAction extends Calculate
 
         $tmpErrors = tempnam($this->Table->getTotum()->getConfig()->getTmpDir(), 'schema_errors_');
 
-        `$pathDbPsql -q -1 -b -v ON_ERROR_STOP=1 -f $tmpFileName 2>$tmpErrors`;
+        shell_exec("$pathDbPsql -q -1 -b -v ON_ERROR_STOP=1 -f $tmpFileName 2>$tmpErrors");
         if ($errors = file_get_contents($tmpErrors)) {
             throw new errorException($errors);
         }
@@ -459,7 +459,7 @@ class CalculateAction extends Calculate
         $serviceName = $this->Table->getTotum()->getConfig()->getProGoModuleServiceName();
 
         $this->Table->getTotum()->addOnEnd(function () use ($serviceName) {
-            `sudo service $serviceName restart`;
+            shell_exec("sudo service $serviceName restart");
         });
     }
 

@@ -293,7 +293,7 @@ class FileVersioned extends File
             file_put_contents($ftmpname, $fileString);
 
             if (!empty($file['gz'])) {
-                `gzip $ftmpname`;
+                shell_exec("gzip $ftmpname");
                 $ftmpname .= '.gz';
                 unset($file['gz']);
                 $file['name'] .= '.gz';

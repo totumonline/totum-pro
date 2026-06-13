@@ -74,7 +74,7 @@ class SchemaCrons extends Command
 
             $id = $rule['id'];
 
-            `{$_SERVER['SCRIPT_FILENAME']} schema-cron $id $schemaName > /dev/null 2>&1 &`;
+            shell_exec("{$_SERVER['SCRIPT_FILENAME']} schema-cron $id $schemaName > /dev/null 2>&1 &");
         }
 
         return 0;
