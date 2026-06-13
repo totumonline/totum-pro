@@ -106,7 +106,7 @@ class TotumInstall
         $stub='';
         if($stubGom){
             $stub = '
-            function proGoModuleSocketSend(array \$data, \$close = false, \$reCheckSchemaForce = false)
+            function proGoModuleSocketSend(array $data, $close = false, $reCheckSchemaForce = false)
     {
     }
 ';
