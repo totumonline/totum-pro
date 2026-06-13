@@ -101,7 +101,7 @@ class TotumInstall
 
     }
 
-    protected function getConfClassCode($dbExport, $post, $host, bool $stubGom = false)
+    protected function getConfClassCode($dbExport, $post, $host, bool $stubGom = false): string
     {
         $stub='';
         if($stubGom){
@@ -112,7 +112,7 @@ class TotumInstall
 ';
         }
 
-        <<<CONF
+  return      <<<CONF
 
 namespace totum\config;
 
