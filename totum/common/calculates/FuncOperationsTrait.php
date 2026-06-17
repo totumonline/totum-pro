@@ -60,7 +60,7 @@ trait FuncOperationsTrait
             $url = escapeshellarg($url);
             $method = escapeshellarg($method);
 
-            `curl --insecure --request $method $ref $hhs $url $data  > /dev/null 2>&1 &`;
+            shell_exec("curl --insecure --request $method $ref $hhs $url $data  > /dev/null 2>&1 &");
 
             return null;
         }

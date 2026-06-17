@@ -153,7 +153,7 @@ class SchemaReplace extends Command
 
         $pathPsql = $Conf->getSshPostgreConnect('psql');
         $Conf->getSql(true, false);
-        $result = `$pathPsql -1 -v ON_ERROR_STOP=1 -f $tmpFileName | grep ERROR`;
+        $result = shell_exec("$pathPsql -1 -v ON_ERROR_STOP=1 -f $tmpFileName | grep ERROR");
         $output->writeln('Sql data loaded' . ($result ? ' with:' . $result : ''));
 
         unlink($tmpFileName);

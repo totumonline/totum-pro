@@ -19,7 +19,7 @@ class SchemasCrons extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         foreach (array_unique(array_values(Conf::getSchemas())) as $schemaName) {
-            `{$_SERVER['SCRIPT_FILENAME']} schema-crons "" $schemaName > /dev/null 2>&1 &`;
+            shell_exec("{$_SERVER['SCRIPT_FILENAME']} schema-crons \"\" $schemaName > /dev/null 2>&1 &");
         }
 
         return 0;

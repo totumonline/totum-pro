@@ -318,130 +318,255 @@ class Actions
         $Table = $this->Totum->getTable('ttm__search_settings');
 
 
-        $facetFilters = [];
 
-        $settings = $Table->getByParams(['field' => ['table_id', 'buttons']], 'rows');
+
+        $settings = $Table->getByParams(['field' => ['table_id', 'table_name', 'buttons']], 'rows');
         $tables_buttons = [];
         $tables = [];
+        $tablesMap = [];
         $column_delete = function (&$list) {
             unset($list['code']);
         };
         array_walk($settings,
-            function ($row) use (&$tables_buttons, &$tables, $column_delete) {
+            function ($row) use (&$tables_buttons, &$tables, $column_delete, &$tablesMap) {
                 $tables_buttons[$row['table_id']] = $row['buttons'] && array_walk($row['buttons'],
                     $column_delete) ? $row['buttons'] : [];
                 $tables[] = $row['table_id'];
+                $tablesMap[$row['table_id']] = $row['table_name'];
             });
 
         $tables_cleared = array_intersect($tables, array_keys($this->User->getTables()));
-        if ($tables_cleared != $tables) {
-            foreach ($tables_cleared as $table) {
-                $facetFilters[] = 'table = ' . $table;
-            }
-            if (empty($facetFilters)) {
-                return ['hits' => []];
-            }
-        }
-
-        if (!empty($this->post['cats'])) {
-            $catsFilters = [];
-            foreach ($this->post['cats'] as $name) {
-                $catsFilters[] = 'catalog = ' . $name;
-            }
-            if ($facetFilters) {
-                $facetFilters = [$facetFilters, $catsFilters];
-            } else {
-                $facetFilters = [$catsFilters];
-            }
-        } elseif ($facetFilters) {
-            $facetFilters = [$facetFilters];
-        }
-
-        $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
-        $posts = [
-            "q" => $this->post['q'] ?? '',
-            "attributesToHighlight" => ["index", "title"],
-            "highlightPreTag" => "-highlightPreTag-",
-            "highlightPostTag" => "-highlightPostTag-",
-        ];
-        if ($facetFilters) {
-            $posts["filter"] = $facetFilters;
-        }
-
-
-        $tables = [];
-        $getTable = function ($tableId) use (&$tables) {
-            if (!key_exists($tableId, $tables)) {
-                $tables[$tableId] = $this->Totum->getTable($tableId);
-                $tables[$tableId]->reCalculateFilters('web');
-                $params = $tables[$tableId]->filtersParamsForLoadRows('web', [], [], true);
-                if (empty($params)) {
-                    $tables[$tableId] = false;
-                }
-            }
-            return $tables[$tableId];
-        };
-
-
-        $i = -1;
         $limit = $Table->getTbl()['params']['h_search_limit']['v'];
         if (empty($limit)) {
             $limit = 20;
         }
-        $offset = 0;
-        $hits = [];
-        do {
-            $i++;
-            $removed = false;
-            $posts['offset'] = $offset;
-            $posts['limit'] = $limit - count($hits);
-            $resIn = $Calc->execAction('KOD',
-                $Table->getTbl()['params'],
-                $Table->getTbl()['params'],
-                $Table->getTbl(),
-                $Table->getTbl(),
-                $Table,
-                'exec',
-                [
-                    'posts' => json_encode(
-                        $posts,
-                        JSON_UNESCAPED_UNICODE)
-                ]);
 
-            $res = json_decode($resIn, true);
+        $tablesParams=[];
+        $getTable = function ($tableId) use (&$tablesParams) {
+            if (!key_exists($tableId, $tablesParams)) {
+                $tablesParams[$tableId] = $this->Totum->getTable($tableId);
+                $tablesParams[$tableId]->reCalculateFilters('web');
+                $params = $tablesParams[$tableId]->filtersParamsForLoadRows('web', [], [], true);
+                if (empty($params)) {
+                    $tablesParams[$tableId] = false;
+                }
+            }
+            return $tablesParams[$tableId];
+        };
 
-            if (($res['code'] ?? false)) {
-                throw new errorException($res['message']);
+
+        $SeachInMeili = function () use ($tables_buttons, $Table, $tables, $tables_cleared, $limit, $getTable) {
+            $facetFilters = [];
+
+            if ($tables_cleared != $tables) {
+                foreach ($tables_cleared as $table) {
+                    $facetFilters[] = 'table = ' . $table;
+                }
+                if (empty($facetFilters)) {
+                    return ['hits' => []];
+                }
             }
 
-            foreach ($res['hits'] as $k => $_h) {
-                $offset++;
-                list($tableId, $rowId) = explode('-', $_h['pk']);
-                if ($_Table = $getTable($tableId)) {
-                    try {
-                        $_Table->checkIsUserCanViewIds('web', [$rowId], isCritical: false);
-                    } catch (\Exception $exception) {
-                        $removed = true;
-                        continue;
+            if (!empty($this->post['cats'])) {
+                $catsFilters = [];
+                foreach ($this->post['cats'] as $name) {
+                    $catsFilters[] = 'catalog = ' . $name;
+                }
+                if ($facetFilters) {
+                    $facetFilters = [$facetFilters, $catsFilters];
+                } else {
+                    $facetFilters = [$catsFilters];
+                }
+            } elseif ($facetFilters) {
+                $facetFilters = [$facetFilters];
+            }
+
+            $Calc = new CalculateAction('=: exec(code: \'h_connect_code\'; var: "posts" = $#posts; var: "path"= str`"/indexes/"+#h_index_name+"/search"`)');
+            $posts = [
+                "q" => $this->post['q'] ?? '',
+                "attributesToHighlight" => ["index", "title"],
+                "highlightPreTag" => "-highlightPreTag-",
+                "highlightPostTag" => "-highlightPostTag-",
+            ];
+            if ($facetFilters) {
+                $posts["filter"] = $facetFilters;
+            }
+
+
+            $tables = [];
+
+
+
+            $i = -1;
+
+
+            $offset = 0;
+            $hits = [];
+            do {
+                $i++;
+                $removed = false;
+                $posts['offset'] = $offset;
+                $posts['limit'] = $limit - count($hits);
+                $resIn = $Calc->execAction('KOD',
+                    $Table->getTbl()['params'],
+                    $Table->getTbl()['params'],
+                    $Table->getTbl(),
+                    $Table->getTbl(),
+                    $Table,
+                    'exec',
+                    [
+                        'posts' => json_encode(
+                            $posts,
+                            JSON_UNESCAPED_UNICODE)
+                    ]);
+
+                $res = json_decode($resIn, true);
+
+                if (($res['code'] ?? false)) {
+                    throw new errorException($res['message']);
+                }
+
+                foreach ($res['hits'] as $k => $_h) {
+                    $offset++;
+                    list($tableId, $rowId) = explode('-', $_h['pk']);
+                    if ($_Table = $getTable($tableId)) {
+                        try {
+                            $_Table->checkIsUserCanViewIds('web', [$rowId], isCritical: false);
+                        } catch (\Exception $exception) {
+                            $removed = true;
+                            continue;
+                        }
                     }
-                }
 
-                foreach ($_h['_formatted'] as &$match) {
-                    $match = htmlspecialchars($match);
-                    $match = str_replace('-highlightPreTag-', '<span class="marker">', $match);
-                    $match = str_replace('-highlightPostTag-', '</span>', $match);
-                }
-                unset($match);
+                    foreach ($_h['_formatted'] as &$match) {
+                        $match = htmlspecialchars($match);
+                        $match = str_replace('-highlightPreTag-', '<span class="marker">', $match);
+                        $match = str_replace('-highlightPostTag-', '</span>', $match);
+                    }
+                    unset($match);
 
-                if (key_exists($tableId, $tables_buttons)) {
-                    $_h['buttons'] = $tables_buttons[$tableId];
+                    if (key_exists($tableId, $tables_buttons)) {
+                        $_h['buttons'] = $tables_buttons[$tableId];
+                    }
+                    $hits[] = $_h;
                 }
-                $hits[] = $_h;
+                unset($_h);
+            } while ($removed);
+
+            return ['hits' => array_values($hits)];
+        };
+
+        $SeachInTrgm = function () use ($limit, $tables_buttons, $Table, $tables, $tables_cleared, $tablesMap, $getTable) {
+            if (empty($tables_cleared)) {
+                return ['hits' => []];
             }
-            unset($_h);
-        } while ($removed);
 
-        return ['hits' => array_values($hits)];
+
+            $cats = '';
+            $catsVar = [];
+            if (!empty($this->post['cats'])) {
+                $catsVar = $this->post['cats'];
+                $cats = "AND ttm_search -> 'v' ->> 'catalog' IN (".str_repeat('?, ', count($this->post['cats'])-1)."?)";
+            }
+
+            $tablesSQL = '';
+            $vars = [];
+            foreach ($tables_cleared as $tableId){
+                if($tablesSQL!=''){
+                    $tablesSQL.=' UNION ALL ';
+                }
+
+
+                $tablesSQL.=<<<SQL
+SELECT 
+        ttm_search -> 'v' ->> 'index' AS index, 
+        ttm_search -> 'v' ->> 'title' AS title, 
+        ttm_search -> 'v' ->> 'catalog' AS catalog, 
+        id, 
+        $tableId AS table_id,
+        lower(?) OPERATOR(public.<<->) lower(ttm_search -> 'v' ->> 'index')  AS distance
+    FROM $tablesMap[$tableId]
+    WHERE lower(?) OPERATOR(public.<%) lower(ttm_search -> 'v' ->> 'index')  $cats
+SQL;
+
+                $vars=[...$vars, $this->post['q'] ?? '', ...$catsVar , $this->post['q'] ?? ''];
+
+            }
+
+            $q = <<<SQL
+WITH combined_search AS (
+    $tablesSQL
+)
+SELECT index, title, catalog, id, table_id, distance
+FROM combined_search
+ORDER BY distance ASC  -- Сортируем общий результат по близости триграмм
+LIMIT $limit OFFSET ?;  
+SQL;
+
+            $prep = $Table->getTotum()->getConfig()->getSql(true)->getPrepared($q);
+
+            $offset = 0;
+            $result = [];
+            $formatMatches = function ($text){
+                if(empty($this->post['q'])){
+                    return $text;
+                }
+                // Флаг PREG_SPLIT_NO_EMPTY убирает пустые элементы из-за лишних пробелов
+                $search_array = preg_split('/[\s,]+/u', $this->post['q'], -1, PREG_SPLIT_NO_EMPTY);
+                $escaped_array = array_map('preg_quote', $search_array);
+                $pattern = '#(' . implode('|', $escaped_array) . ')#ui';
+                $replacement = '<span class="marker">$1</span>';
+                return  $result = preg_replace($pattern, $replacement, $text);
+            };
+
+
+            while(count($result) < $limit){
+                $prep->execute([...$vars, $offset]);
+
+                $withRows = false;
+
+                while (count($result) < $limit && ($row = $prep->fetch(\PDO::FETCH_ASSOC))) {
+                    $withRows = true;
+                    $offset++;
+                    if ($_Table = $getTable($row['table_id'])) {
+                        if(empty($_Table->checkIsUserCanViewIds('web', [$row['id']], isCritical: 'FILTER'))){
+                            continue;
+                        }
+                    }
+
+                    $result[]=[
+                      "pk"=>$row['table_id'].'-'.$row['id'],
+                        "index"=>$row['index'],
+                        "title"=>$row['title'],
+                        "catalog"=>$row['catalog'],
+                        "_formatted"=>[
+                            "pk"=>$row['table_id'].'-'.$row['id'],
+                            "index"=>$formatMatches($row['index']),
+                            "title"=>$row['title'],
+                            "catalog"=>$row['catalog']
+                        ]
+                        ,"buttons"=>$tables_buttons[$row['table_id']] ??[]
+                    ];
+                }
+                if(!$withRows){
+                    break;
+                }
+            }
+
+
+            return ['hits'=>$result];
+
+        };
+
+        if($Table->getTbl()['params']['h_get_updates']['v']){
+            return $SeachInMeili();
+        }
+        if($Table->getTbl()['params']['h_use_trgm_search']['v']){
+            return $SeachInTrgm();
+        }
+
+        throw new errorException('Seach machine is not defined');
+
     }
 
     public

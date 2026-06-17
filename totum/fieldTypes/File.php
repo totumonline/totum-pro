@@ -29,7 +29,7 @@ class File extends Field
             $_fileName = $Config->getTmpDir().$tmpFileName;
             $_jpgFileName = $Config->getTmpDir().$tmpFileName . '.jpg';
 
-            `convert {$_fileName} -auto-orient {$_jpgFileName} && mv $_jpgFileName {$_fileName}`;
+            shell_exec("convert {$_fileName} -auto-orient {$_jpgFileName} && mv $_jpgFileName {$_fileName}");
             unset($_jpgFileName);
 
             $name = substr($name, 0, -4).'jpg';
@@ -219,7 +219,7 @@ class File extends Field
             }
 
             if (copy($_FILES['file']['tmp_name'], $tmpFileName)) {
-                $mime = trim(`file -b --mime-type {$tmpFileName}`);
+                $mime = trim(shell_exec("file -b --mime-type {$tmpFileName}"));
 
                 if(preg_match('/^image\//', $mime)){
                     $mimeExt = preg_replace('/^.*\/([a-z0-9]{1,10})$/', '$1', strtolower($mime));
@@ -342,7 +342,7 @@ class File extends Field
             file_put_contents($ftmpname, $fileString);
 
             if (!empty($file['gz'])) {
-                `gzip $ftmpname`;
+                shell_exec("gzip $ftmpname");
                 $ftmpname .= '.gz';
                 unset($file['gz']);
                 $file['name'] .= '.gz';
@@ -610,7 +610,7 @@ class File extends Field
         $content = file_get_contents($filepath);
 
         if($content !== false && $withMime){
-            $mime = trim(`file -b --mime-type {$filepath}`);
+            $mime = trim(shell_exec("file -b --mime-type {$filepath}"));
             return [$content, $mime];
         }
         return $content;

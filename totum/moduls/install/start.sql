@@ -246,4 +246,6 @@ create table "_services_vars"
 create UNIQUE INDEX _services_vars_name_index on _services_vars (name);
 insert into "_services_vars" (name, value) values ('last-check-creator-notifications', '');
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 

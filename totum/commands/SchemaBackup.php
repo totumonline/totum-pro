@@ -81,18 +81,19 @@ class SchemaBackup extends Command
 
         $exclude .= ' -x';
         $gzsql = '';
-        if ($input->getOption('users-off')){
-            $sql = " echo 'update \"" . $schema . "\".users set on_off=jsonb_build_object('\''v'\'', false) where id != 1;' ; ";
+        if ($input->getOption('users-off')) {
+            $sql = " echo 'update \"" . $schema
+                . "\".users set on_off=jsonb_build_object('\''v'\'', false) where id != 1;' ; ";
             $gzc=($gz ? '| gzip' : '');
 
-            `{ $pgDump -O --schema '{$schema}' --no-tablespaces {$exclude} | grep -v '^--' ; $sql } $gzc > "{$path}"`;
+            shell_exec("{ $pgDump -O --schema '{$schema}' --no-tablespaces {$exclude} | grep -v '^--' ; $sql } $gzc > \"{$path}\"");
 
 
-        }else{
-            if($gz){
+        }else {
+            if($gz) {
                 $gzsql.=($gz ? '| gzip' : '');
             }
-            `$pgDump -O --schema '{$schema}' --no-tablespaces {$exclude} | grep -v '^--' $gzsql > "{$path}"`;
+            shell_exec("$pgDump -O --schema '{$schema}' --no-tablespaces {$exclude} | grep -v '^--' $gzsql > \"{$path}\"");
         }
 
 

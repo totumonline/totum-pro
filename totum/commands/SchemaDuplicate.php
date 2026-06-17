@@ -73,7 +73,7 @@ class SchemaDuplicate extends Command
 
         set_time_limit(0);
 
-        `$pgDump -O --schema '{$baseName}' --no-tablespaces {$exclude} | grep -v '^--' > "{$tmpFilenameOld}"`;
+        shell_exec("$pgDump -O --schema '{$baseName}' --no-tablespaces {$exclude} | grep -v '^--' > \"{$tmpFilenameOld}\"");
         if (filesize($tmpFilenameOld) < 20) {
             $output->writeln(file_get_contents($tmpFilenameOld));
         } else {
@@ -136,7 +136,7 @@ class SchemaDuplicate extends Command
             fclose($handleTmp);
 
             $pathPsql = $Conf->getSshPostgreConnect('psql');
-            echo `$pathPsql -1 -v ON_ERROR_STOP=1 -f $tmpFileName | grep ERROR`;
+            echo shell_exec("$pathPsql -1 -v ON_ERROR_STOP=1 -f $tmpFileName | grep ERROR");
             unlink($tmpFileName);
 
             if ($host = $input->getArgument('host')) {

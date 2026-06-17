@@ -157,7 +157,7 @@ class AuthController extends interfaceController
 
             if (in_array(1, $user->getRoles())) {
                 $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
-                `cd {$baseDir} && bin/totum check-service-notifications {$schema} &`;
+                shell_exec("cd {$baseDir} && bin/totum check-service-notifications {$schema} &");
             }
 
             unset($_SESSION['auth_data']);
@@ -333,7 +333,7 @@ class AuthController extends interfaceController
 
                             if (in_array(1, $userRow['roles'])) {
                                 $schema = is_callable([$this->Config, 'setHostSchema']) ? '"' . $this->Config->getSchema() . '"' : '';
-                                `cd {$baseDir} && bin/totum check-service-notifications {$schema} > /dev/null 2>&1 &`;
+                                shell_exec("cd {$baseDir} && bin/totum check-service-notifications {$schema} > /dev/null 2>&1 &");
                             }
 
                         $this->location($_GET['from'] && $_GET['from'] !== '/'  && $_GET['from'] !== '/totum'? $_GET['from'] : Auth::getUserById($this->Config,

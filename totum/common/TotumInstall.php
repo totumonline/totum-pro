@@ -92,7 +92,27 @@ class TotumInstall
         ];
         $dbExport = var_export($db, true);
 
-        $this->confClassCode = <<<CONF
+        $this->confClassCode = $this->getConfClassCode($dbExport, $post, $host);
+
+        eval( $this->getConfClassCode($dbExport, $post, $host, true ));
+        $Conf = new Conf();
+        $Conf->setHostSchema($host);
+        return $Conf;
+
+    }
+
+    protected function getConfClassCode($dbExport, $post, $host, bool $stubGom = false): string
+    {
+        $stub='';
+        if($stubGom){
+            $stub = '
+            function proGoModuleSocketSend(array $data, $close = false, $reCheckSchemaForce = false)
+    {
+    }
+';
+        }
+
+  return      <<<CONF
 
 namespace totum\config;
 
@@ -136,6 +156,7 @@ const db=$dbExport;
         return ['$host'=>'{$post['db_schema']}'];
     }
     /***getSchemasEnd***/
+$stub
 
     public function setSessionCookieParams()
     {
@@ -150,12 +171,6 @@ const db=$dbExport;
     }
 }
 CONF;
-
-        eval($this->confClassCode);
-        $Conf = new Conf();
-        $Conf->setHostSchema($host);
-        return $Conf;
-
     }
 
     public function install($getFilePath)
