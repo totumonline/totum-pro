@@ -710,6 +710,165 @@ CONF;
         return [$schemaRows, $funcRoles, $getTreeId, $funcCategories];
     }
 
+    public function diffSchema(array $schemaData, $withDataAndCodes = false, $matchesName = '')
+    {
+        $this->Totum->transactionStart();
+        $funcCategories = $this->getFuncCategories($schemaData['categories']);
+
+        $funcRoles = $this->getFuncRoles($schemaData['roles']);
+        $getTreeId = $this->getFuncTree($schemaData['tree'], $funcRoles);
+
+
+        $checkField = function ($data, $dataIn, $path = '') use (&$checkField): array|string {
+            $dataDiff = [];
+            foreach ($dataIn as $k => $v) {
+                if (!key_exists($k, $data)) {
+                    return ($path . '/' . $k . ' ++');
+                }
+
+                if (!is_array($v)) {
+                    if ($v !== $data[$k]) {
+                        $dataDiff[] = ($path . '/' . $k) . '+-';
+                    }
+                } else {
+                    if (!is_array($data[$k])) {
+                        $data[$k] = json_decode($data[$k] ?? '', JSON_UNESCAPED_UNICODE);
+                    }
+
+                    $check = $checkField($v, $data[$k], $path . '/' . $k);
+                    if ($check) {
+                        $dataDiff[] = $check;
+                    }
+                }
+            }
+            return implode(',',$dataDiff);
+        };
+
+
+        $systemTableFieldsDiff =  function ($fields, $tableId) use ($checkField) {
+            $selectFields = $this->Totum->getNamedModel(TablesFields::class)->getAll(
+                ['table_id' => $tableId],
+                'name, data_src, title, ord, category'
+            );
+            $selectFields = array_combine(array_column($selectFields, 'name'), $selectFields);
+            $fieldsAdd = [];
+            $fieldsModify = [];
+            foreach ($fields as $field) {
+                if (empty($field['name'])) {
+                    throw new errorException($this->translate('Parametr [[%s]] is required.', 'name of field'));
+                }
+                if (key_exists($field['name'], $selectFields)) {
+                    $fieldIn = array_intersect_key(
+                        $field,
+                        array_flip(['data_src', 'title', 'ord', 'category'])
+                    );
+
+                    if($check = $checkField($selectFields[$field['name']], $field)){
+                        $this->consoleLog($field['name'].'('.$check.')', 3);
+                    }
+
+                } else {
+                    $this->consoleLog($field['name'].'++', 3);
+                }
+            }
+        };
+
+
+
+        if (!empty($schemaFieldSettings = $schemaData['fields_settings'] ?? [])) {
+            $this->consoleLog('Diff fields of table tables_fields', 2);
+            $systemTableFieldsDiff($schemaFieldSettings, 2);
+        }
+        if (!empty($schemaTableSettings = $schemaData['tables_settings']['settings'] ?? [])) {
+            $this->consoleLog('Diff fields of table tables', 2);
+            $systemTableFieldsDiff($schemaTableSettings, 1);
+        }
+        
+
+        if (!empty($schemaData['tables_settings']['sys_data'])) {
+            $this->consoleLog('Diff in table tables for "tables" and "tables_fields"');
+            ($diffSysTablesRows = function ($sysData) use ($checkField) {
+                $TableModel = $this->Totum->getNamedModel(Table::class);
+                foreach ($sysData['rows'] as $row) {
+                    $selectedRow = $this->Totum->getTableRow($row['name']['v'], true);
+
+                    foreach (['tree_node_id', 'sort', 'category'] as $param) {
+                        if (key_exists($param, $selectedRow) && $selectedRow[$param]) {
+                            unset($row[$param]);
+                        }
+                    }
+                    foreach ($row as $k=>&$v){
+                        $v = $v['v'];
+                    }
+                    unset($v);
+                    if($check = $checkField($selectedRow, $row)){
+                        $this->consoleLog($row['name'].'('.$check.')', 3);
+                    }
+                }
+            })($schemaData['tables_settings']['sys_data']);
+        }
+        $schemaRows = $schemaData['tables'];
+
+        /*Настройки таблиц*/
+        $calcTableFields = function (&$fieldsAdd, &$fieldsModify, $schemaRow) use ($checkField, $funcRoles) {
+            if ($schemaRow['fields']) {
+                $tableId = $schemaRow['tableId'];
+                $selectFields = $this->Totum->getNamedModel(TablesFields::class)->executePrepared(
+                    true,
+                    ['table_id' => $tableId, 'version' => $schemaRow['version']],
+                    'id, name, data_src, title, ord, category'
+                )->fetchAll();
+                $selectFields = array_combine(array_column($selectFields, 'name'), $selectFields);
+
+                foreach ($schemaRow['fields'] as $field) {
+                    if (empty($field['name'])) {
+                        throw new errorException($this->translate('Parametr [[%s]] is required.', 'name of field'));
+                    }
+
+                    if (key_exists($field['name'], $selectFields)) {
+                        $fieldIn = array_intersect_key(
+                            $field,
+                            array_flip(['data_src', 'title', 'ord', 'category'])
+                        );
+
+                        if($check = $checkField($selectFields[$field['name']], $field)){
+                            $this->consoleLog($field['name'].'('.$check.')', 3);
+                        }
+
+                    } else {
+                        $this->consoleLog($field['name'].'++', 3);
+                    }
+                }
+            }
+        };
+
+        $this->caclsFilteredTables(
+            function ($schemaRow) {
+                return $schemaRow['type'] !== 'calcs';
+            },
+            $calcTableFields,
+            $schemaRows,
+            $funcRoles,
+            $getTreeId,
+            $funcCategories, 'not calculated in cycles'
+        );
+
+        $this->caclsFilteredTables(
+            function ($schemaRow) {
+                return $schemaRow['type'] === 'calcs';
+            },
+            $calcTableFields,
+            $schemaRows,
+            $funcRoles,
+            $getTreeId,
+            $funcCategories, 'calculated in cycles'
+        );
+
+        $this->Totum->transactionRollback();
+
+        return [$schemaRows, $funcRoles, $getTreeId, $funcCategories];
+    }
+
     protected function updateRolesFavorites($roles, \Closure $funcRoles)
     {
         $rolesUpdate = [];
@@ -748,6 +907,7 @@ CONF;
         }
         return $this->CalculateLog;
     }
+
 
     protected function caclsFilteredTables($fulterFunc, $calcTableFields, &$schemaRows, $funcRoles, $getTreeId, $funcCategories, string $filterDescription)
     {
