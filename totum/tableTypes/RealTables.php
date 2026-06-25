@@ -1805,15 +1805,31 @@ abstract class RealTables extends aTable
                                     } elseif ($isJsonbFilter && is_array($v) && preg_match('/^[a-z0-9_-]+$/i', $k)
                                         && (key_exists('ttm__or', $v) && is_array($v['ttm__or']) && !empty($v['ttm__or']))
                                     ) {
-                                        $where_tmp .= " $fieldQuotedJsonb ->> '$k' IN  (";
-                                        foreach (array_values($v['ttm__or']) as $i => $v) {
-                                            if ($i !== 0) {
-                                                $where_tmp .= ", ";
+                                        if(is_array($v['ttm__or'][0] ?? null)){
+                                            foreach (array_values($v['ttm__or']) as $i => $_v) {
+
+                                                if ($i !== 0) {
+                                                    $where_tmp .= " OR ";
+                                                }
+                                                $where_tmp .= " $fieldQuotedJsonb -> '$k'   @> ?::jsonb ";
+                                                $params[] =  json_encode($_v, JSON_UNESCAPED_UNICODE);
                                             }
-                                            $where_tmp .= " ? ";
-                                            $params[] = (string)$v;
+                                            $where_tmp .= " ) ";
+
+                                        }else{
+                                            $where_tmp .= " $fieldQuotedJsonb ->> '$k' IN  (";
+                                            foreach (array_values($v['ttm__or']) as $i => $_v) {
+
+                                                if ($i !== 0) {
+                                                    $where_tmp .= ", ";
+                                                }
+                                                $where_tmp .= " ? ";
+                                                $params[] = (string)$_v;
+                                            }
+                                            $where_tmp .= " ) ) ";
                                         }
-                                        $where_tmp .= " ) ) ";
+
+
                                     } else {
                                         $where_tmp .= "$fieldQuotedJsonb @> ?::jsonb ) ";
                                         $params[] = json_encode([$k => $v], JSON_UNESCAPED_UNICODE);
