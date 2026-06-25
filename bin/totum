@@ -21,6 +21,7 @@ use totum\commands\SchemaAdd;
 use totum\commands\SchemaCron;
 use totum\commands\SchemaCrons;
 use totum\commands\Install;
+use totum\commands\SchemaDiff;
 use totum\commands\SchemaDuplicate;
 use totum\commands\SchemaPasswd;
 use totum\commands\SchemaReplace;
@@ -66,6 +67,7 @@ if (class_exists(Conf::class)) {
     $app->add(new TableUpdated());
     $app->add(new CleanTmpTablesFiles());
     $app->add(new SwitchOffExtraNotifications());
+    $app->add(new SchemaDiff());
 
     if (key_exists(MultiTrait::class, class_uses(Conf::class, false))) {
         $app->add(new SchemasCrons());

@@ -316,7 +316,7 @@ class AdminTableActions extends WriteTableActions
         }
         $title = $this->translate('Changing the name of a field');
         $code = <<<CODE
-=: linkToDataTable(table: 'ttm__change_field_name'; title: '$title'; width: 800; height: "80vh"; params:\$#row; refresh: 'strong';)
+=: linkToDataTable(table: 'ttm__change_field_name'; title: '$title'; width: 740; height: "80vh"; params:\$#row; refresh: 'strong';)
 CODE;
 
         $calc = new CalculateAction($code);
