@@ -733,8 +733,8 @@ class AuthController extends interfaceController
                                 $this->answerVars['error'] = $_res['error'];
                                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                 return [];
-                            } elseif (!empty($openIdIdData['id_token']) && is_array($openIdIdData['id_token'])) {
-                                $data = $openIdIdData['id_token'];
+                            } elseif (!empty($_res['id_token']) && is_array($_res['id_token'])) {
+                                $data = $_res['id_token'];
                             } else {
                                 $this->answerVars['error'] = 'check_code error';
                                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
