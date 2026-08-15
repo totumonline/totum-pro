@@ -679,18 +679,18 @@ class AuthController extends interfaceController
                     curl_setopt($ch, CURLOPT_URL, $openIdIdData['token_endpoint']);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->Config->isCheckSsl() ? 2 : 0);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->Config->isCheckSsl());
-                    curl_setopt($ch, CURLOPT_HEADER, 'Content-Type: application/x-www-form-urlencoded');
+
 
                     if (trim($openIdIdData['extra_headers']) != '') {
                         $extraHeaders = (new CalculateAction($openIdIdData['extra_headers']))
                             ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec');
                         if (is_array($extraHeaders)) {
-                            foreach ($extraHeaders as $header) {
-                                if ($header && is_string($header)) {
-                                    curl_setopt($ch, CURLOPT_HEADER, $header);
-                                }
-                            }
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($extraHeaders,['Content-Type: application/x-www-form-urlencoded']));
+                        }else {
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
                         }
+                    }else {
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
                     }
 
 
