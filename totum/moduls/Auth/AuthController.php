@@ -666,7 +666,6 @@ class AuthController extends interfaceController
 
                     return ['uri' => $openIdIdData['auth_uri'] . '?' . http_build_query(
                             ['response_type' => 'code',
-                                'prompt' => 'login',
                                 'state' => $_SESSION['openIdData']['state'],
                                 'client_id' => $openIdIdData['client_id'],
                                 'redirect_uri' => $openIdIdData['redirect_uri'],
@@ -680,7 +679,22 @@ class AuthController extends interfaceController
                     curl_setopt($ch, CURLOPT_URL, $openIdIdData['token_endpoint']);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->Config->isCheckSsl() ? 2 : 0);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->Config->isCheckSsl());
-                    curl_setopt($ch, CURLOPT_HEADER, 'Content-Type: application/x-www-form-urlencoded');
+
+
+                    if (trim($openIdIdData['extra_headers']) != '') {
+                        $extraHeaders = (new CalculateAction($openIdIdData['extra_headers']))
+                            ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec');
+                        if (is_array($extraHeaders)) {
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($extraHeaders,['Content-Type: application/x-www-form-urlencoded']));
+                        }else {
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+                        }
+                    }else {
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+                    }
+
+
+
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -708,6 +722,29 @@ class AuthController extends interfaceController
 
                     $split = explode('.', $resultData['id_token']);
                     $data = json_decode(base64_decode($split[1]), true);
+
+                    if (trim($openIdIdData['check_code']) != '') {
+                        $_res = (new CalculateAction($openIdIdData['check_code']))
+                            ->execAction('CODE', [], [], $Table->getTbl(),
+                                $Table->getTbl(), $Table, 'exec', ['id_token' => $data]);
+
+                        if ($_res && is_array($_res)) {
+                            if (!empty($_res['error'])) {
+                                $this->answerVars['error'] = $_res['error'];
+                                static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                                return [];
+                            } elseif (!empty($openIdIdData['id_token']) && is_array($openIdIdData['id_token'])) {
+                                $data = $openIdIdData['id_token'];
+                            } else {
+                                $this->answerVars['error'] = 'check_code error';
+                                static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                                return [];
+                            }
+                        }
+
+                        unset($_res);
+                    }
+
                     $data['id_token_hint'] = $resultData['id_token'];
 
                     if (!empty($data['email'])) {
@@ -772,7 +809,7 @@ class AuthController extends interfaceController
                 'ttm__extparams' => [
                     'id_token' => $data,
                     'name' => $openIdIdData['name'],
-                    'sid' => $data['sid'],
+                    'sid' => $data['sid'] ?? '',
                     'sub' => $data['sub'],
                     'id_token_hint' => $data['id_token_hint']
                 ],
