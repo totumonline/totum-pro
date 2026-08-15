@@ -722,6 +722,29 @@ class AuthController extends interfaceController
 
                     $split = explode('.', $resultData['id_token']);
                     $data = json_decode(base64_decode($split[1]), true);
+
+                    if (trim($openIdIdData['check_code']) != '') {
+                        $_res = (new CalculateAction($openIdIdData['check_code']))
+                            ->execAction('CODE', [], [], $Table->getTbl(),
+                                $Table->getTbl(), $Table, 'exec', ['id_token' => $data]);
+
+                        if ($_res && is_array($_res)) {
+                            if (!empty($_res['error'])) {
+                                $this->answerVars['error'] = $_res['error'];
+                                static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                                return [];
+                            } elseif (!empty($openIdIdData['id_token']) && is_array($openIdIdData['id_token'])) {
+                                $data = $openIdIdData['id_token'];
+                            } else {
+                                $this->answerVars['error'] = 'check_code error';
+                                static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
+                                return [];
+                            }
+                        }
+
+                        unset($_res);
+                    }
+
                     $data['id_token_hint'] = $resultData['id_token'];
 
                     if (!empty($data['email'])) {
@@ -786,7 +809,7 @@ class AuthController extends interfaceController
                 'ttm__extparams' => [
                     'id_token' => $data,
                     'name' => $openIdIdData['name'],
-                    'sid' => $data['sid'],
+                    'sid' => $data['sid'] ?? '',
                     'sub' => $data['sub'],
                     'id_token_hint' => $data['id_token_hint']
                 ],
