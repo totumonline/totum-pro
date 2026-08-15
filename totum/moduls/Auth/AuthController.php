@@ -666,7 +666,6 @@ class AuthController extends interfaceController
 
                     return ['uri' => $openIdIdData['auth_uri'] . '?' . http_build_query(
                             ['response_type' => 'code',
-                                'prompt' => 'login',
                                 'state' => $_SESSION['openIdData']['state'],
                                 'client_id' => $openIdIdData['client_id'],
                                 'redirect_uri' => $openIdIdData['redirect_uri'],
@@ -681,6 +680,21 @@ class AuthController extends interfaceController
                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->Config->isCheckSsl() ? 2 : 0);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->Config->isCheckSsl());
                     curl_setopt($ch, CURLOPT_HEADER, 'Content-Type: application/x-www-form-urlencoded');
+
+                    if (trim($openIdIdData['extra_headers']) != '') {
+                        $extraHeaders = (new CalculateAction($openIdIdData['extra_headers']))
+                            ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec');
+                        if (is_array($extraHeaders)) {
+                            foreach ($extraHeaders as $header) {
+                                if ($header && is_string($header)) {
+                                    curl_setopt($ch, CURLOPT_HEADER, $header);
+                                }
+                            }
+                        }
+                    }
+
+
+
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
