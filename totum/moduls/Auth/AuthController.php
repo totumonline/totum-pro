@@ -716,6 +716,10 @@ class AuthController extends interfaceController
                     $resultData = json_decode($result, true);
 
                     if ($resultData['error'] ?? '') {
+
+                        if (!empty($openIdIdData['error_redirect'])) {
+                            header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR'=>$resultData['error']]));
+                        }
                         static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                         return ['error' => $resultData['error']];
                     }
@@ -730,12 +734,18 @@ class AuthController extends interfaceController
 
                         if ($_res && is_array($_res)) {
                             if (!empty($_res['error'])) {
+                                if (!empty($openIdIdData['error_redirect'])) {
+                                    header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR'=>$_res['error']]));
+                                }
                                 $this->answerVars['error'] = $_res['error'];
                                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                 return [];
                             } elseif (!empty($_res['id_token']) && is_array($_res['id_token'])) {
                                 $data = $_res['id_token'];
                             } else {
+                                if (!empty($openIdIdData['error_redirect'])) {
+                                    header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR'=>'check_code error']));
+                                }
                                 $this->answerVars['error'] = 'check_code error';
                                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                 return [];
@@ -749,14 +759,14 @@ class AuthController extends interfaceController
 
                     if (!empty($data['email'])) {
 
-                        $auth = function ($id) use ($data) {
+                        $auth = function ($id) use ($openIdIdData, $data) {
                             if ($this->Config->getSettings('h_pro_auth_on_off')) {
                                 $_SESSION['auth_data'] = ['id' => $id, 'login' => $data['email']];
                                 $this->location('/Auth/Verification');
                             } else {
                                 Auth::isBlockedUserIfTimesOff($data['email'], null, $this->Config, 'write', Auth::$AuthStatuses['OK']);
                                 Auth::webInterfaceSetAuth($id);
-                                $this->location('/');
+                                $this->location($openIdIdData['success_redirect'] ?? '/');
                             }
                             die;
                         };
@@ -770,6 +780,9 @@ class AuthController extends interfaceController
                         } catch (\Exception $e) {
                             if (preg_match('/^GOMODULE: User with email ' . $data['email'] . ' is not found$/', $e->getMessage())) {
                                 if (!empty($openIdIdData['rejection_comment'])){
+                                    if (!empty($openIdIdData['error_redirect'])) {
+                                        header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR' => $openIdIdData['rejection_comment']]));
+                                    }
                                     $this->answerVars['error'] = $openIdIdData['rejection_comment'];
                                     static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                     return [];
@@ -779,6 +792,10 @@ class AuthController extends interfaceController
                                 $auth($id);
                             }
 
+                            if (!empty($openIdIdData['error_redirect'])) {
+                                header('Location: ' . $openIdIdData['error_redirect'].'?'
+                                    .http_build_query(['ERROR' => $e->getMessage()]));
+                            }
                             $this->answerVars['error'] = $e->getMessage();
                             static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                             return [];
