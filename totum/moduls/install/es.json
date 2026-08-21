@@ -44,6 +44,7 @@
     "{{All_in_p_d}}": "Todo",
     "{{ALL_in_services}}": "Todos",
     "{{Allow_click_on_read_only}}": "Permitir acción en modo solo lectura",
+    "{{Allow_restore_with_different_type}}": "Permitir restablecer contraseña por correo en auth distinta",
     "{{All_parameters_cf}}": "Todos los parámetros",
     "{{All_Roles}}": "Todos los Roles",
     "{{All_users_in_serarch}}": "Todos los usuarios encontrados",

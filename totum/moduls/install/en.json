@@ -44,6 +44,7 @@
     "{{All_in_p_d}}": "All",
     "{{ALL_in_services}}": "All",
     "{{Allow_click_on_read_only}}": "Allow action in read-only mode",
+    "{{Allow_restore_with_different_type}}": "Allow password reset via email for non-password authentication",
     "{{All_parameters_cf}}": "All Parameters",
     "{{All_Roles}}": "All Roles",
     "{{All_users_in_serarch}}": "All found users",

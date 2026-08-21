@@ -44,6 +44,7 @@
     "{{All_in_p_d}}": "Все",
     "{{ALL_in_services}}": "Все",
     "{{Allow_click_on_read_only}}": "Разрешить действие в режиме только для чтения",
+    "{{Allow_restore_with_different_type}}": "Разрешить сброс пароля на почту при другом типе авторизации",
     "{{All_parameters_cf}}": "Все параметры",
     "{{All_Roles}}": "Все Роли",
     "{{All_users_in_serarch}}": "Все найденные пользователи",
