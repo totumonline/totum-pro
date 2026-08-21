@@ -355,7 +355,7 @@ class AuthController extends interfaceController
 
                 if ($userRow = $userRow ?? Auth::getUserRowWithServiceRestriction($post['login'], $this->Config)) {
 
-                    if ($userRow['ttm__auth_type']) {
+                    if ($userRow['ttm__auth_type'] && $this->Config->getSettings('h_allow_restore_with_different_type') !== true) {
                         return ['error' => $this->translate('Password recovering is not possible for users with special auth types')];
                     }
 
@@ -363,6 +363,13 @@ class AuthController extends interfaceController
                     if (empty($email)) {
                         return ['error' => $this->translate('Email for this login is not set')];
                     }
+
+                    $_=[];
+
+                    if (!$this->Config->checkMailReceivers($email, $_)) {
+                        return ['error' => $this->translate('This email address has blocked email delivery, so password reset via email is unavailable. Please contact support for assistance.')];
+                    }
+
                     $User = Auth::serviceUserStart($this->Config);
                     $Totum = new Totum($this->Config, $User);
                     $pass = $getNewPass();
