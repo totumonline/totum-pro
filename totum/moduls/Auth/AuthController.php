@@ -731,13 +731,17 @@ class AuthController extends interfaceController
                         return ['error' => $resultData['error']];
                     }
 
-                    $split = explode('.', $resultData['id_token']);
-                    $data = json_decode(base64_decode($split[1]), true);
+                    $data = '';
+                    if ($split = explode('.', $resultData['id_token'] ?? '')){
+                        if(key_exists(1, $split)) {
+                            $data = json_decode(base64_decode($split[1]), true);
+                        }
+                    }
 
                     if (trim($openIdIdData['check_code']) != '') {
                         $_res = (new CalculateAction($openIdIdData['check_code']))
                             ->execAction('CODE', [], [], $Table->getTbl(),
-                                $Table->getTbl(), $Table, 'exec', ['id_token' => $data]);
+                                $Table->getTbl(), $Table, 'exec', ['id_token' => $data, 'raw' => $result]);
 
                         if ($_res && is_array($_res)) {
                             if (!empty($_res['error'])) {
