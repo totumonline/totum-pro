@@ -41,7 +41,7 @@ trait ListUnsubscribeTrait
         }
     }
 
-    protected function checkMailReceivers($to, &$hcopy, $force = false)
+    public function checkMailReceivers($to, &$hcopy, $force = false)
     {
         if (!$force) {
             $this->loadListUnsubscribeSettings();
