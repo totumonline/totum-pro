@@ -450,6 +450,7 @@ class DE implements LangInterface
   'Tree nesting error' => 'Baum-Verschachtelungsfehler. Ein Kindelement kann kein Elternelement sein.',
   'Field [[%s]] is not of type password' => 'Feld [[%s]] ist nicht vom Typ Passwort',
   'Wrong [[%s]] value' => 'Ungültiger Wert in [[%s]]',
+  'This email address has blocked email delivery, so password reset via email is unavailable. Please contact support for assistance.' => 'Diese E-Mail-Adresse hat die Zustellung von E-Mails blockiert, daher ist das Zurücksetzen des Passworts per E-Mail nicht möglich. Bitte wenden Sie sich an den Support, um Hilfe zu erhalten.',
 );
 	public function num2str($num): string
 	{

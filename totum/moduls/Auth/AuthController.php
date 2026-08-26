@@ -355,7 +355,7 @@ class AuthController extends interfaceController
 
                 if ($userRow = $userRow ?? Auth::getUserRowWithServiceRestriction($post['login'], $this->Config)) {
 
-                    if ($userRow['ttm__auth_type']) {
+                    if ($userRow['ttm__auth_type'] && $this->Config->getSettings('h_allow_restore_with_different_type') !== true) {
                         return ['error' => $this->translate('Password recovering is not possible for users with special auth types')];
                     }
 
@@ -363,6 +363,13 @@ class AuthController extends interfaceController
                     if (empty($email)) {
                         return ['error' => $this->translate('Email for this login is not set')];
                     }
+
+                    $_=[];
+
+                    if (!$this->Config->checkMailReceivers($email, $_)) {
+                        return ['error' => $this->translate('This email address has blocked email delivery, so password reset via email is unavailable. Please contact support for assistance.')];
+                    }
+
                     $User = Auth::serviceUserStart($this->Config);
                     $Totum = new Totum($this->Config, $User);
                     $pass = $getNewPass();
@@ -716,26 +723,40 @@ class AuthController extends interfaceController
                     $resultData = json_decode($result, true);
 
                     if ($resultData['error'] ?? '') {
+
+                        if (!empty($openIdIdData['error_redirect'])) {
+                            header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR'=>$resultData['error']]));
+                        }
                         static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                         return ['error' => $resultData['error']];
                     }
 
-                    $split = explode('.', $resultData['id_token']);
-                    $data = json_decode(base64_decode($split[1]), true);
+                    $data = '';
+                    if ($split = explode('.', $resultData['id_token'] ?? '')){
+                        if(key_exists(1, $split)) {
+                            $data = json_decode(base64_decode($split[1]), true);
+                        }
+                    }
 
                     if (trim($openIdIdData['check_code']) != '') {
                         $_res = (new CalculateAction($openIdIdData['check_code']))
                             ->execAction('CODE', [], [], $Table->getTbl(),
-                                $Table->getTbl(), $Table, 'exec', ['id_token' => $data]);
+                                $Table->getTbl(), $Table, 'exec', ['id_token' => $data, 'raw' => $result]);
 
                         if ($_res && is_array($_res)) {
                             if (!empty($_res['error'])) {
+                                if (!empty($openIdIdData['error_redirect'])) {
+                                    header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR'=>$_res['error']]));
+                                }
                                 $this->answerVars['error'] = $_res['error'];
                                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                 return [];
                             } elseif (!empty($_res['id_token']) && is_array($_res['id_token'])) {
                                 $data = $_res['id_token'];
                             } else {
+                                if (!empty($openIdIdData['error_redirect'])) {
+                                    header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR'=>'check_code error']));
+                                }
                                 $this->answerVars['error'] = 'check_code error';
                                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                 return [];
@@ -749,14 +770,14 @@ class AuthController extends interfaceController
 
                     if (!empty($data['email'])) {
 
-                        $auth = function ($id) use ($data) {
+                        $auth = function ($id) use ($openIdIdData, $data) {
                             if ($this->Config->getSettings('h_pro_auth_on_off')) {
                                 $_SESSION['auth_data'] = ['id' => $id, 'login' => $data['email']];
                                 $this->location('/Auth/Verification');
                             } else {
                                 Auth::isBlockedUserIfTimesOff($data['email'], null, $this->Config, 'write', Auth::$AuthStatuses['OK']);
                                 Auth::webInterfaceSetAuth($id);
-                                $this->location('/');
+                                $this->location($openIdIdData['success_redirect'] ?? '/');
                             }
                             die;
                         };
@@ -770,6 +791,9 @@ class AuthController extends interfaceController
                         } catch (\Exception $e) {
                             if (preg_match('/^GOMODULE: User with email ' . $data['email'] . ' is not found$/', $e->getMessage())) {
                                 if (!empty($openIdIdData['rejection_comment'])){
+                                    if (!empty($openIdIdData['error_redirect'])) {
+                                        header('Location: ' . $openIdIdData['error_redirect'].'?'.http_build_query(['ERROR' => $openIdIdData['rejection_comment']]));
+                                    }
                                     $this->answerVars['error'] = $openIdIdData['rejection_comment'];
                                     static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                                     return [];
@@ -779,6 +803,10 @@ class AuthController extends interfaceController
                                 $auth($id);
                             }
 
+                            if (!empty($openIdIdData['error_redirect'])) {
+                                header('Location: ' . $openIdIdData['error_redirect'].'?'
+                                    .http_build_query(['ERROR' => $e->getMessage()]));
+                            }
                             $this->answerVars['error'] = $e->getMessage();
                             static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                             return [];

@@ -45,7 +45,7 @@ $controllerClass = 'totum\\moduls\\' . $module . '\\' . $module . 'Controller';
 if(!class_exists($controllerClass) && $Config && $Config->isinterfacesSwitchedOn()){
     list($interfaceModule) = $Config->getTemplate404();
     if($interfaceModule){
-        $controllerClass = 'totum\\moduls\\' . $module . '\\' . $module . 'Controller';
+        $controllerClass = 'totum\\moduls\\' . $interfaceModule . '\\' . $interfaceModule . 'Controller';
     }
 }
 

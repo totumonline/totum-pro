@@ -452,6 +452,7 @@ class RU implements LangInterface
   'Tree nesting error' => 'Ошибка вложенности дерева. Дочерний элемент не может быть родительским.',
   'Field [[%s]] is not of type password' => 'Поле [[%s]] не является паролем',
   'Wrong [[%s]] value' => 'Неверное значение в [[%s]]',
+  'This email address has blocked email delivery, so password reset via email is unavailable. Please contact support for assistance.' => 'Этот адрес электронной почты заблокировал доставку писем, поэтому сброс пароля через электронную почту недоступен. Пожалуйста, обратитесь в службу поддержки за помощью.',
 );
 	public function num2str($num): string
     {
