@@ -450,6 +450,7 @@ class ES implements LangInterface
   'Tree nesting error' => 'Error de anidamiento del árbol. Un elemento hijo no puede ser un elemento padre.',
   'Field [[%s]] is not of type password' => 'El campo [[%s]] no es de tipo contraseña',
   'Wrong [[%s]] value' => 'Valor no válido en [[%s]]',
+  'This email address has blocked email delivery, so password reset via email is unavailable. Please contact support for assistance.' => 'Esta dirección de correo electrónico ha bloqueado la entrega de correos, por lo que el restablecimiento de contraseña por correo no está disponible. Por favor, contacte al soporte para obtener ayuda.',
 );
 	public function num2str($num): string
 	{
