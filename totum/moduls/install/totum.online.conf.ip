@@ -2,7 +2,7 @@ server {
     listen *:80;
     server_name _;
     charset UTF-8;
-    root /home/totum/totum-mit/http/;
+    root /home/totum/totum-pro/http/;
     index index.php;
     expires off;
     include acme;
