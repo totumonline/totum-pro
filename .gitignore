@@ -17,3 +17,5 @@ totum/ext/
 totum-gom.service
 CLI.totum.php.ini
 FPM.totum.php.ini
+/composer.phar
+/composer-setup.php
