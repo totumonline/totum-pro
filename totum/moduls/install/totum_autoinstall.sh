@@ -1,38 +1,18 @@
 #!/bin/bash
 
-WITHOUT_CHECK=false
-
-for arg in "$@"; do
-  case $arg in
-    --without-check)
-      WITHOUT_CHECK=true
-      ;;
-    *)
-      echo "Unknown parameter: $arg"
-      exit 1
-      ;;
-  esac
-done
-
-if [[ "$WITHOUT_CHECK" == true ]]; then
-  echo "Skipping Ubuntu version check due to --without-check parameter."
+echo "Performing Ubuntu version check..."
+if [[ $(grep -c 'Ubuntu 26.04' /etc/issue) -ne 1 ]]; then
+  echo "THIS SERVER IS NOT A UBUNTU 26.04 CHECK: sudo cat /etc/issue"
+  exit 0
 else
-  echo "Performing Ubuntu version check..."
-  if [[ $(grep -c 'Ubuntu 24.04' /etc/issue) -ne 1 ]]; then
-    echo "THIS SERVER IS NOT A UBUNTU 24.04 CHECK: sudo cat /etc/issue"
-    echo "If you want to install it on a different version of Ubuntu, specify the parameter --without-check"
-    echo "sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh --without-check"
-    exit 0
-  else
-    echo "Ubuntu version is OK. Let's go..."
-  fi
+  echo "Ubuntu version is OK. Let's go..."
 fi
 
 if [[ $(sudo locale | grep -c 'LANG=en_US.UTF-8') -ne 1 ]]
 then
   echo "- - - - - - - - - - - - - - - - - - - - - -"
   echo -e "\e[40;1;37mTHIS SERVER HAVE NOT \e[40;1;31men_US.UTF-8\e[40;1;37m LOCALE. YOU HAVE TO EXECUTE:"
-  echo -e "sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh" 
+  echo -e "sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh" 
   echo -e "AND FOLLOW THE ON-SCREEN INSTRUCTIONS TO SETUP THE CORRECT LOCALE\033[0m"
   echo "- - - - - - - - - - - - - - - - - - - - - -"
   echo
@@ -43,7 +23,7 @@ else
 fi
 
 if [[ "$TOTUMLOCALE" == [Aa] ]]; then
-    sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh
+    sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh
     echo
     exit 0
 elif [[ "$TOTUMLOCALE" == "RUN" ]]; then
@@ -87,19 +67,19 @@ echo -e "\033[43m\033[30m- - - - - - - - - - - - - - - - - - - - - - - - - - - -
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m   TOTUM AUTOINSTALL SCRIPT                                              \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
-echo -e "\033[43m\033[30m   This install script will help you to install MIT/PRO Totum online.    \033[0m"
+echo -e "\033[43m\033[30m   This install script will help you to install Totum online PRO.        \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
-echo -e "\033[43m\033[30m   \033[43m\033[31mONLY ON CLEAR!!! Ubuntu 24.04 \033[43m\033[30mwith or without SSL certificate.        \033[0m"
+echo -e "\033[43m\033[30m   \033[43m\033[31mONLY ON CLEAR!!! Ubuntu 26.04 \033[43m\033[30mwith or without SSL certificate.        \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m   For SSL you have to \033[43m\033[31mDELEGATE A VALID DOMAIN \033[43m\033[30mto this server.           \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m   If you not shure about you domain — cansel this install and check:    \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
-echo -e "\033[43m\033[31m   ping YOU_DOMAIN                                                       \033[0m"
+echo -e "\033[43m\033[31m   ping YOUR_DOMAIN                                                      \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m   To install without a domain, leave the domain field empty.            \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
-echo -e "\033[43m\033[30m   You will be able to add a domain and switch between MIT/PRO later.    \033[0m"
+echo -e "\033[43m\033[30m   You will be able to add a domain later.                               \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\033[0m"
 echo
@@ -117,23 +97,6 @@ TOTUMTIMEZONE=$(tzselect)
 
 TOTUMBASEPASS=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 24)
 
-echo
-echo "1) MIT"
-echo "2) PRO (if you do not have a 'PRO' license key, the system operates with only one user, 'admin')"
-echo
-
-read -p "Select version: " TOTUMVERSION
-echo
-if [[ $TOTUMVERSION -eq 1 ]]
-then
-  TOTUMVERSION=mit
-elif [[ $TOTUMVERSION -eq 2 ]]
-then
-  TOTUMVERSION=pro
-else
-  TOTUMVERSION=mit
-fi
-
 read -p "Enter your email: " CERTBOTEMAIL
 echo
 read -p "Create Totum superuser password: " TOTUMADMINPASS
@@ -147,8 +110,8 @@ echo
 read -p "Enter domain or leave this field empty: " CERTBOTDOMAIN
 
 echo
-echo "1) EN"
-echo "2) RU"
+echo "1) RU"
+echo "2) EN"
 echo "3) ES"
 echo "4) DE"
 echo
@@ -157,10 +120,10 @@ read -p "Select language: " TOTUMLANG
 echo
 if [[ $TOTUMLANG -eq 1 ]]
 then
-  TOTUMLANG=en
+  TOTUMLANG=ru
 elif [[ $TOTUMLANG -eq 2 ]]
 then
-  TOTUMLANG=ru
+  TOTUMLANG=en
 elif [[ $TOTUMLANG -eq 3 ]]
 then
   TOTUMLANG=es
@@ -168,7 +131,7 @@ elif [[ $TOTUMLANG -eq 4 ]]
 then
   TOTUMLANG=de
 else
-  TOTUMLANG=en
+  TOTUMLANG=ru
 fi
 
 echo
@@ -177,8 +140,6 @@ echo
 echo -e "\033[1mCheck you settings:\033[0m"
 echo
 echo -e "\033[1mTimezone:\033[0m " $TOTUMTIMEZONE
-echo
-echo -e "\033[1mVersion:\033[0m "$TOTUMVERSION
 echo
 echo -e "\033[1mEmail:\033[0m " $CERTBOTEMAIL
 echo
@@ -207,7 +168,6 @@ echo "export CERTBOTEMAIL=${CERTBOTEMAIL}" >> totum_install_vars
 echo "export TOTUMADMINPASS=${TOTUMADMINPASS}" >> totum_install_vars
 echo "export CERTBOTDOMAIN=${CERTBOTDOMAIN}" >> totum_install_vars
 echo "export TOTUMLANG=${TOTUMLANG}" >> totum_install_vars
-echo "export TOTUMVERSION=${TOTUMVERSION}" >> totum_install_vars
 
 echo "Environment variables written to totum_install_vars!"
 echo
@@ -230,8 +190,6 @@ echo "- - - - - - - - - - - - - - - - - - - - - -"
 echo
 echo -e "\033[1mTimezone:\033[0m " $TOTUMTIMEZONE
 echo
-echo -e "\033[1mVersion:\033[0m " $TOTUMVERSION
-echo
 echo -e "\033[1mEmail:\033[0m " $CERTBOTEMAIL
 echo
 echo -e "\033[1mPass for Totum admin:\033[0m " $TOTUMADMINPASS
@@ -253,44 +211,6 @@ echo
     echo
     exit 1
   fi
-fi
-
-if [ "$TOTUMVERSION" == "mit" ] && [ -f /home/totum/totum-mit/Conf.php ]; then
-
-echo "- - - - - - - - - - - - - - - - - - - - - - -"
-echo "TOTUMVERSION is 'MIT'. If you want to change it to 'PRO' enter (A)."
-echo "WARNING: If you do not have a 'PRO' license key, the system operates with only one user, 'admin'."
-echo "WARNING WARNING WARNING: Your 'MIT' installation must be updated to the latest version in order to switch to 'PRO'! Before proceeding, make sure to cancel the transition (Ctrl+C) and run 'bin/totum git-update' from the root installation folder as the 'totum' user."
-echo "- - - - - - - - - - - - - - - - - - - - - - -"
-echo
-read -p "Enter (A) if not (N): " CHANGE_V
-echo
-  if [[ "$CHANGE_V" == [Aa] ]]; then
-
-    sudo sed -i 's/export TOTUMVERSION=mit/export TOTUMVERSION=pro/' totum_install_vars
-
-    source totum_install_vars
-
-    echo "TOTUMVERSION has been changed to 'PRO' and totum_install_vars has been reloaded."
-    echo
-
-  elif [[ "$CHANGE_V" == [Nn] ]]; then
-
-    echo "TOTUMVERSION remains 'MIT'."
-    echo
-
-  else
-    echo "Invalid input. Script aborted."
-    echo
-    exit 1
-  fi
-
-else
-
-  echo
-  echo "Skip..."
-  echo
-
 fi
 
 if [ -z "$CERTBOTDOMAIN" ] && [ -f /home/totum/totum-mit/Conf.php ]; then
@@ -351,7 +271,7 @@ if [ -f "ansible_totum_install.yml" ]; then
   echo
 else
 
-sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/ansible_totum_install.yml
+sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/ansible_totum_install.yml
 
 fi
 
