@@ -45,13 +45,15 @@ class GitUpdate extends Command
 
         $Conf = new Conf();
         $serviceName = $Conf->getProGoModuleServiceName();
+        $Conf->setSessionCookieParams();
+        $scheme = session_get_cookie_params()['secure'] ? 'https' : 'http';
 
 
         passthru('git pull origin pro && php -f composer.phar self-update --2 && php -f composer.phar install --no-dev');
 
 
 
-        $uri = 'http://'.$Conf->getSomeHost().'/Commands/reset-opcache';
+        $uri = $scheme.'://'.$Conf->getSomeHost().'/Commands/reset-opcache';
 
         $context = stream_context_create(
             [
