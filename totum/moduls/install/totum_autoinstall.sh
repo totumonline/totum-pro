@@ -213,7 +213,7 @@ echo
   fi
 fi
 
-if [ -z "$CERTBOTDOMAIN" ] && [ -f /home/totum/totum-mit/Conf.php ]; then
+if [ -z "$CERTBOTDOMAIN" ] && [ -f /home/totum/totum-pro/Conf.php ]; then
   echo "- - - - - - - - - - - - - - - - - - - - - - -"
   echo "Your installation is currently without a domain. Would you like to add a domain and SSL?"
   echo "- - - - - - - - - - - - - - - - - - - - - - -"
