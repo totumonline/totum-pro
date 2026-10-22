@@ -16,17 +16,15 @@ On your server, easy to learn and scalable with business growth 🎉
 
 **— WEB, open-source** — is installed on your own server.
 
-**— Two-level access** — developer-users.
-
 **— API** —  integrate with anything.
 
 Site — [totum.online](https://totum.online)
 
 ## Install and docs
 
-1-Click native install on Ubuntu 24.04 `ONLY FOR CLEAR SYSTEMS` — [docs.totum.online/ubuntu](https://docs.totum.online/ubuntu)
+1-Click native install on Ubuntu 26.04 `ONLY FOR CLEAR SYSTEMS` — [docs.totum.online/ubuntu](https://docs.totum.online/ubuntu)
 ```
-sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
+sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
 ```
 Avaliable lang: `EN`, `RU`, `ES`, `DE`
 
@@ -34,11 +32,7 @@ Documentaion — [docs.totum.online](https://docs.totum.online)
 
 Training course — [docs.totum.online/training-course](https://docs.totum.online/training-course) 🚀
 
-Forum — [questions, answers, suggestions, announcements ](https://github.com/totumonline/totum-mit/discussions) 🔥
-
 Email — `totum at totum.online`
-
-If you have done a project on Totum — [tell about it here](https://github.com/totumonline/totum-mit/discussions/categories/show-and-tell) 🙌
 
 ## Interface
 
@@ -57,8 +51,6 @@ If you have done a project on Totum — [tell about it here](https://github.com/
 + Equipment inventory
 + ...
 
-+ **See people's completed projects — [in this section of the GitHub forum](https://github.com/totumonline/totum-mit/discussions/categories/show-and-tell) 🙌**
-
 ## All you need is a browser
 
 Development and operation are in the same environment.
@@ -72,8 +64,6 @@ The developer can instantly hide the developer UI elements to see what the solut
 Totum is written in `PHP` but is internally programming with its own language — `totum code`.
 
 **This makes development on Totum possible for non-programmers.**
-
-A Totum developer does not need to know `SQL` — calling and writing data to database is also managed by `totum code`.
 
 In most fields, the codes are small — up to 5-10 lines.
 
@@ -99,7 +89,7 @@ listNumbers: selectList(table: 'orders'; field: 'number'; where: 'date' >= #firs
 ```
 
 
-You can implement complex logic, even with the lowest programming skills. You will be able to understand it with — [the free training course](https://docs.totum.online/training-course), [forum](https://github.com/totumonline/totum-ru-issues-and-discussions/discussions) 👌
+You can implement complex logic, even with the lowest programming skills. You will be able to understand it with — [the free training course](https://docs.totum.online/training-course) 👌
 
 ## Database as interface - x10 to development speed 🏃💨
 
@@ -175,16 +165,10 @@ In addition, the database underlying Totum allows it to be clustered across mult
 
 ## How to try?
 
-Welcome to the demo server — [totum.online/demo](https://totum.online/demo) 🎉
-
 Site — [totum.online](https://totum.online)
 
 Documentation — [docs.totum.online](https://docs.totum.online)
 
 Training course — [docs.totum.online/training-course](https://docs.totum.online/training-course) 🚀
 
-Forum in English — [questions, answers, suggestions, announcements ](https://github.com/totumonline/totum-mit/discussions) 🔥
-
 Email — `totum at totum.online`
-
-If you have done a project on totum — [tell about him here](https://github.com/totumonline/totum-mit/discussions/categories/show-and-tell) 🙌
