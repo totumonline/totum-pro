@@ -10,7 +10,8 @@
     "psr/log": "^3.0",
     "guzzlehttp/psr7": "^2.11",
     "symfony/console": "^7.4",
-    "firebase/php-jwt": "^7.1"
+    "firebase/php-jwt": "^7.1",
+    "directorytree/imapengine": "^1.25"
   },
   "autoload": {
     "psr-4": {

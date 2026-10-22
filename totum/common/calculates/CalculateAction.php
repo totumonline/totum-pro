@@ -9,6 +9,12 @@
 namespace totum\common\calculates;
 
 use DateTime;
+use DirectoryTree\ImapEngine\Address;
+use DirectoryTree\ImapEngine\Connection\ImapQueryBuilder;
+use DirectoryTree\ImapEngine\Connection\Tokens\Token;
+use DirectoryTree\ImapEngine\Exceptions\Exception as ImapException;
+use DirectoryTree\ImapEngine\Folder;
+use DirectoryTree\ImapEngine\Mailbox;
 use SoapClient;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
@@ -2352,27 +2358,29 @@ class CalculateAction extends Calculate
         $this->__checkNotEmptyParams($params, ['name', 'folder']);
         $this->__checkNotArrayParams($params, ['name', 'folder', 'uidvalidity', 'datefrom', 'lastuid', 'timeout']);
 
-        $imapData = $this->__getImapData($params['name'], $params['folder']);
-
-        $imap = $imapData['imap'];
-        $mailbox = $imapData['mailbox'];
-
-        if ($status = imap_status($imap, $mailbox, SA_UIDVALIDITY)) {
-            $uidvalidity = $status->uidvalidity;
-        }
-
-        $CRETERIA = "ALL";
+        $query = new ImapQueryBuilder();
         if (!empty($params['datefrom'])) {
             if (($Datefrom = DateTime::createFromFormat('Y-m-d', $params['datefrom'])) &&
                 $Datefrom->format('Y-m-d') === $params['datefrom']) {
-                $CRETERIA = "SINCE \"{$Datefrom->format('Y-m-d')}\"";
+                $query->since($Datefrom);
             } else {
                 throw new errorException($this->translate('Invalid date format. Use YYYY-MM-DD.'));
             }
+        } else {
+            $query->all();
         }
-        $uids = imap_search($imap, $CRETERIA, SE_UID) ?: [];
 
-        imap_close($imap);
+        [$uidvalidity, $uids] = $this->__withImap($params['name'], function (Mailbox $mailbox) use ($params, $query) {
+            $folder = new Folder($mailbox, $params['folder']);
+            $uidvalidity = $folder->status()['UIDVALIDITY'] ?? null;
+            $folder->select(true);
+            $response = $mailbox->connection()->search([$query->toImap()]);
+
+            return [
+                $uidvalidity === null ? null : (int)$uidvalidity,
+                array_map(fn(Token $token) => (int)$token->value, $response->tokensAfter(2))
+            ];
+        });
 
         $lastuid = (int)($params['lastuid'] ?? 0);
 
@@ -2397,27 +2405,10 @@ class CalculateAction extends Calculate
         $params = $this->getParamsArray($params);
         $this->__checkNotEmptyParams($params, ['name']);
 
-        $imapData = $this->__getImapData($params['name'], "");
-
-        $imap = $imapData['imap'];
-
-        $folders = imap_list($imap, $imapData['mailbox'], "*");
-
-        if ($folders === false) {
-            $folders = [];
-        }
-        $cleaned_folders = [];
-        $prefix_len = strlen($imapData['mailbox']);
-        foreach ($folders as $folder) {
-            if (substr($folder, 0, $prefix_len) === $imapData['mailbox']) {
-                $name = substr($folder, $prefix_len);
-            } else {
-                $name = $folder;
-            }
-            $cleaned_folders[] = $name;
-        }
-
-        return $cleaned_folders;
+        return $this->__withImap($params['name'], fn(Mailbox $mailbox) => array_map(
+            fn(Folder $folder) => $folder->path(),
+            $mailbox->folders()->get()->all()
+        ));
     }
 
     protected function funcProImapGetEmail($params)
@@ -2425,165 +2416,51 @@ class CalculateAction extends Calculate
         $params = $this->getParamsArray($params, [], []);
         $this->__checkNotEmptyParams($params, ['name', 'folder', 'uid']);
 
-        $imapData = $this->__getImapData($params['name'], $params['folder']);
-        $imap = $imapData['imap'];
-        $msgno = imap_msgno($imap, $params['uid']);
+        return $this->__withImap($params['name'], function (Mailbox $mailbox) use ($params) {
+            $message = (new Folder($mailbox, $params['folder']))->messages()
+                ->withHeaders()
+                ->withBody()
+                ->markAsRead()
+                ->find((int)$params['uid']);
 
-        if (!$msgno) {
-            throw new errorException($this->translate("UID %s not found"), [$params['uid']]);
-        }
+            if (!$message) {
+                throw new errorException($this->translate('UID %s not found', [$params['uid']]));
+            }
 
-        $h = imap_headerinfo($imap, $msgno);
-        $to = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->to ?? []);
-        $cc = array_map(fn($a) => ($a->mailbox ?? '') . '@' . ($a->host ?? ''), $h->cc ?? []);
-        $from = ($h->from[0]->mailbox ?? '') . '@' . ($h->from[0]->host ?? '');
-
-        $subject = '';
-        if ($h->subject) {
-            foreach (imap_mime_header_decode($h->subject) as $part) {
-                $charset = strtolower($part->charset ?? 'default');
-                if (in_array($charset, ['default', 'us-ascii'])) {
-                    $subject .= $part->text;
-                } else {
-                    $subject .= mb_convert_encoding($part->text, 'UTF-8', $charset);
+            $headers = [];
+            $current = '';
+            foreach (explode("\r\n", $message->head()) as $line) {
+                if (preg_match('/^([A-Za-z-]+):\s*(.*)$/', $line, $m)) {
+                    $current = $m[1];
+                    $headers[$current] = $m[2];
+                } elseif (preg_match('/^\s+(.+)$/', $line, $m) && $current) {
+                    $headers[$current] .= ' ' . $m[1];
                 }
             }
-        }
 
-        $headers = [];
-        $current = '';
-        $raw = imap_fetchheader($imap, $msgno);
-        foreach (explode("\r\n", $raw) as $line) {
-            if (preg_match('/^([A-Za-z-]+):\s*(.*)$/', $line, $m)) {
-                $current = $m[1];
-                $headers[$current] = $m[2];
-            } elseif (preg_match('/^\s+(.+)$/', $line, $m) && $current) {
-                $headers[$current] .= ' ' . $m[1];
+            $files = [];
+            foreach ($message->attachments() as $attachment) {
+                $files[] = [
+                    'name' => $attachment->filename() ?: 'attachment_' . bin2hex(random_bytes(3)),
+                    'base64' => base64_encode($attachment->contents())
+                ];
             }
-        }
 
-        $struct = imap_fetchstructure($imap, $msgno);
+            $messageId = $message->messageId();
+            $date = $message->date();
 
-        $decode_body = fn($body, $enc) => match($enc) {
-            3 => base64_decode($body),
-            4 => quoted_printable_decode($body),
-            default => $body,
-        };
-
-        $email_body = '';
-        $files = [];
-
-        $decode_mime_string = function($string) {
-            $result = '';
-            $parts = imap_mime_header_decode($string ?? '');
-            foreach ($parts ?: [] as $part) {
-                $charset = strtolower($part->charset ?? 'default');
-                $text = $part->text;
-                if (in_array($charset, ['default', 'us-ascii'])) {
-                    $result .= $text;
-                } else {
-                    $result .= @mb_convert_encoding($text, 'UTF-8', $charset) ?: $text;
-                }
-            }
-            return $result;
-        };
-
-        if (!isset($struct->parts)) {
-            $body = imap_fetchbody($imap, $msgno, 1);
-            $content = mb_convert_encoding(
-                $decode_body($body, $struct->encoding),
-                'UTF-8',
-                ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
-            );
-
-            if ($struct->type == 0) {
-                $subtype = strtolower($struct->subtype ?? '');
-                if (strpos($subtype, 'html') !== false) {
-                    $email_body = $content;
-                } elseif (strpos($subtype, 'plain') !== false) {
-                    $email_body = $content;
-                }
-            }
-        } else {
-            // Рекурсивная обработка без передачи замыкания по ссылке
-            $process_parts = function($parts, $prefix = '') use (
-                $imap,
-                $msgno,
-                $decode_body,
-                $decode_mime_string,
-                &$email_body,
-                &$files
-            ) {
-                foreach ($parts as $i => $part) {
-                    $part_num = $prefix . ($i + 1);
-                    $disposition = strtoupper($part->disposition ?? '');
-                    $is_attachment = in_array($disposition, ['ATTACHMENT', 'INLINE']);
-
-                    $filename = '';
-                    foreach ([$part->dparameters ?? [], $part->parameters ?? []] as $params) {
-                        foreach ($params as $p) {
-                            if (in_array(strtolower($p->attribute ?? ''), ['filename', 'name'])) {
-                                $filename = $decode_mime_string($p->value);
-                                break 2;
-                            }
-                        }
-                    }
-
-                    // Обработка текстовых частей
-                    if ($part->type == 0 && !$email_body) {
-                        $data = imap_fetchbody($imap, $msgno, $part_num);
-                        $content = mb_convert_encoding(
-                            $decode_body($data, $part->encoding),
-                            'UTF-8',
-                            ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
-                        );
-
-                        $subtype = strtolower($part->subtype ?? '');
-                        if (strpos($subtype, 'html') !== false) {
-                            $email_body = $content;
-                        } elseif (strpos($subtype, 'plain') !== false) {
-                            $email_body = $content;
-                        }
-                    }
-                    // Обработка вложений
-                    elseif ($is_attachment || ($part->type > 0 && $filename)) {
-                        $data = imap_fetchbody($imap, $msgno, $part_num);
-                        $files[] = [
-                            'name' => $filename ?: 'attachment_' . bin2hex(random_bytes(3)),
-                            'base64' => base64_encode($decode_body($data, $part->encoding))
-                        ];
-                    }
-
-                    // Рекурсия для вложенных multipart
-                    if (!empty($part->parts)) {
-                        $this->processPartsRecursive(
-                            $imap,
-                            $msgno,
-                            $part->parts,
-                            $part_num . '.',
-                            $decode_body,
-                            $decode_mime_string,
-                            $email_body,
-                            $files
-                        );
-                    }
-                }
-            };
-
-            $process_parts($struct->parts);
-        }
-
-        return [
-            'message_id' => $h->message_id ?? '',
-            'email_to' => implode(', ', $to),
-            'email_from' => $from,
-            'email_cc' => implode(', ', $cc),
-            'email_date' => date('c', strtotime($h->date)),
-            'email_subject' => $subject,
-            'email_body' => $email_body,
-            'email_files' => $files,
-            'email_headers' => $headers
-        ];
+            return [
+                'message_id' => $messageId ? '<' . $messageId . '>' : '',
+                'email_to' => implode(', ', array_map(fn(Address $address) => $address->email(), $message->to())),
+                'email_from' => $message->from()?->email() ?? '',
+                'email_cc' => implode(', ', array_map(fn(Address $address) => $address->email(), $message->cc())),
+                'email_date' => $date ? date('c', $date->getTimestamp()) : '',
+                'email_subject' => $message->subject() ?? '',
+                'email_body' => $message->text() ?: ($message->html() ?? ''),
+                'email_files' => $files,
+                'email_headers' => $headers
+            ];
+        });
     }
 
     protected function funcProIndexAdd($params)
@@ -2656,73 +2533,6 @@ class CalculateAction extends Calculate
 
     }
 
-// Вспомогательный метод для рекурсии
-    private function processPartsRecursive(
-        $imap,
-        $msgno,
-        $parts,
-        $prefix,
-        $decode_body,
-        $decode_mime_string,
-        &$email_body,
-        &$files
-    ) {
-        foreach ($parts as $i => $part) {
-            $part_num = $prefix . ($i + 1);
-            $disposition = strtoupper($part->disposition ?? '');
-            $is_attachment = in_array($disposition, ['ATTACHMENT', 'INLINE']);
-
-            $filename = '';
-            foreach ([$part->dparameters ?? [], $part->parameters ?? []] as $params) {
-                foreach ($params as $p) {
-                    if (in_array(strtolower($p->attribute ?? ''), ['filename', 'name'])) {
-                        $filename = $decode_mime_string($p->value);
-                        break 2;
-                    }
-                }
-            }
-
-            // Обработка текстовых частей
-            if ($part->type == 0 && !$email_body) {
-                $data = imap_fetchbody($imap, $msgno, $part_num);
-                $content = mb_convert_encoding(
-                    $decode_body($data, $part->encoding),
-                    'UTF-8',
-                    ['UTF-8', 'ISO-8859-1', 'WINDOWS-1251']
-                );
-
-                $subtype = strtolower($part->subtype ?? '');
-                if (strpos($subtype, 'html') !== false) {
-                    $email_body = $content;
-                } elseif (strpos($subtype, 'plain') !== false) {
-                    $email_body = $content;
-                }
-            }
-            // Обработка вложений
-            elseif ($is_attachment || ($part->type > 0 && $filename)) {
-                $data = imap_fetchbody($imap, $msgno, $part_num);
-                $files[] = [
-                    'name' => $filename ?: 'attachment_' . bin2hex(random_bytes(3)),
-                    'base64' => base64_encode($decode_body($data, $part->encoding))
-                ];
-            }
-
-            // Глубокая рекурсия для вложенных multipart
-            if (!empty($part->parts)) {
-                $this->processPartsRecursive(
-                    $imap,
-                    $msgno,
-                    $part->parts,
-                    $part_num . '.',
-                    $decode_body,
-                    $decode_mime_string,
-                    $email_body,
-                    $files
-                );
-            }
-        }
-    }
-
     protected function getActionTable(array $tableRow, array $params): aTable
     {
         switch ($tableRow['type']) {
@@ -2773,7 +2583,19 @@ class CalculateAction extends Calculate
     }
 
 
-    protected function __getImapData(string $name, $folder): array
+    protected function __withImap(string $name, callable $callback): mixed
+    {
+        $mailbox = $this->__getImapMailbox($name);
+        try {
+            return $callback($mailbox);
+        } catch (ImapException $e) {
+            throw new errorException('IMAP: ' . $e->getMessage());
+        } finally {
+            $mailbox->disconnect();
+        }
+    }
+
+    protected function __getImapMailbox(string $name): Mailbox
     {
         $Totum = $this->Table->getTotum();
 
@@ -2787,25 +2609,35 @@ class CalculateAction extends Calculate
             throw new criticalErrorException($this->translate('IMAP data by name [[%s]] is not found', $name));
         }
 
-        $flags = "";
-        if (!empty($imap_settings['flags']) && is_array($imap_settings['flags'])) {
-            $flags = implode('/', $imap_settings['flags']);
+        $protocol = strtolower((string)($imap_settings['protocol'] ?? ''));
+        if ($protocol !== '' && !str_starts_with($protocol, 'imap')) {
+            throw new criticalErrorException($this->translate('Protocol %s is not supported. Use IMAP.', $protocol));
         }
 
-        $mailbox = "{{$imap_settings['server']}:{$imap_settings['port']}/{$imap_settings['protocol']}/{$flags}}{$folder}";
-        $imap = @imap_open(
-            $mailbox,
-            $imap_settings['email'],
-            Crypt::getDeCrypted($imap_settings['password'], $Totum->getConfig()->getCryptKeyFileContent())
-        );
+        $flags = array_map('strtolower', is_array($imap_settings['flags'] ?? null) ? $imap_settings['flags'] : []);
+        $port = (int)$imap_settings['port'];
 
-        if (!$imap) {
-            throw new criticalErrorException($this->translate('Imap is not connected: %s', imap_last_error()));
+        $mailbox = new Mailbox([
+            'host' => $imap_settings['server'],
+            'port' => $port,
+            'username' => $imap_settings['email'],
+            'password' => Crypt::getDeCrypted($imap_settings['password'], $Totum->getConfig()->getCryptKeyFileContent()),
+            'encryption' => match (true) {
+                in_array('ssl', $flags) => 'ssl',
+                in_array('tls', $flags) => 'starttls',
+                in_array('notls', $flags) => 'tcp',
+                $port === 993 => 'ssl',
+                default => 'starttls',
+            },
+            'validate_cert' => !in_array('novalidate-cert', $flags),
+        ]);
+
+        try {
+            $mailbox->connect();
+        } catch (ImapException $e) {
+            throw new criticalErrorException($this->translate('Imap is not connected: %s', $e->getMessage()));
         }
 
-        return [
-            'imap' => $imap,
-            'mailbox' => $mailbox
-        ];
+        return $mailbox;
     }
 }
