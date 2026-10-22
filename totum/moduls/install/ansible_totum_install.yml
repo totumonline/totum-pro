@@ -489,7 +489,7 @@
     git:
       repo: https://github.com/totumonline/totum-pro.git
       dest: /home/totum/totum-mit
-      version: pro
+      version: ocho
       update: yes
     become_user: totum
     when: not totum_mit.stat.exists
