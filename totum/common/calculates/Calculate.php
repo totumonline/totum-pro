@@ -1565,7 +1565,7 @@ class Calculate
         return $table;
     }
 
-    protected function __checkRequiredParams(array $params, array|string $requireds, string $funcName = null)
+    protected function __checkRequiredParams(array $params, array|string $requireds, ?string $funcName = null)
     {
         foreach ((array)$requireds as $param) {
             if (!key_exists($param, $params)) {

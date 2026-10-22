@@ -92,7 +92,7 @@ class Totum
      * @param Conf $Config
      * @param User|null $User $User
      */
-    public function __construct(Conf $Config, User $User = null)
+    public function __construct(Conf $Config, ?User $User = null)
     {
         $this->Config = $Config;
         $this->User = $User;

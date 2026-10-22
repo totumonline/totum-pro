@@ -450,7 +450,7 @@ class File extends Field
                         die('{"error":"Временный файл не найден"}');
                     }
 
-                    $file['mime'] = trim(`file -b --mime-type {$ftmpname}`);
+                    $file['mime'] = trim((string)shell_exec('file -b --mime-type ' . escapeshellarg($ftmpname)));
 
                     $file['ext'] = preg_replace('/^.*\.([a-z0-9]{1,10})$/', '$1', strtolower($file['name']));
 

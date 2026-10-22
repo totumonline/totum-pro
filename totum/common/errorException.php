@@ -35,7 +35,7 @@ class errorException extends \Exception
             $aTable->getTableRow()['title']));
     }
 
-    public static function criticalException(string|\Exception $error, aTable|Totum|ConfParent|Sql $contextObject = null, string $path = null)
+    public static function criticalException(string|\Exception $error, aTable|Totum|ConfParent|Sql|null $contextObject = null, ?string $path = null)
     {
         match (true) {
             is_a($contextObject, aTable::class) => $contextObject->getTotum()->transactionRollback(),
