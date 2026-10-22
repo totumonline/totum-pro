@@ -538,6 +538,11 @@
       executable: /bin/bash
     when: not composer_phar.stat.exists
 
+  - name: Remove Composer installer
+    file:
+      path: /home/totum/totum-pro/composer-setup.php
+      state: absent
+
   - name: Run Composer install
     shell: php /home/totum/totum-pro/composer.phar install --no-dev
     become_user: totum
