@@ -1,21 +1,91 @@
-MIT License
+"Totum PRO" License Agreement | Aleksei Polunin and Tatiana Polunina
 
-Copyright (c) 2019 totumonline Aleksei Polunin, Tatiana Polunina
+1. Terms and Definitions:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1.1. "Software" / "SO" – refers to the Totum PRO (also referred to as "Totum Online PRO") and its associated documentation files.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1.2. "Repository" – a section of the data storage on the portal https://github.com/, specifically: https://github.com/totumonline/totum-pro, where the Software is placed in its current (latest at the moment) version, as well as updates and patches that allow upgrading the Software used by the Licensee to the latest version.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1.3. "Use" – refers to any actions performed with the Software distributed under the terms of the License Agreement.
+
+1.4. "Licensor" – the Totum PRO team, holding Intellectual Property rights to the Software.
+
+1.5. "Licensee" – an individual or legal entity acquiring the right to use the Software for Licensed Users under this License Agreement and subject to the conditions set forth herein. (Sub-licensing, i.e., the Licensee granting a license and/or Developer Access to third parties who are not Licensed Users, is prohibited under this License Agreement).
+
+1.6. "Developer Access" – the use of the Software with administrative rights, including modification and enhancement of the SO, i.e., with the role of Creator as provided by the Software.
+
+1.7. "Client Access" – the use of the Software, including any solutions created by the Licensee based on the SO, without the right to administer or modify the Software, i.e., with the roles provided by the Software except for the Creator role.
+
+1.8. "Intellectual Property Rights" – refers to the exclusive rights to the Software, patents, trademarks, service marks, and similar rights of individualization.
+
+1.9. "License" – the permission granted by the Licensor to the Licensee to use the Software worldwide for a defined Term, to the extent specified in clauses 1.9.1 and 1.9.2 of the License Agreement, for use by Licensed Users.
+
+1.9.1. The right to access the Repository and download (save copies of) the current version of the Software, as well as updates and patches.
+
+1.9.2. The right to operate copies of the Software downloaded by the Licensee from the Repository during the License period. The right to operate includes the right for the Licensee’s Licensed Users to:
+
+•	Operate and modify the downloaded copy of the Software on the Licensee’s server (the ability to use the SO with Developer and Client Access);
+
+•	Provide Client Access to the downloaded copy of the Software for Licensed Users;
+
+•	Connect any external modules to the downloaded copies of the SO.
+
+1.10. "Term" – the time period during which the License is granted, defined as the period paid for by the Licensee in relation to a specified number of Licensed Users, starting from the License activation date on the Licensor's website. The Term can be extended an unlimited number of times by paying for a new License Term for the number of Licensed Users paid for.
+
+1.11. "Technical Users" – one user with the "admin" role, one user with the "cron" role, and one user with the "service" role, which are pre-installed in the system and necessary for the correct functioning of any solution created based on the SO. Technical Users are not counted when providing the License and are not included in the count of Licensed Users.
+
+1.12. "Licensed Users" – individuals authorized to use the SO through Developer and/or Client Access, with the following scope:
+
+•	Licensed Users with full access – individuals whom the Licensee may grant access to an unlimited number of tables through Developer and/or Client Access in solutions created by the Licensee based on the SO.
+
+•	Licensed Users with limited access – individuals whom the Licensee may grant access to no more than 8 (eight) tables through Client Access in solutions created by the Licensee based on the SO. Developer Access for Licensed Users with limited access is not permitted.
+
+The number of Licensed Users with full and limited access is determined by the rate paid by the Licensee during the Term and does not include Technical Users.
+
+1.13. "Host" – a physical or virtual device on which the Licensee's data is stored, accessible via the Internet through a unique domain name or IP address.
+
+Terms and definitions not listed above in Section 1 of the License Agreement have the meanings assigned to them by applicable law and business customs.
+
+2. License Grant
+
+2.1. To activate the "Totum PRO" License, the Licensee must pay for the License according to the rate listed on the Licensor's website at https://ru.totum.online/pro, which specifies the License Term and the number of Licensed Users, and activate the License at https://license.totum-online.ru/. Upon activation, the code information to access the SO will be available in the personal account at https://license.totum-online.ru/.
+
+2.2. The Licensee may use the License for a maximum of two Hosts. The Hosts are specified during activation or modification of the License. If only one Host is specified at activation, a second Host may be added at https://license.totum-online.ru/ under "License Modification." Modifying added Hosts or adding more than two Hosts under a single License is not permitted.
+
+2.3. From the License Term start date, the Licensor grants the Licensee a License for the Software to the extent provided in clause 1.9. of the License Agreement for the use of the Licensed Users in the quantity specified by the paid tariff, without the right of sublicensing (without the right to grant the License to third parties).
+
+2.4. All third-party components included in the Totum PRO Software are licensed under the original license provided by the respective component owner.
+
+2.5. By using the Software, the Licensee agrees to all the terms and conditions outlined in the License Agreement.
+
+3. Restrictions
+
+3.1. The Licensee may only use the Software for business purposes that do not violate the terms of this license.
+
+3.2. The Licensee is not granted any rights or permissions beyond those expressly provided in this document. Therefore, the publication, distribution, sublicensing, free transfer, and/or sale of the Software, as well as granting access to the Software to third parties not provided for in this License Agreement, is prohibited.
+
+3.3. The Licensee is not permitted to modify, remove, or hide any license, copyright, or other notices from the Licensor or third parties in the Software.
+
+3.4. Any use of the Intellectual Property rights of the Licensor is governed by applicable law.
+
+3.5. The Licensee is not allowed to use any technologies that reduce the actual number of users with access to the SO. If it is found that the number of actual users exceeds the number of Licensed Users authorized by the Licensee, the Licensor reserves the right to unilaterally revoke the License and terminate the Licensee's access to the SO from the date of the violation. The License fee paid by the Licensee is non-refundable.
+
+4. Disclaimer
+
+4.1. The Software is provided "AS IS," without any warranties, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and/or non-infringement. Under no circumstances shall the authors or copyright holders of the Software be liable for any claims, damages, or other liabilities, whether in an action of contract, tort, or otherwise, arising from or related to the Software or its use or other dealings with the Software.
+
+5. Other Provisions
+
+5.1. The License Agreement does not imply any licenses other than those expressly granted herein.
+
+5.2. Any use of the Software in violation of the terms of the License Agreement, including sublicensing and/or granting access to third parties who are not Licensed Users, is not permitted and will result in the automatic termination of the License for the Licensee in violation of the License Agreement.
+
+6. Effectiveness of the License Agreement
+
+6.1. This License Agreement is a public offer and applies to all Licensees who accept this offer as indicated in clause 6.2. of the License Agreement.
+
+6.2. Payment of the License as per clause 2.1. of the License Agreement and/or downloading the Software from the Repository (whichever occurs first) constitutes acceptance of the License Agreement by the Licensee (acceptance of the public offer) in the version valid at the time of acceptance and confirms the Licensee’s agreement with the terms of the License Agreement, as well as the Licensor's Data Usage Policy and Cookie Usage Policy.
+
+6.3. The License Agreement is effective worldwide in the latest version posted at https://github.com/totumonline/totum-pro/blob/pro/LICENSE. This License Agreement applies to Totum PRO version 6 and above.
+
+6.4. The terms of the License granted under this License Agreement remain in effect throughout the Licensee’s use of the Software and, regarding the Licensee’s obligations and restrictions, indefinitely.
