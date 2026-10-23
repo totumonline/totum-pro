@@ -22,7 +22,7 @@ Site — [totum.online](https://totum.online)
 
 ## Install and docs
 
-1-Click native install on Ubuntu 26.04 `ONLY FOR CLEAR SYSTEMS` — [docs.totum.online/ubuntu](https://docs.totum.online/ubuntu)
+1-Click native install on Ubuntu 26.04 LTS `ONLY FOR CLEAR SYSTEMS` — [docs.totum.online/ubuntu](https://docs.totum.online/ubuntu)
 ```
 sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
 ```

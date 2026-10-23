@@ -588,7 +588,6 @@
         opcache.enable = 1
         opcache.memory_consumption = 256M
         date.timezone = Europe/London
-        session.gc_maxlifetime = 3600
         session.save_path = /var/lib/php/sessions_totum
         display_errors = stderr
         log_errors = On
@@ -747,6 +746,17 @@
       user: "root"
       job: "certbot renew --quiet --allow-subset-of-names"
     when: check_domain != ""
+
+  - name: Add cron job for cleaning sessions_totum
+    cron:
+      name: "clean sessions_totum"
+      minute: "*/20"
+      hour: "*"
+      day: "*"
+      month: "*"
+      weekday: "*"
+      user: "root"
+      job: "find /var/lib/php/sessions_totum -type f -name 'sess_*' -mmin +1440 -delete"
 
   - name: Add cron job for totum schemas-crons
     cron:
