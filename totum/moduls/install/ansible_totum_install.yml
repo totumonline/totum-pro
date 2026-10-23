@@ -512,7 +512,7 @@
     git:
       repo: https://github.com/totumonline/totum-pro.git
       dest: /home/totum/totum-pro
-      version: ocho
+      version: pro
       update: yes
     become_user: totum
     when: not totum_pro.stat.exists
