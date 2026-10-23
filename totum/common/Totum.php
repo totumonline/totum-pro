@@ -28,7 +28,7 @@ use totum\tableTypes\tmpTable;
  */
 class Totum
 {
-    public const VERSION = '7.20.66.8-13.12';
+    public const VERSION = '8.1.1.0';
 
 
     public const TABLE_CODE_PARAMS = ['row_format', 'table_format', 'on_duplicate', 'default_action'];
@@ -92,7 +92,7 @@ class Totum
      * @param Conf $Config
      * @param User|null $User $User
      */
-    public function __construct(Conf $Config, User $User = null)
+    public function __construct(Conf $Config, ?User $User = null)
     {
         $this->Config = $Config;
         $this->User = $User;

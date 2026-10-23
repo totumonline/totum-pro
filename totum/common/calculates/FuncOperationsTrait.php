@@ -101,10 +101,8 @@ trait FuncOperationsTrait
 
         $result = curl_exec($ch);
         if ($error = curl_error($ch)) {
-            curl_close($ch);
             throw new errorException($error);
         }
-        curl_close($ch);
 
         if ($header === 'json') {
             list($header, $body) = explode("\r\n\r\n", $result, 2);

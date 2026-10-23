@@ -43,6 +43,29 @@
         - imagemagick
       state: latest
 
+  # Add PHP (sury)
+
+  - name: Download sury PHP GPG key
+    get_url:
+      url: https://mirror.yandex.ru/mirrors/packages.sury.org/php/apt.gpg
+      dest: /usr/share/keyrings/deb.sury.org-php.gpg
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Add sury PHP repository to sources
+    copy:
+      dest: /etc/apt/sources.list.d/php.sources
+      owner: root
+      group: root
+      mode: '0644'
+      content: |
+        Types: deb
+        URIs: https://mirror.yandex.ru/mirrors/packages.sury.org/php/
+        Suites: resolute
+        Components: main
+        Signed-By: /usr/share/keyrings/deb.sury.org-php.gpg
+
   # Add PostgreSQL
 
   - name: Check if postgresql gpg key exists
@@ -515,6 +538,11 @@
       executable: /bin/bash
     when: not composer_phar.stat.exists
 
+  - name: Remove Composer installer
+    file:
+      path: /home/totum/totum-pro/composer-setup.php
+      state: absent
+
   - name: Run Composer install
     shell: php /home/totum/totum-pro/composer.phar install --no-dev
     become_user: totum
@@ -560,7 +588,6 @@
         opcache.enable = 1
         opcache.memory_consumption = 256M
         date.timezone = Europe/London
-        session.gc_maxlifetime = 3600
         session.save_path = /var/lib/php/sessions_totum
         display_errors = stderr
         log_errors = On
@@ -719,6 +746,17 @@
       user: "root"
       job: "certbot renew --quiet --allow-subset-of-names"
     when: check_domain != ""
+
+  - name: Add cron job for cleaning sessions_totum
+    cron:
+      name: "clean sessions_totum"
+      minute: "*/20"
+      hour: "*"
+      day: "*"
+      month: "*"
+      weekday: "*"
+      user: "root"
+      job: "find /var/lib/php/sessions_totum -type f -name 'sess_*' -mmin +1440 -delete"
 
   - name: Add cron job for totum schemas-crons
     cron:

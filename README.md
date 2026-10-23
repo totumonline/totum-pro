@@ -1,43 +1,174 @@
-# Totum PRO
+# Self‑hosted database with built‑in language to create internal tools with ease
 
-## The PRO version is distributed under a limited license
+Universal UI, simple code-based logic, automatic actions, access rights, logging, API and lots of other stuff 👍
 
-For PRO license terms, see the [PRO version page](https://totum.online/pro)
+For rapid construction of business applications 💪 👀
 
-The license text is available in the [totum-pro-license repository](https://github.com/totumonline/totum-pro-license/blob/main/license_last)
+On your server, easy to learn and scalable with business growth 🎉
 
-## Installing PRO
+**— Totum** — a hybrid of database and spreadsheet.
 
-> System for initial installation: **Ubuntu 24.04**
+**— Ready-made frontend** — for desktops and mobile devices.
 
-Run the standard Totum installer (by default, it is assumed to be `/root`) and select the PRO installation option:
+**— Small-code** — simple syntax that is easy to learn.
+
+**— Documentation and training course** — first working table in 30 min.
+
+**— WEB, open-source** — is installed on your own server.
+
+**— API** —  integrate with anything.
+
+Site — [totum.online](https://totum.online)
+
+## Install and docs
+
+1-Click native install on Ubuntu 26.04 LTS `ONLY FOR CLEAR SYSTEMS` — [docs.totum.online/ubuntu](https://docs.totum.online/ubuntu)
+```
+sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
+```
+Avaliable lang: `EN`, `RU`, `ES`, `DE`
+
+Documentaion — [docs.totum.online](https://docs.totum.online)
+
+Training course — [docs.totum.online/training-course](https://docs.totum.online/training-course) 🚀
+
+Email — `totum at totum.online`
+
+## Interface
+
+![main](https://github.com/totumonline/totum-mit/assets/55755565/a2dcf16f-a393-4efe-b3d7-c4b91dd7d97c)
+
+## Using
+
+`Data` > `Processing` > `Actions` > `Exchange` > `Reports` > `Accesses` > `Logs`
+
++ Production management
++ Cadastre accounting
++ Financial accounting
++ Order management
++ Stocks
++ CRM
++ Equipment inventory
++ ...
+
+## All you need is a browser
+
+Development and operation are in the same environment.
+
+Tables, fields and their settings are created and managed with the mouse.
+
+The developer can instantly hide the developer UI elements to see what the solution looks like for the user or switch to a specific user and perform an action from that user.
+
+## Program the logic with simple codes
+
+Totum is written in `PHP` but is internally programming with its own language — `totum code`.
+
+**This makes development on Totum possible for non-programmers.**
+
+In most fields, the codes are small — up to 5-10 lines.
+
+Totum provides highlighting, searching and substitution of table and field addresses, variables and functions, and autofills parameters.
+
+Codes are linked to fields and separated by action types:
+
+— ones `calculate the value` similar to the formulas in Excel.
+
+— others, follow the changes and `execute the actions`.
+
+— the third type is responsible for `appearance` depending on conditions.
+
 
 ```
-sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
+// Example of calculating value code
+
+= : listSum(list: $list) + #fixed_costs
+
+list: selectList(table: 'orders'; field: 'cost'; where: 'number' = $listNumbers)
+
+listNumbers: selectList(table: 'orders'; field: 'number'; where: 'date' >= #first_day_months; where: 'orderStatus' = #final_status)
 ```
 
-**For more information look at [documentation](https://docs.totum.online/pro-install)**
 
-## Switching from Totum MIT *
+You can implement complex logic, even with the lowest programming skills. You will be able to understand it with — [the free training course](https://docs.totum.online/training-course) 👌
 
-> This instruction assumes that TOTUM MIT was installed using the installation script.
+## Database as interface - x10 to development speed 🏃💨
 
-> Solutions developed in MIT are compatible with PRO.
+Use a variety of ready-made elements:
 
-Run the standard Totum installer from the same folder from which it was run on the server during the initial system installation:
++ Strings
++ Numbers
++ Checkboxes
++ Buttons
++ Dropdown lists
++ Trees
++ Dates
++ Files (in PRO)
++ Charts
 
-```
-sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh
-```
+![fields](https://github.com/totumonline/totum-mit/assets/55755565/2fb48dd6-706b-4fec-aed6-464eaeea7ece)
 
-The installer will offer you to change the installation option to PRO.
+## And a few more details... 👀
 
-If you forgot the folder from which the installer was run, search for `totum_install_vars` (this file is created during installation):
+Don't worry about concurrent access — transactions are atomic
 
-```
-sudo find / -name "totum_install_vars"
-```
+**All actions line up in chains:** if a cancellation or error occurs while the chain is in progress — the whole chain will be cancelled.
 
-## * Switching from Totum MIT V4
+**You can work in parallel:** if two users make a changes to the same table at the same time, the action saved by the second one will automatically restart.
 
-See the [MIT V4 - PRO V6 upgrade instructions](https://docs.totum.online/update_5_mit_pro)
+## API, for any interaction
+
+Open and customisable API allows data to be exchanged with any system for both input and output.
+
+Exchange data with Totum via `POST` in `JSON` format.
+
+Call to a third-party server directly from `totum-code`.
+
+Write your own microservice on `totum-code` responding to `GET/POST` requests.
+
+You will be able to write integrations with the website, bank, messengers and any other services working in `web`.
+
+## Perks 📣
+
+### Free
+
+The Community version of Totum is distributed under an MIT-licence. Free for any type of use!
+
+### All information can be located in the company's secure network
+
+Totum is self hosted. You can set up any access policies for the server you manage yourself.
+
+You also control what can be transmitted outside of this contour and what cannot.
+
+### A copy of Totum will stay with you forever
+
+You make a full copy of all platform scripts to your own server — you are not dependent on the availability of the developers servers, and you can modify the platform code as needed.
+
+### Totum is scalable
+
+In the event of dramatic success and large-scale growth of your database, the Totum solution will stand up to the load.
+
+Even if some elements of the solution turn out to be designed for a lower load — you can modify them without rewriting the whole solution.
+
+In addition, the database underlying Totum allows it to be clustered across multiple servers, including in large certified clouds.
+
+## Technical basis (double elefant)
+
+![postgres](https://totum.totum.online/fls/365_262_file.png)  ![php]( https://totum.totum.online/fls/365_261_file.png)
+
++ Open source code in PHP.
+
++ PostgreSQL database.
+
++ Installation on your own server.
+
++ Easy interaction with other software products via a simple API.
+
+## How to try?
+
+Site — [totum.online](https://totum.online)
+
+Documentation — [docs.totum.online](https://docs.totum.online)
+
+Training course — [docs.totum.online/training-course](https://docs.totum.online/training-course) 🚀
+
+Email — `totum at totum.online`

@@ -62,7 +62,7 @@ class Actions
         $this->isServicesBlocked = false;
     }
 
-    public function __construct(ServerRequestInterface $Request, string $modulePath, aTable $Table = null, Totum $Totum = null)
+    public function __construct(ServerRequestInterface $Request, string $modulePath, ?aTable $Table = null, ?Totum $Totum = null)
     {
         if ($this->Table = $Table) {
             $this->Totum = $this->Table->getTotum();

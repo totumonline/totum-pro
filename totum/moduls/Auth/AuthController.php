@@ -650,7 +650,7 @@ class AuthController extends interfaceController
         die;
     }
 
-    protected function getOpenIdData(string|null $openIdId, string $type = 'redirest', string $code = null): array
+    protected function getOpenIdData(string|null $openIdId, string $type = 'redirest', ?string $code = null): array
     {
         $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
         $Table = $Totum->getTable('ttm__openid');
@@ -715,10 +715,8 @@ class AuthController extends interfaceController
                     ]));
                     $result = curl_exec($ch);
                     if ($error = curl_error($ch)) {
-                        curl_close($ch);
                         return ['error' => $error];
                     }
-                    curl_close($ch);
 
                     $resultData = json_decode($result, true);
 
