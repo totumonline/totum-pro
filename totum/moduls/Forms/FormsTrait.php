@@ -34,7 +34,7 @@ trait FormsTrait
      */
     private $CalcSectionStatuses;
 
-    public function __construct(ServerRequestInterface $Request, string $modulePath, aTable $Table = null, Totum $Totum = null)
+    public function __construct(ServerRequestInterface $Request, string $modulePath, ?aTable $Table = null, ?Totum $Totum = null)
     {
         parent::__construct($Request, $modulePath, $Table, $Totum);
         $this->post = json_decode((string)$Request->getBody(), true);

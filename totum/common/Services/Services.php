@@ -32,7 +32,7 @@ class Services implements ServicesVarsInterface
 
     }
 
-    public function getNewVarnameHash(int $expired = null): string
+    public function getNewVarnameHash(?int $expired = null): string
     {
         do {
             $hash = bin2hex(random_bytes(50));
@@ -40,7 +40,7 @@ class Services implements ServicesVarsInterface
         return $hash;
     }
 
-    public function getVarValue(string $varName, string $mark = null)
+    public function getVarValue(string $varName, ?string $mark = null)
     {
         try {
             if ($mark) {
@@ -86,10 +86,11 @@ class Services implements ServicesVarsInterface
                 throw new errorException('Generator error: ' . $value['error']);
             }
             if (!empty($value['link'])) {
-                if(empty($http_response_header)){
+                $responseHeaders = http_get_last_response_headers();
+                if(empty($responseHeaders)){
                     throw new errorException('Service server did not answer');
                 }
-                throw new errorException('Wrong data from service server: ' . $http_response_header);
+                throw new errorException('Wrong data from service server: ' . $responseHeaders[0]);
             } else {
                 throw new errorException('Unknown error');
             }
@@ -131,7 +132,7 @@ class Services implements ServicesVarsInterface
         }
     }
 
-    public function setVarValue(string $varName, $value, string $mark = null): void
+    public function setVarValue(string $varName, $value, ?string $mark = null): void
     {
         $value = json_encode($value, JSON_UNESCAPED_UNICODE);
         if ($mark) {
@@ -143,7 +144,7 @@ class Services implements ServicesVarsInterface
         }
     }
 
-    public function insertName(string $varName, int $expired = null): bool
+    public function insertName(string $varName, ?int $expired = null): bool
     {
         try {
             if ($expired) {

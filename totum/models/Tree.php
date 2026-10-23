@@ -53,7 +53,7 @@ class Tree extends Model
         return $r;
     }
 
-    public function getBranchesByTables($branchId = null, array $tables = null, array $roles = null, $onlyBranch = false)
+    public function getBranchesByTables($branchId = null, ?array $tables = null, ?array $roles = null, $onlyBranch = false)
     {
         if (empty($roles)){
             return [];

@@ -43,44 +43,28 @@
         - imagemagick
       state: latest
 
-  # Add ondrej/php
+  # Add PHP (sury)
 
-  - name: Ensure /usr/share/keyrings directory exists
-    file:
-      path: /usr/share/keyrings
-      state: directory
-      owner: root
-      group: root
-      mode: '0755'
-
-  - name: Check if ondrej_php gpg key exists
-    stat:
-      path: /usr/share/keyrings/ondrej-php.gpg
-    register: ondrej_php
-
-  - name: Download GPG key if not exists
+  - name: Download sury PHP GPG key
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc
-      dest: /root/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc
+      url: https://mirror.yandex.ru/mirrors/packages.sury.org/php/apt.gpg
+      dest: /usr/share/keyrings/deb.sury.org-php.gpg
       owner: root
       group: root
       mode: '0644'
-    when: not ondrej_php.stat.exists
 
-  - name: Import ondrej GPG key to /usr/share/keyrings
-    command: >
-      bash -c "cat /root/b8dc7e53946656efbce4c1dd71daeaab4ad4cab6.asc |
-      gpg --dearmor > /usr/share/keyrings/ondrej-php.gpg"
-    when: not ondrej_php.stat.exists
-
-  - name: Add ondrej/php repository to sources list
-    lineinfile:
-      path: /etc/apt/sources.list.d/ondrej-php.list
-      line: "deb [signed-by=/usr/share/keyrings/ondrej-php.gpg] http://ppa.launchpad.net/ondrej/php/ubuntu noble main"
-      create: yes
+  - name: Add sury PHP repository to sources
+    copy:
+      dest: /etc/apt/sources.list.d/php.sources
       owner: root
       group: root
       mode: '0644'
+      content: |
+        Types: deb
+        URIs: https://mirror.yandex.ru/mirrors/packages.sury.org/php/
+        Suites: resolute
+        Components: main
+        Signed-By: /usr/share/keyrings/deb.sury.org-php.gpg
 
   # Add PostgreSQL
 
@@ -98,7 +82,7 @@
   - name: Add PostgreSQL repository to sources list
     lineinfile:
       path: /etc/apt/sources.list.d/pgdg.list
-      line: "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt noble-pgdg main"
+      line: "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt resolute-pgdg main"
       create: yes
       owner: root
       group: root
@@ -152,7 +136,7 @@
 
   - name: Determine external IP if CERTBOTDOMAIN and TOTUMSERVIP are empty
     set_fact:
-      external_ip: "{{ ansible_default_ipv4.address }}"
+      external_ip: "{{ ansible_facts.default_ipv4.address }}"
     when: check_domain == "" and check_ip == ""
 
   - name: Show determined external IP and confirm
@@ -330,33 +314,33 @@
 
   # Install PHP and modules
 
-  - name: apt install PHP 8.3 and modules
+  - name: apt install PHP 8.5 and modules
     apt:
       name:
-        - php8.3
-        - php8.3-bcmath
-        - php8.3-cli
-        - php8.3-curl
-        - php8.3-fpm
-        - php8.3-gd
-        - php8.3-mbstring
-        - php8.3-opcache
-        - php8.3-pgsql
-        - php8.3-xml
-        - php8.3-zip
-        - php8.3-soap
-        - php8.3-ldap
+        - php8.5
+        - php8.5-bcmath
+        - php8.5-cli
+        - php8.5-curl
+        - php8.5-fpm
+        - php8.5-gd
+        - php8.5-mbstring
+        - php8.5-pgsql
+        - php8.5-xml
+        - php8.5-zip
+        - php8.5-soap
+        - php8.5-ldap
+        - php8.5-tidy
       state: latest
 
   - name: Check if totum_fpm.conf file exists
     stat:
-      path: /etc/php/8.3/fpm/pool.d/totum.conf
+      path: /etc/php/8.5/fpm/pool.d/totum.conf
     register: totum_fpm_conf
 
   - name: Download totum_fpm.conf
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_pool.conf
-      dest: /etc/php/8.3/fpm/pool.d/totum.conf
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum_pool.conf
+      dest: /etc/php/8.5/fpm/pool.d/totum.conf
       owner: root
       group: root
     when: not totum_fpm_conf.stat.exists
@@ -371,12 +355,12 @@
 
   - name: Remove default www.conf
     file:
-      path: /etc/php/8.3/fpm/pool.d/www.conf
+      path: /etc/php/8.5/fpm/pool.d/www.conf
       state: absent
 
   - name: Restart PHP FPM service
     service:
-      name: php8.3-fpm
+      name: php8.5-fpm
       state: restarted
 
   # Install Nginx
@@ -420,7 +404,7 @@
 
   - name: Download totum.online.conf
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum.online.conf
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum.online.conf
       dest: /etc/nginx/sites-available/totum.online.conf
       owner: root
       group: root
@@ -428,7 +412,7 @@
 
   - name: Download totum.online.conf.ip
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum.online.conf.ip
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum.online.conf.ip
       dest: /etc/nginx/sites-available/totum.online.conf
       owner: root
       group: root
@@ -461,6 +445,11 @@
       name: postgresql-18
       state: present
 
+  - name: apt install postgresql-contrib
+    apt:
+      name: postgresql-contrib-18
+      state: present
+
   - name: apt install python3-psycopg2
     apt:
       name: python3-psycopg2
@@ -484,64 +473,91 @@
   - name: Grant all privileges on database totum to user totum
     become_user: postgres
     postgresql_privs:
-      db: "totum"
+      login_db: "totum"
       role: "totum"
       privs: ALL
       type: database
       state: present
 
+  - name: Create pg_trgm extension in totum database
+    become_user: postgres
+    postgresql_ext:
+      login_db: "totum"
+      name: pg_trgm
+      schema: public
+      state: present
+
+  - name: Grant USAGE on schema public to totum
+    become_user: postgres
+    postgresql_privs:
+      login_db: "totum"
+      role: "totum"
+      type: schema
+      objs: public
+      privs: USAGE
+      state: present
+
+  - name: Set search_path for totum role
+    become_user: postgres
+    shell: psql -c 'ALTER ROLE totum SET search_path = "$user", public;'
+
   # Install Totum
 
-  - name: Check if totum-mit directory exists
+  - name: Check if totum-pro directory exists
     stat:
-      path: /home/totum/totum-mit
-    register: totum_mit
+      path: /home/totum/totum-pro
+    register: totum_pro
 
   - name: Clone Totum repository
     git:
-      repo: https://github.com/totumonline/totum-mit.git
-      dest: /home/totum/totum-mit
-      version: master
+      repo: https://github.com/totumonline/totum-pro.git
+      dest: /home/totum/totum-pro
+      version: ocho
       update: yes
     become_user: totum
-    when: not totum_mit.stat.exists
+    when: not totum_pro.stat.exists
 
   - name: Check if composer.phar file exists
     stat:
-      path: /home/totum/totum-mit/composer.phar
+      path: /home/totum/totum-pro/composer.phar
     register: composer_phar
 
   - name: Download Composer installer
     get_url:
       url: https://getcomposer.org/installer
-      dest: /home/totum/totum-mit/composer-setup.php
+      dest: /home/totum/totum-pro/composer-setup.php
       owner: totum
       group: totum
     when: not composer_phar.stat.exists
 
   - name: Unpack Composer installer
-    shell: php /home/totum/totum-mit/composer-setup.php --quiet
+    shell: php /home/totum/totum-pro/composer-setup.php --quiet
     become_user: totum
     args:
-      chdir: /home/totum/totum-mit
+      chdir: /home/totum/totum-pro
       executable: /bin/bash
     when: not composer_phar.stat.exists
 
+  - name: Remove Composer installer
+    file:
+      path: /home/totum/totum-pro/composer-setup.php
+      state: absent
+
   - name: Run Composer install
-    shell: php /home/totum/totum-mit/composer.phar install --no-dev
+    shell: php /home/totum/totum-pro/composer.phar install --no-dev
     become_user: totum
     args:
-      chdir: /home/totum/totum-mit
+      chdir: /home/totum/totum-pro
       executable: /bin/bash
 
   - name: Check if CLI.totum.php.ini file exists
     stat:
-      path: /home/totum/totum-mit/CLI.totum.php.ini
+      path: /home/totum/totum-pro/CLI.totum.php.ini
     register: cli_totum_php_ini
 
   - name: Create CLI.totum.php.ini file
     copy:
-      dest: /home/totum/totum-mit/CLI.totum.php.ini
+      dest: /home/totum/totum-pro/CLI.totum.php.ini
       content: |
         opcache.enable_cli = 1
         opcache.memory_consumption = 256M
@@ -553,18 +569,18 @@
 
   - name: Replace timezone in CLI.totum.php.ini
     replace:
-      path: /home/totum/totum-mit/CLI.totum.php.ini
+      path: /home/totum/totum-pro/CLI.totum.php.ini
       regexp: 'Europe/London'
       replace: "{{ lookup('env', 'TOTUMTIMEZONE') }}"
 
   - name: Check if FPM.totum.php.ini file exists
     stat:
-      path: /home/totum/totum-mit/FPM.totum.php.ini
+      path: /home/totum/totum-pro/FPM.totum.php.ini
     register: fpm_totum_php_ini
 
   - name: Create FPM.totum.php.ini file
     copy:
-      dest: /home/totum/totum-mit/FPM.totum.php.ini
+      dest: /home/totum/totum-pro/FPM.totum.php.ini
       content: |
         memory_limit = 512M
         upload_max_filesize = 10M
@@ -572,7 +588,6 @@
         opcache.enable = 1
         opcache.memory_consumption = 256M
         date.timezone = Europe/London
-        session.gc_maxlifetime = 3600
         session.save_path = /var/lib/php/sessions_totum
         display_errors = stderr
         log_errors = On
@@ -583,24 +598,26 @@
 
   - name: Replace timezone in FPM.totum.php.ini
     replace:
-      path: /home/totum/totum-mit/FPM.totum.php.ini
+      path: /home/totum/totum-pro/FPM.totum.php.ini
       regexp: 'Europe/London'
       replace: "{{ lookup('env', 'TOTUMTIMEZONE') }}"
 
   - name: Create symlink for Totum PHP-FPM INI configuration
     file:
-      src: /home/totum/totum-mit/FPM.totum.php.ini
-      dest: /etc/php/8.3/fpm/conf.d/90-FPM.totum.php.ini
+      src: /home/totum/totum-pro/FPM.totum.php.ini
+      dest: /etc/php/8.5/fpm/conf.d/90-FPM.totum.php.ini
       state: link
 
   - name: Restart PHP FPM service
     service:
-      name: php8.3-fpm
+      name: php8.5-fpm
       state: restarted
+
+  # Install Totum PRO
 
   - name: Check if Conf.php file exists
     stat:
-      path: /home/totum/totum-mit/Conf.php
+      path: /home/totum/totum-pro/Conf.php
     register: conf_php
 
   - name: Set install_url based on check_domain
@@ -615,7 +632,7 @@
     shell: bin/totum install --pgdump=pg_dump --psql=psql -e -- {{ lookup('env', 'TOTUMLANG') }} totum {{ lookup('env', 'CERTBOTEMAIL') }} {{ install_url }} admin {{ lookup('env', 'TOTUMADMINPASS') }} totum localhost totum {{ lookup('env', 'TOTUMBASEPASS') }}
     become_user: totum
     args:
-      chdir: /home/totum/totum-mit
+      chdir: /home/totum/totum-pro
       executable: /bin/bash
     when: not conf_php.stat.exists
     register: totum_install_output
@@ -625,13 +642,17 @@
       msg: "{{ totum_install_output.stdout }}"
     when: not conf_php.stat.exists
 
+  - name: Set pg_trgm.word_similarity_threshold for totum database
+    become_user: postgres
+    shell: psql -c "ALTER DATABASE totum SET pg_trgm.word_similarity_threshold = 0.3;"
+
   - name: Check if Crypto.key file exists
     stat:
-      path: /home/totum/totum-mit/Crypto.key
+      path: /home/totum/totum-pro/Crypto.key
     register: crypto_key
 
   - name: Generate Crypto.key
-    shell: openssl rand -base64 64 > /home/totum/totum-mit/Crypto.key
+    shell: openssl rand -base64 64 > /home/totum/totum-pro/Crypto.key
     become_user: totum
     args:
       executable: /bin/bash
@@ -639,81 +660,38 @@
 
   - name: Update secure setting in Conf.php if check_domain is not empty
     replace:
-      path: /home/totum/totum-mit/Conf.php
+      path: /home/totum/totum-pro/Conf.php
       regexp: "\\/\\*'secure' => true,\\*\\/"
       replace: "'secure' => true,"
     when: check_domain != ""
-
-  # Switch to the PRO repository
-
-  - name: Set Git remote URL to PRO repository
-    shell: git remote set-url origin https://github.com/totumonline/totum-pro.git
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Check current Git branch
-    shell: git rev-parse --abbrev-ref HEAD
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    register: current_branch
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
-
-  - name: Fetch data from origin pro
-    shell: git fetch origin pro
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro' and current_branch.stdout != "pro"
-
-  - name: Checkout to new branch pro
-    shell: git checkout -b pro origin/pro -t
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro' and current_branch.stdout != "pro"
-
-  - name: Pull latest scripts
-    shell: git pull
-    become_user: totum
-    args:
-      chdir: /home/totum/totum-mit
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   # Add totum-gom service
 
   - name: Create symlink for Totum service configuration
     file:
-      src: /home/totum/totum-mit/totum-gom.service
+      src: /home/totum/totum-pro/totum-gom.service
       dest: /etc/systemd/system/totum-gom.service
       state: link
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Reload systemd manager configuration
     systemd:
       daemon_reload: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Enable totum-gom service
     systemd:
       name: totum-gom
       enabled: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Start totum-gom service
     systemd:
       name: totum-gom
       state: started
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Check totum-gom service status
     systemd:
       name: totum-gom
       state: started
       enabled: yes
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom restart
     lineinfile:
@@ -721,7 +699,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom restart'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom start
     lineinfile:
@@ -729,7 +706,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom start'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom stop
     lineinfile:
@@ -737,7 +713,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom stop'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Add sudoers entry for totum-gom status
     lineinfile:
@@ -745,7 +720,6 @@
       line: 'totum ALL=(ALL) NOPASSWD: /usr/sbin/service totum-gom status'
       create: yes
       mode: '0440'
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   # Add Crons
 
@@ -773,6 +747,17 @@
       job: "certbot renew --quiet --allow-subset-of-names"
     when: check_domain != ""
 
+  - name: Add cron job for cleaning sessions_totum
+    cron:
+      name: "clean sessions_totum"
+      minute: "*/20"
+      hour: "*"
+      day: "*"
+      month: "*"
+      weekday: "*"
+      user: "root"
+      job: "find /var/lib/php/sessions_totum -type f -name 'sess_*' -mmin +1440 -delete"
+
   - name: Add cron job for totum schemas-crons
     cron:
       name: "bin/totum schemas-crons"
@@ -782,7 +767,7 @@
       month: "*"
       weekday: "*"
       user: "totum"
-      job: "cd /home/totum/totum-mit/ && bin/totum schemas-crons"
+      job: "cd /home/totum/totum-pro/ && bin/totum schemas-crons"
 
   - name: Add cron job for totum clean-tmp-dir
     cron:
@@ -793,7 +778,7 @@
       month: "*"
       weekday: "*"
       user: "totum"
-      job: "cd /home/totum/totum-mit/ && bin/totum clean-tmp-dir"
+      job: "cd /home/totum/totum-pro/ && bin/totum clean-tmp-dir"
 
   - name: Add cron job for totum clean-schemas-tmp-tables
     cron:
@@ -804,7 +789,7 @@
       month: "*"
       weekday: "*"
       user: "totum"
-      job: "cd /home/totum/totum-mit/ && bin/totum clean-schemas-tmp-tables"
+      job: "cd /home/totum/totum-pro/ && bin/totum clean-schemas-tmp-tables"
 
   - name: Add cron job for totum clean-tmp-tables-files-multi
     cron:
@@ -815,7 +800,7 @@
       month: "*"
       weekday: "*"
       user: "totum"
-      job: "cd /home/totum/totum-mit/ && bin/totum clean-tmp-tables-files-multi"
+      job: "cd /home/totum/totum-pro/ && bin/totum clean-tmp-tables-files-multi"
 
   - name: Add cron job for totum switch-off-extra-notifications
     cron:
@@ -826,33 +811,32 @@
       month: "*"
       weekday: "*"
       user: "totum"
-      job: "cd /home/totum/totum-mit/ && bin/totum switch-off-extra-notifications 50"
+      job: "cd /home/totum/totum-pro/ && bin/totum switch-off-extra-notifications 50"
 
   # Set execSSH for PRO
 
   - name: Check TOTUMEXECSSH environment variable
     set_fact:
       exec_ssh: "{{ lookup('env', 'TOTUMEXECSSH') }}"
-    when: lookup('env', 'TOTUMVERSION') == 'pro'
 
   - name: Confirm activating execSSH
     pause:
       prompt: "If you want to activate execSSH type (A), if not (N)"
     register: check_exec_ssh
-    when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro'
+    when: exec_ssh is defined and exec_ssh == ""
 
   - name: Activating execSSH in Conf.php
     replace:
-      path: /home/totum/totum-mit/Conf.php
+      path: /home/totum/totum-pro/Conf.php
       regexp: "'inner'"
       replace: "true"
-    when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro' and (check_exec_ssh.user_input | lower) == 'a'
+    when: exec_ssh is defined and exec_ssh == "" and (check_exec_ssh.user_input | lower) == 'a'
 
   - name: Append execSSH to totum_install_vars
     lineinfile:
       path: "{{ playbook_dir }}/totum_install_vars"
       line: "export TOTUMEXECSSH=true"
-    when: exec_ssh is defined and exec_ssh == "" and lookup('env', 'TOTUMVERSION') == 'pro'
+    when: exec_ssh is defined and exec_ssh == ""
 
   # Change IP to DOMAIN
 
@@ -862,19 +846,19 @@
 
   - name: Check if file folder exists
     stat:
-      path: /home/totum/totum-mit/totum/fls/{{ lookup('env', 'TOTUMSERVIP') }}
+      path: /home/totum/totum-pro/totum/fls/{{ lookup('env', 'TOTUMSERVIP') }}
     register: file_folder
     when: check_domain != "" and check_ip != "" and check_ip_domain == ""
 
   - name: Check if secureFiles folder exists
     stat:
-      path: /home/totum/totum-mit/secureFiles/{{ lookup('env', 'TOTUMSERVIP') }}
+      path: /home/totum/totum-pro/secureFiles/{{ lookup('env', 'TOTUMSERVIP') }}
     register: secure_file_folder
     when: check_domain != "" and check_ip != "" and check_ip_domain == ""
 
   - name: Switch IP to Domain - Download totum.online.conf
     get_url:
-      url: https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum.online.conf
+      url: https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/totum.online.conf
       dest: /etc/nginx/sites-available/totum.online.conf
       owner: root
       group: root
@@ -889,17 +873,17 @@
 
   - name: Replace IP with DOMAIN in Conf.php
     replace:
-      path: /home/totum/totum-mit/Conf.php
+      path: /home/totum/totum-pro/Conf.php
       regexp: "{{ lookup('env', 'TOTUMSERVIP') }}"
       replace: "{{ lookup('env', 'CERTBOTDOMAIN') }}"
     when: check_domain != "" and check_ip != "" and check_ip_domain == ""
 
   - name: Move totum fls directory
-    command: mv /home/totum/totum-mit/totum/fls/{{ lookup('env', 'TOTUMSERVIP') }} /home/totum/totum-mit/totum/fls/{{ lookup('env', 'CERTBOTDOMAIN') }}
+    command: mv /home/totum/totum-pro/totum/fls/{{ lookup('env', 'TOTUMSERVIP') }} /home/totum/totum-pro/totum/fls/{{ lookup('env', 'CERTBOTDOMAIN') }}
     when: file_folder.stat is defined and file_folder.stat.exists and check_domain != "" and check_ip != "" and check_ip_domain == ""
 
   - name: Move secureFiles directory
-    command: mv /home/totum/totum-mit/secureFiles/{{ lookup('env', 'TOTUMSERVIP') }} /home/totum/totum-mit/secureFiles/{{ lookup('env', 'CERTBOTDOMAIN') }}
+    command: mv /home/totum/totum-pro/secureFiles/{{ lookup('env', 'TOTUMSERVIP') }} /home/totum/totum-pro/secureFiles/{{ lookup('env', 'CERTBOTDOMAIN') }}
     when: secure_file_folder.stat is defined and secure_file_folder.stat.exists and check_domain != "" and check_ip != "" and check_ip_domain == ""
 
   - name: Restart Nginx service

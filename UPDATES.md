@@ -1,7 +1,1 @@
-If you update TOTUM from version 1 to 2 visit https://docs.totum.online/update_one_two
-
-If you update TOTUM from version 2 to 3 visit https://docs.totum.online/update_two_three
-
-If you update TOTUM from version 3 to 4 visit https://docs.totum.online/update_three_four
-
-If you update TOTUM from version 4 to 5 visit https://docs.totum.online/update_four_five
+IF YOU UPDATE TOTUM FROM VERSION 7 TO 8: THE UPDATE IS ONLY POSSIBLE VIA A CLEAN INSTALLATION ON A NEW SERVER WITH UBUNTU 26.04 AND MIGRATING THE DATABASE VIA A DUMP. FOR DETAILED INSTRUCTIONS, EMAIL totum@totum.online

@@ -1514,7 +1514,7 @@ CODE;;
      * @return mixed
      * @throws errorException
      */
-    public function getValuesAndFormatsForClient($data, string $viewType, array $pageIds, array $fieldNames = null)
+    public function getValuesAndFormatsForClient($data, string $viewType, array $pageIds, ?array $fieldNames = null)
     {
 
         $isWebViewType = in_array($viewType, ['web', 'edit', 'csv', 'print']);

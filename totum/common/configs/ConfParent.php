@@ -676,7 +676,7 @@ abstract class ConfParent
         switch ($this->env) {
             case 'production':
                 ini_set('display_errors', 0);
-                ini_set('error_reporting', E_ALL & ~E_DEPRECATED & ~E_STRICT);
+                ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
                 break;
             default:
                 ini_set('display_errors', 1);
@@ -770,7 +770,7 @@ abstract class ConfParent
                     if (empty($port)) {
                         throw new errorException($this->translate('Set the port in the LDAP settings table'));
                     }
-                    $this->settingsLDAPCache['connection'][$domain] = ldap_connect($host, $port);
+                    $this->settingsLDAPCache['connection'][$domain] = ldap_connect(str_contains($host, '/') ? $host : "ldap://$host:$port");
 
                     $settings = $this->getLDAPSettings('h_version', $domain);
                     $settings['LDAP_OPT_PROTOCOL_VERSION'] = (int)($settings['LDAP_OPT_PROTOCOL_VERSION'] ?? 3);

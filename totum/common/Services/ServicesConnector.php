@@ -61,10 +61,11 @@ class ServicesConnector
                 throw new errorException('Generator error: ' . $value['error']);
             }
             if (!empty($value['link'])) {
-                if(empty($http_response_header)){
+                $responseHeaders = http_get_last_response_headers();
+                if(empty($responseHeaders)){
                     throw new errorException('Service server did not answer');
                 }
-                throw new errorException('Wrong data from service server: ' . $http_response_header);
+                throw new errorException('Wrong data from service server: ' . $responseHeaders[0]);
             } else {
                 throw new errorException('Unknown error');
             }

@@ -2,7 +2,7 @@ server {
     listen *:80;
     server_name _;
     charset UTF-8;
-    root /home/totum/totum-mit/http/;
+    root /home/totum/totum-pro/http/;
     index index.php;
     expires off;
     include acme;
@@ -46,7 +46,7 @@ server {
 
     location ~* \.php$ {
 
-    fastcgi_pass unix:/run/php/php8.3-fpm-totum.sock;
+    fastcgi_pass unix:/run/php/php8.5-fpm-totum.sock;
     fastcgi_split_path_info ^(.+\.php)(/.+)$;
     try_files $uri =404;
     include fastcgi_params;
