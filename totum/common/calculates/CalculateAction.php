@@ -15,6 +15,7 @@ use DirectoryTree\ImapEngine\Connection\Tokens\Token;
 use DirectoryTree\ImapEngine\Exceptions\Exception as ImapException;
 use DirectoryTree\ImapEngine\Folder;
 use DirectoryTree\ImapEngine\Mailbox;
+use DirectoryTree\ImapEngine\Support\Str as ImapStr;
 use SoapClient;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
@@ -2371,7 +2372,7 @@ class CalculateAction extends Calculate
         }
 
         [$uidvalidity, $uids] = $this->__withImap($params['name'], function (Mailbox $mailbox) use ($params, $query) {
-            $folder = new Folder($mailbox, $params['folder']);
+            $folder = new Folder($mailbox, $this->__imapFolderPath($params['folder']));
             $uidvalidity = $folder->status()['UIDVALIDITY'] ?? null;
             $folder->select(true);
             $response = $mailbox->connection()->search([$query->toImap()]);
@@ -2406,7 +2407,7 @@ class CalculateAction extends Calculate
         $this->__checkNotEmptyParams($params, ['name']);
 
         return $this->__withImap($params['name'], fn(Mailbox $mailbox) => array_map(
-            fn(Folder $folder) => $folder->path(),
+            fn(Folder $folder) => ImapStr::fromImapUtf7($folder->path()),
             $mailbox->folders()->get()->all()
         ));
     }
@@ -2417,7 +2418,7 @@ class CalculateAction extends Calculate
         $this->__checkNotEmptyParams($params, ['name', 'folder', 'uid']);
 
         return $this->__withImap($params['name'], function (Mailbox $mailbox) use ($params) {
-            $message = (new Folder($mailbox, $params['folder']))->messages()
+            $message = (new Folder($mailbox, $this->__imapFolderPath($params['folder'])))->messages()
                 ->withHeaders()
                 ->withBody()
                 ->markAsRead()
@@ -2582,6 +2583,14 @@ class CalculateAction extends Calculate
         }
     }
 
+
+    protected function __imapFolderPath(string $folder): string
+    {
+        if (ImapStr::toImapUtf7(ImapStr::fromImapUtf7($folder)) === $folder) {
+            return $folder;
+        }
+        return ImapStr::toImapUtf7($folder);
+    }
 
     protected function __withImap(string $name, callable $callback): mixed
     {
