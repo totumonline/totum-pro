@@ -1,38 +1,18 @@
 #!/bin/bash
 
-WITHOUT_CHECK=false
-
-for arg in "$@"; do
-  case $arg in
-    --without-check)
-      WITHOUT_CHECK=true
-      ;;
-    *)
-      echo "Unknown parameter: $arg"
-      exit 1
-      ;;
-  esac
-done
-
-if [[ "$WITHOUT_CHECK" == true ]]; then
-  echo "Skipping Ubuntu version check due to --without-check parameter."
+echo "Performing Ubuntu version check..."
+if [[ $(grep -c 'Ubuntu 26.04' /etc/issue) -ne 1 ]]; then
+  echo "THIS SERVER IS NOT A UBUNTU 26.04 CHECK: sudo cat /etc/issue"
+  exit 0
 else
-  echo "Performing Ubuntu version check..."
-  if [[ $(grep -c 'Ubuntu 24.04' /etc/issue) -ne 1 ]]; then
-    echo "THIS SERVER IS NOT A UBUNTU 24.04 CHECK: sudo cat /etc/issue"
-    echo "If you want to install it on a different version of Ubuntu, specify the parameter --without-check"
-    echo "sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/totum_autoinstall.sh && sudo bash totum_autoinstall.sh --without-check"
-    exit 0
-  else
-    echo "Ubuntu version is OK. Let's go..."
-  fi
+  echo "Ubuntu version is OK. Let's go..."
 fi
 
 if [[ $(sudo locale | grep -c 'LANG=en_US.UTF-8') -ne 1 ]]
 then
   echo "- - - - - - - - - - - - - - - - - - - - - -"
   echo -e "\e[40;1;37mTHIS SERVER HAVE NOT \e[40;1;31men_US.UTF-8\e[40;1;37m LOCALE. YOU HAVE TO EXECUTE:"
-  echo -e "sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh" 
+  echo -e "sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh" 
   echo -e "AND FOLLOW THE ON-SCREEN INSTRUCTIONS TO SETUP THE CORRECT LOCALE\033[0m"
   echo "- - - - - - - - - - - - - - - - - - - - - -"
   echo
@@ -43,7 +23,7 @@ else
 fi
 
 if [[ "$TOTUMLOCALE" == [Aa] ]]; then
-    sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh
+    sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/setlocale.sh && sudo bash setlocale.sh
     echo
     exit 0
 elif [[ "$TOTUMLOCALE" == "RUN" ]]; then
@@ -89,7 +69,7 @@ echo -e "\033[43m\033[30m   TOTUM SERVICES AUTOINSTALL SCRIPT                   
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m   This install script will help you to install SERVICES Totum online.   \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
-echo -e "\033[43m\033[30m   \033[43m\033[31mONLY ON CLEAR!!! Ubuntu 24.04 \033[43m\033[30mwith or without SSL certificate.        \033[0m"
+echo -e "\033[43m\033[30m   \033[43m\033[31mONLY ON CLEAR!!! Ubuntu 26.04 \033[43m\033[30mwith or without SSL certificate.        \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
 echo -e "\033[43m\033[30m   For SSL you have to \033[43m\033[31mDELEGATE A VALID DOMAIN \033[43m\033[30mto this server.           \033[0m"
 echo -e "\033[43m\033[30m                                                                         \033[0m"
@@ -254,7 +234,7 @@ if [ -f "ansible_totum_services_install.yml" ]; then
   echo
 else
 
-sudo curl -O https://raw.githubusercontent.com/totumonline/totum-mit/master/totum/moduls/install/ansible_totum_services_install.yml
+sudo curl -O https://raw.githubusercontent.com/totumonline/totum-pro/pro/totum/moduls/install/ansible_totum_services_install.yml
 
 fi
 
