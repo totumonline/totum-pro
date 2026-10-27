@@ -27,7 +27,6 @@ class Cycle
     protected $tableVersions = [];
 
     protected $calcTables;
-    protected $cacheVersions = [];
 
     /* Создавать cycle нужно только из объекта Тотум*/
     /**
@@ -65,14 +64,11 @@ class Cycle
 
     public function getVersionForTable($tableName)
     {
-        if (empty($this->cacheVersions[$tableName]['table_name'])) {
-            $this->cacheVersions[$tableName] = CalcsTableCycleVersion::init($this->Totum->getConfig())->executePrepared(
-                true,
-                ['table_name' => $tableName, 'cycle' => $this->getId()],
-                'version, auto_recalc'
-            )->fetch(PDO::FETCH_NUM);
-        }
-        return $this->cacheVersions[$tableName];
+        return CalcsTableCycleVersion::init($this->Totum->getConfig())->executePrepared(
+            true,
+            ['table_name' => $tableName, 'cycle' => $this->getId()],
+            'version, auto_recalc'
+        )->fetch(PDO::FETCH_NUM) ?: null;
     }
 
     public function addVersionForCycle($tableName)
@@ -86,7 +82,7 @@ class Cycle
             Log: $this->getCyclesTable()->getCalculateLog()*/
         );
 
-        return $this->cacheVersions[$tableName] = [$defaults['version'], 'true'];
+        return [$defaults['version'], 'true'];
     }
 
     protected function removeVersionsForCycle()
