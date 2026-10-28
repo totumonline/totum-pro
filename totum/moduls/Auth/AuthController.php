@@ -642,7 +642,7 @@ class AuthController extends interfaceController
                 static::$contentTemplate = $this->folder . '/__RedirectWithError.php';
                 return ['error' => 'Session was closed. Return to authorizaion page.'];
             }
-            return $this->getOpenIdData($OpedIdSessionData['id'], 'auth', $_GET['code'] ?? '');
+            return $this->getOpenIdData($OpedIdSessionData['id'], 'auth', $_GET['code'] ?? '', $_GET);
         }
 
 
@@ -650,7 +650,7 @@ class AuthController extends interfaceController
         die;
     }
 
-    protected function getOpenIdData(string|null $openIdId, string $type = 'redirest', ?string $code = null): array
+    protected function getOpenIdData(string|null $openIdId, string $type = 'redirect', ?string $code = null, array $codeAnswer = []): array
     {
         $Totum = new Totum($this->Config, Auth::serviceUserStart($this->Config));
         $Table = $Totum->getTable('ttm__openid');
@@ -661,15 +661,16 @@ class AuthController extends interfaceController
                 ->params(), 'row')) {
 
             switch ($type) {
-                case 'redirest':
+                case 'redirect':
+                    $state = md5(random_bytes(10));
                     $extraOptions = [];
                     if (trim($openIdIdData['extra_options']) != '') {
                         $extraOptions = (new CalculateAction($openIdIdData['extra_options']))
-                            ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec');
+                            ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec', ['state' => $state]);
                     }
 
 
-                    $_SESSION['openIdData'] = ['state' => md5(random_bytes(10)), 'id' => $openIdId];
+                    $_SESSION['openIdData'] = ['state' => $state, 'id' => $openIdId];
 
                     return ['uri' => $openIdIdData['auth_uri'] . '?' . http_build_query(
                             ['response_type' => 'code',
@@ -688,31 +689,37 @@ class AuthController extends interfaceController
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->Config->isCheckSsl());
 
 
+                    $extraHeaders = [];
+                    $extraPosts = [];
                     if (trim($openIdIdData['extra_headers']) != '') {
-                        $extraHeaders = (new CalculateAction($openIdIdData['extra_headers']))
-                            ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec');
-                        if (is_array($extraHeaders)) {
-                            curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($extraHeaders,['Content-Type: application/x-www-form-urlencoded']));
-                        }else {
-                            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+                        $extra = (new CalculateAction($openIdIdData['extra_headers']))
+                            ->execAction('CODE', [], [], $Table->getTbl(), $Table->getTbl(), $Table, 'exec', ['code_answer' => $codeAnswer]);
+                        if (is_array($extra)) {
+                            if (is_array($extra['headers'] ?? null)) {
+                                $extraHeaders = $extra['headers'];
+                            }
+                            if (is_array($extra['posts'] ?? null)) {
+                                $extraPosts = $extra['posts'];
+                            }
                         }
-                    }else {
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
                     }
+                    $requestHeaders = array_merge($extraHeaders, ['Content-Type: application/x-www-form-urlencoded']);
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, $requestHeaders);
 
 
 
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+                    $postFields = array_replace([
                         'grant_type' => 'authorization_code',
                         'client_id' => $openIdIdData['client_id'],
                         'code' => $code,
                         'redirect_uri' => $openIdIdData['redirect_uri'],
                         'client_secret' => Crypt::getDeCrypted($openIdIdData['client_secret'], $this->Config->getCryptKeyFileContent())
 
-                    ]));
+                    ], $extraPosts);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
                     $result = curl_exec($ch);
                     if ($error = curl_error($ch)) {
                         return ['error' => $error];
