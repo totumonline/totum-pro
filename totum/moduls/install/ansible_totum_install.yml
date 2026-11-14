@@ -332,6 +332,11 @@
         - php8.5-tidy
       state: latest
 
+  - name: apt install libfcgi-bin
+    apt:
+      name: libfcgi-bin
+      state: latest
+
   - name: Check if totum_fpm.conf file exists
     stat:
       path: /etc/php/8.5/fpm/pool.d/totum.conf
@@ -587,6 +592,8 @@
         post_max_size = 0
         opcache.enable = 1
         opcache.memory_consumption = 256M
+        opcache.jit = tracing
+        opcache.jit_buffer_size = 64M
         date.timezone = Europe/London
         session.save_path = /var/lib/php/sessions_totum
         display_errors = stderr
