@@ -8,6 +8,7 @@ totumTmpfiles/
 /vendor/
 CalculateExtensions.php
 /secureFiles/
+PRO.license
 
 /.github/
 totum/ext/

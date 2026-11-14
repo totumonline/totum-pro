@@ -2068,7 +2068,7 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
         $id = $this->post['id'] ?? null;
         $rowName = $this->post['rowName'] ?? null;
 
-        $fields = $this->Table->getFields();
+        $fields = $this->Table->getVisibleFields('web');
         if (empty($fields[$field])) {
             throw new errorException($this->translate('Function [[%s]] is not found.', $field));
         }
@@ -2079,6 +2079,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
             throw new errorException($this->translate('Access to the logs is denied'));
         }
 
+        if ($id) {
+            $this->Table->checkIsUserCanViewIds('web', [(int)$id]);
+        }
 
         $logs = $this->Totum->totumActionsLogger()->getLogs(
             $this->Table->getTableRow()['id'],
