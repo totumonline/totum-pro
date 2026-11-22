@@ -219,7 +219,7 @@ SQL;
             if (str_contains($login, '@')) {
                 $where['email'] = strtolower($login);
             } else {
-                if ($interface === 'web') {
+                if ($interface === 'web' || $interface === 'agent') {
                     $whereObject = new \stdClass();
                     $whereObject->whereStr = '';
                     foreach ($where as $k => $v) {
@@ -337,7 +337,7 @@ SQL;
             $interface
         );
 
-        $authLogOn = $interface !== 'xmljson' || !$userRow['ttm__off_auth_log'];
+        $authLogOn = !in_array($interface, ['xmljson', 'agent']) || !($userRow['ttm__off_auth_log'] ?? false);
 
         if ($authLogOn && ($block_time = $Config->getSettings('h_time')) && ($error_count = (int)$Config->getSettings('error_count'))) {
             $BlockDate = date_create()->modify('-' . $block_time . 'minutes');

@@ -75,6 +75,14 @@ class tmpTable extends JsonTables
     }
 
 
+    /**
+     * For long-living processes: instances are bound to Totum/Sql of the call they were created in
+     */
+    public static function clearInstances(): void
+    {
+        static::$tmpTables = [];
+    }
+
     public static function init(Totum $Totum, $tableRow, $extraData = null, $light = false, $hash = null)
     {
         if (!is_null($hash) && key_exists($hashName = $tableRow['id'] . '_' . $hash, static::$tmpTables)) {

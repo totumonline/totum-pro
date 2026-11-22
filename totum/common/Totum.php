@@ -237,6 +237,14 @@ class Totum
         return !!$this->changedTables;
     }
 
+    /**
+     * @return string[] names of tables changed in this request
+     */
+    public function getChangedTables(): array
+    {
+        return array_keys($this->changedTables);
+    }
+
     protected function searchIndexUpdate()
     {
         $updates = [];
@@ -597,6 +605,22 @@ class Totum
         $this->hashes[$type][$hash] = $value;
 
         return $hash;
+    }
+
+    /**
+     * Parts of table descriptions and field helps for a group of users:
+     * <admin>…</admin> — only creators, <agent>…</agent> — only agents (MCP interface). Tags of the visible parts stay
+     */
+    public static function filterAudienceText(?string $text, bool $isCreator, bool $isAgent): string
+    {
+        $text = (string)$text;
+        if (!$isCreator) {
+            $text = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $text);
+        }
+        if (!$isAgent) {
+            $text = preg_replace('`\s*<agent>.*?</agent>\s*`su', '', $text);
+        }
+        return $text;
     }
 
     public function addTableUpdated(int|string $id, string $updated)

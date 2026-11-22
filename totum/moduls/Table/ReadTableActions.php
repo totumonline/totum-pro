@@ -33,6 +33,14 @@ class ReadTableActions extends Actions
     protected bool $creatorCommonView = false;
     protected $kanban_bases = [];
 
+    /**
+     * Agent interface (MCP) sees <agent>…</agent> parts of descriptions and helps
+     */
+    protected function isAgentInterface(): bool
+    {
+        return false;
+    }
+
     protected function getTableFormat(array $rowIds): array
     {
         $tFormat = [];
@@ -2216,9 +2224,9 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 unset($field['logging']);
                 unset($field['showInXml']);
                 unset($field['copyOnDuplicate']);
-                if (!empty($field['help'])) {
-                    $field['help'] = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $field['help']);
-                }
+            }
+            if (!empty($field['help'])) {
+                $field['help'] = Totum::filterAudienceText($field['help'], $this->User->isCreator(), $this->isAgentInterface());
             }
             $field['help'] = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $field['help'] ?? '');
 
@@ -2269,9 +2277,8 @@ table tr td.title{font-weight: bold}', 'html' => '{table}'];
                 ]
             );
 
-        } else {
-            $tableRow['description'] = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $tableRow['description'] ?? '');
         }
+        $tableRow['description'] = Totum::filterAudienceText($tableRow['description'] ?? '', $this->User->isCreator(), $this->isAgentInterface());
         $_tableRow = array_intersect_key($tableRow, array_flip($fields));
         foreach (Totum::TABLE_CODE_PARAMS as $name) {
             if (key_exists($name, $_tableRow)) {
