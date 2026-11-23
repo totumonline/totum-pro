@@ -84,6 +84,7 @@ class Totum
     protected array $orderFieldCodeErrors = [];
     protected array $creatorWarnings = [];
     protected mixed $tablesUpdated;
+    protected ?DryRun $DryRun = null;
 
 
 
@@ -481,6 +482,19 @@ class Totum
     public function setCalcsTypesLog(array $types)
     {
         $this->CalculateLog->setLogTypes($types);
+    }
+
+    /**
+     * Dry run: external actions of codes (mail, http, ssh, separate processes…) are blocked by kinds — see DryRun
+     */
+    public function setDryRun(?DryRun $DryRun): void
+    {
+        $this->DryRun = $DryRun;
+    }
+
+    public function getDryRun(): ?DryRun
+    {
+        return $this->DryRun;
     }
 
     public function addToInterfaceLink($uri, $target, $title = '', $postData = null, $width = null, $refresh = false, $elseData = [])

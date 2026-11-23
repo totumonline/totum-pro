@@ -58,6 +58,15 @@ class MCPFieldSettings
         return $types;
     }
 
+    /**
+     * Settings of the kind code (code, codeAction, codeSelect, format, …) in the order of the panel settings
+     * @return array [name => title]
+     */
+    public function codeSettings(): array
+    {
+        return array_map(fn($s) => (string)($s['title'] ?? ''), array_filter($this->settings, fn($s) => ($s['type'] ?? null) === 'code'));
+    }
+
     public function checkType(string $type): void
     {
         if (!key_exists($type, $this->types())) {

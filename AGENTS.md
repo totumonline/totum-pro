@@ -1,6 +1,13 @@
 # AGENTS.md
 
-Instructions for the creator view of MCP (admin layer: tree, tables, fields — `--creator=true` / header `TTM-Creator: true`) are in [CREATOR.md](CREATOR.md) next to this file.
+Documents for agents — in the repo and on every server (the server links are symlinks made by the installer):
+| document | repo | server |
+|---|---|---|
+| this file: the project, working with Totum over MCP | `AGENTS.md` | `https://<host>/AGENTS.md` |
+| creator view of MCP: tree, tables, fields (`--creator=true` / header `TTM-Creator: true`) | [CREATOR.md](CREATOR.md) | `https://<host>/CREATOR.md` |
+| documentation of Totum: syntax, functions, fields, tables, interface | [docs/DOCS.md](docs/DOCS.md) | `https://<host>/docs/DOCS.md`, articles `https://<host>/docs/<lang>/totum/<page>.md` |
+
+Over MCP the documentation is read without internet requests: `search_docs` / `read_docs` (see "Documentation (search_docs, read_docs)").
 
 ## Project
 Totum PRO (PHP 8.5, PostgreSQL). Modules: `totum/moduls/<Name>/<Name>Controller.php`, routed by first URL segment (`/Table/`, `/Json/`, `/MCP/`).
@@ -11,6 +18,8 @@ CLI: `php bin/totum <command>` (Symfony Console), schemas: `php bin/totum schema
 - HTTP: `POST /MCP/` JSON-RPC, `Authorization: Basic base64(login:password)` in every request.
 - stdio: `php bin/totum mcp --user=<login|email> [-s schema] [--creator=true]`.
 - Creator view (`--creator=true` / HTTP header `TTM-Creator: true`, users with the role Creator only) — see [CREATOR.md](CREATOR.md).
+  It also has the debug of calls: parameter `debug` (calculation log, rollback, dry run of external actions — `totum\common\DryRun`) and the tool `exec_code`,
+  the search through all the codes `search_codes` (`MCPCodeSearch`) and the method of testing a system the agent does not know (CREATOR.md "Testing an unknown system").
 - Output of tools is markdown only (see MCPMarkdown).
 
 ## Working with MCP
@@ -170,6 +179,30 @@ Field types (UI name → type in output):
 - `ids` — only these rows.
 - `recalculate` (default `true`) — recalculate changed data like opening the table in web.
 - `deleted: true` — show deleted rows (for `restore_rows`).
+- `styles: true` — also the visual formats of web (see "Styles" below); not needed for usual work with data.
+
+### Styles (styles: true)
+The usual answers show only the formats that change the work with data (`#block`, `#icon-…`, `#text`, `#comment`, `#placeholder`, row flags).
+The visual formats of web — colors, bold, background, italic, decoration, progress, align, tab, … — are shown on request
+(`MCPMarkdown::styleMark` / `stylesSection`, flag `withStyles`):
+```json
+{"name": "read_table", "arguments": {"table": "warehouse_movements", "styles": true}}
+{"name": "get_row", "arguments": {"table": "warehouse_movements", "id": 12, "styles": true}}
+```
+```
+| Количество #info #style(panelColor: ##lightgray) | …                — panelColor of the field (setting of the field)
+| 5 #blockdelete #style(background: ##yellow; italic: true) | …   — setRowFormat of the row
+| -2 #style(color: ##tomato) | 6 #style(bold: true) | …            — setFormat of the cell
+## Styles
+table format: interlace: "##aliceblue/" (…)
+user colors (table ttm__colors; ##name — the light color, the dark one in the dark theme): ##tomato = #cf222e (dark theme #cf222e), ##nosuch = not in ttm__colors: web uses the HTML color nosuch
+```
+- `#style(…)` is written in the syntax of `setFormat`: `##name` and numbers as is, strings in quotes, `false` only for `showhand` / `expand` (others — default of web), arrays as JSON (`hide`).
+- The keys of the usual marks are not repeated (`block`, `icon`, `text`, `textasvalue`, `comment`, `placeholder`; of rows — `block…`, `rowcomment`); `fieldParams` is internal.
+- `## Styles` — `interlace` of setTableFormat and the legend of the `##` colors met in the answer: light / dark of `ttm__colors` (`TableController::getColorsArray`, like `App.Colors` of web);
+  a name not in the table — web strips `##` and uses it as an HTML color.
+- `get_cell` shows the styles always: `style (visual format of web): …`, `style of the row (setRowFormat; …)`, `panel color of the field …` and the legend line.
+- Insert row / panel cards and answers to writes have no styles.
 
 Texts of the table — like in web:
 ```
@@ -211,7 +244,7 @@ Pass the same filters and `fields` while paging. Row order is the same as in web
 {"name": "click_panel_button", "arguments": {"table": "orders", "hash": "ca0b47…", "index": "1_c9dd73…"}}
 ```
 `get_cell` returns the same as the right-click panel: field title (with `{N unit}`), `name`, row id and row title (main field), type and rights,
-manual / calculated value (`manual value ✋, calculated: …` / `manual value ✊ — equal to calculated`), errors, format marks, full (uncut) value (`### Value`),
+manual / calculated value (`manual value ✋, calculated: …` / `manual value ✊ — equal to calculated`), errors, format marks, styles (see "Styles"), full (uncut) value (`### Value`),
 field description (`### Field description`), panel sections of the field format (`### Panel`: text / html / img / buttons), select previews (`### Preview`)
 and the log of manual changes (`### Log of manual changes`: when, who, action, value after change, entered (if different); `log` — how many last entries, default 20, `0` — no log section).
 `id` is required for column fields, omit it for params/footers.
@@ -652,7 +685,39 @@ csv / xlsx import; kanban / panels view and the tree view of rows (the same data
 on-the-fly unique check (the core checks on save); favorites, theme, switching the user, help, AI proxy, special functions of the creator; print (`linkToPrint`, printTable).
 Buttons moved by the table format to places of web (see the marks `[B] [E] [P] [D]`) are the usual params / footer buttons for the agent.
 The panel of buttons of the user menu (`settings.h_user_settings_buttons`, `loadUserButtons`) is not in the agent interface.
-Admin interface (fields, codes, table settings) — a separate task.
+Admin interface (tree, tables, fields, codes) — the creator view, see [CREATOR.md](CREATOR.md).
+
+### Documentation (search_docs, read_docs) — `MCPDocs`
+Both tools are in every mode (annotation `readOnlyHint`); they read the markdown of `docs/` on the server (see [docs/DOCS.md](docs/DOCS.md)), the agent needs no internet requests.
+```json
+{"name": "search_docs", "arguments": {"q": "только при добавлении"}}
+{"name": "search_docs", "arguments": {"q": "selectList order", "section": "totum", "limit": 5}}
+{"name": "read_docs", "arguments": {}}
+{"name": "read_docs", "arguments": {"ref": "functions#fn-select"}}
+{"name": "read_docs", "arguments": {"function": "listSum"}}
+{"name": "read_docs", "arguments": {"setting": "codeOnlyInAdd"}}
+{"name": "read_docs", "arguments": {"table_setting": "deleting"}}
+{"name": "read_docs", "arguments": {"field_type": "select"}}
+{"name": "read_docs", "arguments": {"ref": "syntax", "offset": 419}}
+```
+- Pages: `docs/<lang>/<section>/<page>.md` (sections `totum`, `training-course`, `how-to`), `lang` — argument / language of Totum (`Conf::getLang()`), `ru` if there are no docs of it.
+- A section = a heading (anchor `<a name="…">` in it) with its text up to the next heading of the same or a higher level; headings in ``` / ~~~ blocks are not headings.
+- ref: `page`, `page#anchor`, `section/page#anchor` (like `links.md`, `/page/#anchor` and `.md` / `ru/` prefix are accepted); a heading without anchor — `page#Title`; anchors are case-insensitive.
+  Short forms: `function` → `functions#fn-<name>`, `setting` → `fields#fields-settings-<name>`, `field_type` → `fields#type-<type>`, `table_setting` → `tables#table-settings-<name>`.
+- `search_docs`: words of 2+ letters, parts of words, case and ё/е insensitive; a section must have all the words (none — sections with some of them, with a note);
+  score: word in the heading/anchor 10, in the own text of the section 1 per occurrence (max 5), the whole query equal to the title or to `fn-` / `fields-settings-` / `table-settings-` / `type-<q>` +100.
+  Answer `| ref | section (path of headings) | text (fragment around the first word) |`, `more: N` above `limit` (default 10, max 30).
+- `read_docs`: numbered links `[text][N]` → `text (→ ref)` by `docs/links.md`; a text over 15000 chars is paged by lines (`next page: … "offset": N`),
+  its first page lists the subsections (a whole page with one `#` title — its chapters); not found — similar pages / anchors (`selectLst` → `fn-selectList`).
+  Without arguments — `DOCS.md` + the list of pages of every section (title = the first heading).
+- Only files inside `docs/` (names `[A-Za-z0-9_-]`, `realpath` check). Parsed pages are cached in the process by mtime (stdio is long-living).
+- Hints: `get_field_settings` → `read_docs` of settings / type / functions; `## Creator view` of `get_table_schema` → `table_setting`; instructions of the server and of the creator view.
+- Links of the docs are consistent (2026-11-23): every `[N]` of the texts is defined in `links.md`, every target page/anchor exists, anchors are unique in a page,
+  anchors `fields-settings-<name>` / `table-settings-<name>` are the names of the settings (data_src / fields of `tables`). Removed the links of the old docs
+  (`/install…`, `/ubuntu/#fpm|#nginx`, technical functions `fn-dateWeekDay`, `fn-getFromSoap`, `fn-getTableSource`, `fn-setForm…Format`, `fn-schemaGzString…`, `fn-servicePdfGenerator`,
+  `fn-serviceAskOpenai…`, `fn-setFieldParams` — not documented, better not to use them); `interface#part-N` → the page / `sx-section-parameters`; `[24]` → `functions#part-9`.
+  Not documented settings: `cryptoKey`, `hideIframeAfterClick`. A broken ref is answered by `read_docs` with similar anchors.
+- Check of the links after changes of the docs and the rules of `links.md` — section "Editing" of [docs/DOCS.md](docs/DOCS.md).
 
 ### Files (file fields, linkToFileUpload, linkToFileDownload) — `MCPFiles`
 The answer of a tool goes only into the context of the model: bytes of files never go through it (except small inline files and pictures on request).
@@ -774,6 +839,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `#info` | the field has a description — see `get_table_schema` |
 | `#icon-name` | fontawesome icon of the field |
 | `#hide` | the field is hidden by the table format (fieldhide) |
+| `#style(panelColor: ##lightgray)` | panel color of the field (setting panelColor; only with `styles: true`) |
 | `[B]` `[E]` `[P]` `[D]` | a params / footer button that web shows for users (not creators) in another place — setTableFormat `buttons` (bar above the table), `extbuttons` (☰ menu), `printbuttons` (print menu), `dotbuttons` (⋯ menu at the bottom right), like the marks of the admin interface (`MCPMarkdown::buttonPlace`, legend in `## Marks` of get_table_schema); for the agent — a usual button: `click_button` without id |
 
 ### Marks in values
@@ -791,6 +857,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `#textasvalue:"…"` | format `text` with `textasvalue`: web shows the text and uses it as the cell value (copy, filters) |
 | `#comment:"…"` | format `comment`: hint to the cell (in web — info icon), e.g. what to do with an empty cell |
 | `#placeholder:"…"` | hint for an empty value |
+| `#style(color: ##tomato; bold: true)` | visual format of the cell (only with `styles: true`, see "Styles") |
 | `…` | text is cut (field setting "visible text length") — full value via `get_cell` / `get_value` / `get_row` |
 | `⏎` | new line inside a value |
 | `\|` | escaped vertical bar |
@@ -806,6 +873,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `#blockdelete` / `#blockduplicate` / `#blockorder` | cannot be deleted / duplicated / moved |
 | `#hide` | the row is hidden by the table format (setRowsHide/setRowsShow) |
 | `#comment:"…"` | row comment |
+| `#style(background: ##yellow)` | visual format of the row — setRowFormat (only with `styles: true`) |
 
 ### Answer to a write
 ```

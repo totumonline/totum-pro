@@ -5,6 +5,7 @@ namespace totum\moduls\MCP;
 use GuzzleHttp\Psr7\ServerRequest;
 use totum\common\calculates\CalculateAction;
 use totum\common\criticalErrorException;
+use totum\common\DryRunStopException;
 use totum\common\errorException;
 use totum\common\Model;
 use totum\common\Totum;
@@ -35,6 +36,8 @@ class MCPTools
     protected const INSERT_HASH = ['type' => 'string', 'description' => 'Hash (i-…) of the insert row from insert_row'];
     protected const IDS = ['type' => 'array', 'items' => ['type' => 'integer']];
     protected const NAMES = ['type' => 'array', 'items' => ['type' => 'string']];
+    protected const STYLES = ['type' => 'boolean', 'description' => 'Also the visual formats of web (not needed usually): #style(color: ##tomato; bold: true; …) '
+        . 'of cells and rows (setFormat / setRowFormat), panelColor of fields in titles, section "## Styles" — interlace of the table and the user colors ##name (ttm__colors)'];
     /* values of file fields in writes */
     protected const FILE_VALUES = 'File fields — the list of files of the cell: {"file": "<file from get_value>"} keeps a file, '
         . 'new files — {"path": "/abs/path"} (stdio server: its disk), {"upload": "<id of upload_file>"} (HTTP server), '
@@ -42,6 +45,8 @@ class MCPTools
 
     protected MCPFiles $Files;
     protected MCPCreator $Creator;
+    protected bool $rolledBack = false;
+    protected bool $failed = false;
     /** @var array MCP content after the text of the answer (images of get_file) */
     protected array $content = [];
 
@@ -80,12 +85,13 @@ class MCPTools
                         'limit' => ['type' => 'integer', 'description' => 'Rows on page, default ' . static::DEFAULT_LIMIT . ', max ' . static::MAX_LIMIT],
                         'recalculate' => ['type' => 'boolean', 'description' => 'Recalculate changed like web page opening, default true'],
                         'deleted' => ['type' => 'boolean', 'description' => 'Show deleted rows (for restore_rows)'],
+                        'styles' => static::STYLES,
                     ],
                 'required' => ['table'],
             ],
             'get_row' => [
                 'description' => 'One row with full (not cut) values as a card.',
-                'props' => static::TABLE_PROPS + ['id' => ['type' => 'integer'], 'fields' => static::NAMES],
+                'props' => static::TABLE_PROPS + ['id' => ['type' => 'integer'], 'fields' => static::NAMES, 'styles' => static::STYLES],
                 'required' => ['table', 'id'],
             ],
             'get_value' => [
@@ -95,7 +101,7 @@ class MCPTools
             ],
             'get_cell' => [
                 'description' => 'Everything about one cell like the right-click panel in web: field title/type/rights, full (uncut) value, '
-                    . 'manual/calculated value, format marks, field description, panel sections (text/html/img/buttons — click_panel_button), select previews, '
+                    . 'manual/calculated value, format marks, style (visual format: color, bold, background…; ##name — user colors), field description, panel sections (text/html/img/buttons — click_panel_button), select previews, '
                     . 'log of manual changes (fields with the mark log in get_table_schema; without changes — a message).',
                 'props' => static::TABLE_PROPS + [
                         'field' => ['type' => 'string'],
@@ -386,9 +392,82 @@ class MCPTools
                 ],
                 'required' => [],
                 'creator' => true,
+                'noDebug' => true,
+            ],
+            'exec_code' => [
+                'description' => 'Creator: execute an action code (like the code of a button: =: / named lines, set, insert, linkTo…, emailSend…) in the context of the table '
+                    . '(and of the row id — #field are its values; vars — $#name). Always in debug mode (see the parameter debug): the calculation log, '
+                    . 'external actions (mail, http, ssh…) blocked — stops at the first one, the transaction is ROLLED BACK unless debug.commit: true. '
+                    . 'Answer: the result of the code, the changed tables, side effects and opened windows, the external actions, errors and the log.',
+                'props' => static::TABLE_PROPS + [
+                        'code' => ['type' => 'string', 'description' => 'Totum action code, e.g. "=: set(table: \'orders\'; field: \'status\' = \"done\"; where: \'id\' = #id)"'],
+                        'id' => ['type' => 'integer', 'description' => 'Row of the table: the context of #field (like a button of the row); omit — the table without a row'],
+                        'vars' => ['type' => 'object', 'description' => 'Variables of the code {name: value} — $#name'],
+                    ],
+                'required' => ['table', 'code'],
+                'creator' => true,
+            ],
+            'search_codes' => [
+                'description' => 'Creator: search through all the codes of the schema like grep — fields (code, codeAction, codeSelect, format… of data_src), '
+                    . 'tables (default_action, row_format, table_format, on_duplicate) and data (rows/params of text fields with the totum code: crons, notification_codes, '
+                    . 'ttm__custom_functions…). Answer: the codes by tables with the matching lines (line numbers) and how to open the whole code. '
+                    . 'Who uses a table — q "\'orders\'"; a field — q "status" with word: true (#status, \'status\'); a custom function — q "specName"; '
+                    . 'external actions (mail, http…) before a test — external: true (fields: mock / no mock in the help).',
+                'props' => [
+                    'q' => ['type' => 'string', 'description' => 'Text to find (case and ё/е insensitive, by lines); with regex: true — a PCRE without delimiters'],
+                    'regex' => ['type' => 'boolean', 'description' => 'q is a regex, e.g. "emailSend|notificationSend", "table:\\\\s*\'orders\'"'],
+                    'word' => ['type' => 'boolean', 'description' => 'q is not a part of a longer name: "status" finds #status, \'status\', not status_id'],
+                    'external' => ['type' => 'boolean', 'description' => 'Only codes with external calls (emailSend, getFromScript, execSSH…; the kinds of debug); without q — the lines of the calls'],
+                    'in' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => MCPCodeSearch::IN], 'description' => 'Scopes, default all: fields, tables (codes of tables), data (codes in rows of tables)'],
+                    'table' => ['type' => 'string', 'description' => 'Only the codes of this table (id or name): its fields, its table codes, its rows'],
+                    'settings' => static::NAMES + ['description' => 'Only these codes: code, codeAction, codeSelect, format, codeChart, treeViewCode, selectTableAction (fields); '
+                            . 'default_action, row_format, table_format, on_duplicate (tables); without data'],
+                    'off' => ['type' => 'boolean', 'description' => 'Also the switched-off codes of fields (kept in data_src, do not work)'],
+                    'context' => ['type' => 'integer', 'description' => 'Lines around a matching line, default 0, max ' . MCPCodeSearch::MAX_CONTEXT],
+                    'offset' => ['type' => 'integer', 'description' => 'Codes offset (next page), default 0'],
+                    'limit' => ['type' => 'integer', 'description' => 'Codes on page, default ' . MCPCodeSearch::DEFAULT_LIMIT . ', max ' . MCPCodeSearch::MAX_LIMIT],
+                ],
+                'required' => [],
+                'creator' => true,
+                'noDebug' => true,
+            ],
+            'search_docs' => [
+                'description' => 'Search in the documentation of Totum (code syntax, functions, field types and settings, table settings, interface, cycles, API, …): '
+                    . 'sections that have all the words (parts of words work, case and ё/е insensitive; a function / setting name ranks first) with their ref and a fragment. '
+                    . 'Read a found section with read_docs. Before writing a code — check the functions you use.',
+                'props' => [
+                    'q' => ['type' => 'string', 'description' => 'Words to search, e.g. "selectList order" or "только при добавлении"'],
+                    'section' => ['type' => 'string', 'description' => 'Only this section: totum (reference), training-course, how-to; default — all'],
+                    'lang' => ['type' => 'string', 'description' => 'Language of the docs (default — the language of Totum, ru if there is no such docs)'],
+                    'limit' => ['type' => 'integer', 'description' => 'How many sections, default ' . MCPDocs::DEFAULT_LIMIT . ', max ' . MCPDocs::MAX_LIMIT],
+                ],
+                'required' => ['q'],
+                'readOnly' => true,
+            ],
+            'read_docs' => [
+                'description' => 'Read the documentation of Totum: a section (from its heading to the next one of the same level) by ref "page#anchor" '
+                    . '(from search_docs or links «text (→ ref)» in the texts), a whole page by "page", or by short forms: function (e.g. "selectList"), '
+                    . 'setting (a field setting of data_src, e.g. "codeOnlyInAdd"), field_type (e.g. "select"), table_setting (a setting of the row of tables, e.g. "deleting"). '
+                    . 'Without arguments — the index (DOCS.md and the list of pages). Long texts are paged: offset from "next page".',
+                'props' => [
+                    'ref' => ['type' => 'string', 'description' => '"page", "page#anchor" or "section/page#anchor", e.g. "functions#fn-select", "syntax", "how-to/some-page"'],
+                    'function' => ['type' => 'string', 'description' => 'Name of a function (functions#fn-<name>)'],
+                    'setting' => ['type' => 'string', 'description' => 'Name of a field setting (fields#fields-settings-<name>)'],
+                    'field_type' => ['type' => 'string', 'description' => 'Field type (fields#type-<type>)'],
+                    'table_setting' => ['type' => 'string', 'description' => 'Name of a table setting (tables#table-settings-<name>)'],
+                    'lang' => ['type' => 'string', 'description' => 'Language of the docs (default — the language of Totum, ru if there is no such docs)'],
+                    'offset' => ['type' => 'integer', 'description' => 'Line of a long text to continue from ("next page")'],
+                ],
+                'required' => [],
+                'readOnly' => true,
             ],
         ];
     }
+
+    /* tools that do not change the data (MCP annotation readOnlyHint: clients may call them without a confirmation);
+       read_table recalculates the changed like the opening of web, get_value / get_cell mark comments as read like web */
+    protected const READ_ONLY_TOOLS = ['list_tables', 'get_table_schema', 'read_table', 'get_row', 'get_value', 'get_cell', 'get_select_options', 'get_file',
+        'export_table', 'get_field_settings', 'search_codes'];
 
     protected function isToolOff(array $tool): bool
     {
@@ -402,12 +481,15 @@ class MCPTools
             if ($this->isToolOff($tool)) {
                 continue;
             }
+            if ($this->creator && key_exists('table', $tool['props']) && empty($tool['noDebug'])) {
+                $tool['props']['debug'] = MCPLog::PROP;
+            }
             $result[] = [
                 'name' => $name,
                 'description' => $tool['description'],
                 'inputSchema' => ['type' => 'object', 'properties' => $tool['props'] ?: new \stdClass()]
                     + ($tool['required'] ? ['required' => $tool['required']] : []),
-            ];
+            ] + (!empty($tool['readOnly']) || in_array($name, static::READ_ONLY_TOOLS) ? ['annotations' => ['readOnlyHint' => true]] : []);
         }
         return $result;
     }
@@ -422,10 +504,45 @@ class MCPTools
                     default => '',
                 });
         }
+        $this->rolledBack = $this->failed = false;
+        if ($name === 'exec_code' && !key_exists('debug', $args)) {
+            $args['debug'] = true;
+        }
+        if (key_exists('debug', $args) && !$this->creator) {
+            throw new errorException('debug is a parameter of the creator view (connect with --creator=true / header ' . MCPAuth::CREATOR_HEADER . ': true)');
+        }
+        $Debug = key_exists('debug', $args) ? new MCPLog($args['debug']) : null;
         $this->Files = new MCPFiles($Config, $User, $this->baseUrl);
         $Totum = new Totum($Config, $User);
+        $Debug?->apply($Totum);
         $this->Creator = new MCPCreator($Totum);
         $Totum->transactionStart();
+        if (!$Debug) {
+            $text = $this->runTool($Totum, $Config, $name, $args);
+            $Totum->transactionCommit();
+            return $text;
+        }
+        return $this->debugCall($Totum, $Config, $Debug, $name, $args);
+    }
+
+    /**
+     * True — the last call was rolled back by debug (the db connection is closed: the server takes a clean config)
+     */
+    public function isRolledBack(): bool
+    {
+        return $this->rolledBack;
+    }
+
+    /**
+     * True — the last call ended with an error answered by debug (with the log)
+     */
+    public function isFailed(): bool
+    {
+        return $this->failed;
+    }
+
+    protected function runTool(Totum $Totum, Conf $Config, string $name, array $args): string
+    {
         $this->checkOneCycle($Totum, $name, $args);
         $method = 'tool' . str_replace('_', '', ucwords($name, '_'));
         $text = $this->$method($Totum, $args);
@@ -437,8 +554,34 @@ class MCPTools
             $text .= $this->openedWindows($Totum, $links, $datas, array_intersect_key($args, array_flip(['table', 'cycle', 'sess_hash'])), $panels,
                 $name === 'click_button' && is_string($args['insert_hash'] ?? null) ? $args['insert_hash'] : null);
         }
-        $Totum->transactionCommit();
         return $text;
+    }
+
+    /**
+     * debug: the call with the calculation log and the dry run; rolled back unless debug.commit and nothing blocked was met.
+     * The answer is made before the rollback (the rollback closes the db connection)
+     */
+    protected function debugCall(Totum $Totum, Conf $Config, MCPLog $Debug, string $name, array $args): string
+    {
+        $text = '';
+        $error = $path = null;
+        try {
+            $text = $this->runTool($Totum, $Config, $name, $args);
+        } catch (DryRunStopException) {
+        } catch (errorException|criticalErrorException $e) {
+            $error = MCPMarkdown::plain($e->getMessage());
+            $path = method_exists($e, 'getPathMess') ? $e->getPathMess() : null;
+        }
+        $save = $Debug->commit && $error === null && !$Debug->DryRun->getStop();
+        $sections = $Debug->sections($Totum, $path);
+        if ($save) {
+            $Totum->transactionCommit();
+        } else {
+            $Totum->transactionRollback();
+            $this->rolledBack = true;
+        }
+        $this->failed = $error !== null;
+        return $Debug->status($save, $error) . $text . $sections;
     }
 
     /**
@@ -549,7 +692,7 @@ class MCPTools
      */
     protected function checkOneCycle(Totum $Totum, string $tool, array $args): void
     {
-        if (in_array($tool, ['list_tables', 'read_table', 'get_table_schema']) || empty($args['table'])
+        if (in_array($tool, ['list_tables', 'read_table', 'get_table_schema', 'get_field_settings', 'search_codes']) || empty($args['table'])
             || ($Totum->getConfig()->getTableRow(is_int($args['table']) ? $args['table'] : (string)$args['table'])['type'] ?? null) !== 'cycles') {
             return;
         }
@@ -960,6 +1103,49 @@ class MCPTools
         return $this->Creator->fieldSettingsAnswer($args);
     }
 
+    protected function toolSearchCodes(Totum $Totum, array $args): string
+    {
+        return (new MCPCodeSearch($Totum, $this->Creator->fieldSettings()))->search($args);
+    }
+
+    /**
+     * An action code in the context of the table / row (like a button: CalculateAction::execAction), called in debug mode only (see call)
+     */
+    protected function toolExecCode(Totum $Totum, array $args): string
+    {
+        $code = is_string($args['code'] ?? null) ? trim($args['code']) : '';
+        if ($code === '') {
+            throw new errorException('code is required: an action code, e.g. "=: set(table: \'orders\'; field: \'status\' = \"done\"; where: \'id\' = #id)"');
+        }
+        [$Resolver, $Actions] = $this->prepare($Totum, $args, true);
+        $Table = $Resolver->getTable();
+        $row = [];
+        if ($id = (int)($args['id'] ?? 0)) {
+            if (!in_array($id, $Table->loadFilteredRows('web', [$id]))) {
+                throw new errorException('Row ' . $id . ' is not found in the table (or not visible with the filters)');
+            }
+            $row = $Table->getTbl()['rows'][$id];
+        }
+        $vars = is_array($args['vars'] ?? null) ? $args['vars'] : [];
+        $result = (new CalculateAction($code))->execAction('exec_code', $row, $row, $Table->getTbl(), $Table->getTbl(), $Table, 'exec', $vars);
+
+        $result = MCPMarkdown::scalar($result);
+        return $this->markdown($Resolver, $Actions)->header() . "\n**Executed: exec_code**" . ($id ? ' · row ' . $id : '') . "\n"
+            . 'result: ' . ($result === '' ? '(empty)' : "\n~~~\n" . MCPMarkdown::cut($result, 5000) . "\n~~~") . "\n"
+            . 'changed tables: ' . (($changed = $Totum->getChangedTables()) ? implode(', ', $changed) : 'none') . "\n";
+    }
+
+    protected function toolSearchDocs(Totum $Totum, array $args): string
+    {
+        return (new MCPDocs($Totum->getConfig(), $args['lang'] ?? null))->search((string)($args['q'] ?? ''), isset($args['section']) ? (string)$args['section'] : null,
+            (int)($args['limit'] ?? MCPDocs::DEFAULT_LIMIT));
+    }
+
+    protected function toolReadDocs(Totum $Totum, array $args): string
+    {
+        return (new MCPDocs($Totum->getConfig(), $args['lang'] ?? null))->read($args);
+    }
+
     protected function toolReadTable(Totum $Totum, array $args): string
     {
         if ($redirect = $this->oneCycleRedirect($Totum, $args, 'read_table')) {
@@ -971,7 +1157,8 @@ class MCPTools
         $fields = $this->names($args, 'fields');
 
         $data = $Actions->mcpReadTable($offset, $limit, $this->ids($args, 'ids'), (bool)($args['recalculate'] ?? true));
-        $Md = (new MCPMarkdown($Resolver->getTable(), $data['form'], $Actions->mcpIsWrite()))->setTableFormat($data['f']);
+        $Md = (new MCPMarkdown($Resolver->getTable(), $data['form'], $Actions->mcpIsWrite()))->setTableFormat($data['f'])
+            ->withStyles(!empty($args['styles']));
 
         $count = count($data['rows']);
         $out = $Md->header() . ($offset === 0 && !$this->ids($args, 'ids') ? $Md->description() . $Md->cycleInfo() : '') . $Md->tableText()
@@ -984,7 +1171,7 @@ class MCPTools
         if ($data['offset'] + $count < $data['allCount']) {
             $out .= "\nnext page: offset=" . ($data['offset'] + $count) . "\n";
         }
-        return $out . $Md->footerSection($data['params'], $fields);
+        return $out . $Md->footerSection($data['params'], $fields) . (!empty($args['styles']) ? $Md->stylesSection() : '');
     }
 
     protected function toolGetRow(Totum $Totum, array $args): string
@@ -992,8 +1179,8 @@ class MCPTools
         $fields = $this->names($args, 'fields');
         [$Resolver, $Actions] = $this->prepare($Totum, $args, false, ['id' => (string)(int)($args['id'] ?? 0), 'fields' => $this->json($fields ?? [])]);
         $res = $Actions->viewRow();
-        $Md = $this->markdown($Resolver, $Actions, $res['f'] ?? []);
-        return $Md->header() . $Md->rowCard($res['row'], $fields);
+        $Md = $this->markdown($Resolver, $Actions, $res['f'] ?? [])->withStyles(!empty($args['styles']));
+        return $Md->header() . $Md->rowCard($res['row'], $fields) . (!empty($args['styles']) ? $Md->stylesSection() : '');
     }
 
     protected function toolGetValue(Totum $Totum, array $args): string

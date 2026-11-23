@@ -28,7 +28,9 @@ Tmp tables return sess_hash in the header - pass it back.
 Filters are stateless: pass `filters` in every call. Cell marks: `Title [key]` select/tree title and key to write,
 `✋(x)` manual value differs from calculated x, `✊` manual value equal to calculated, `!ERR` calculation error,
 `#block` blocked by format, `#icon-name` icon, `…` cut text (full via get_cell/get_value/get_row), `⏎` new line.
-get_cell = right-click panel of a cell: full value, calculated value, description, panel buttons, log of manual changes.
+Visual formats (color, bold, background…) are not shown by default: `styles: true` of read_table / get_row gives `#style(color: ##tomato; bold: true)`
+(##name — user colors of ttm__colors, the legend is in "## Styles"); get_cell shows them always.
+get_cell = right-click panel of a cell: full value, calculated value, style, description, panel buttons, log of manual changes.
 Actions (buttons, edits with code) report what they did in "## Side effects". Windows opened by an action are shown at once
 in "## Opened window" sections of the same answer: a table (linkToTable / linkToDataTable) is already read like read_table
 and has the args to continue (`table`, `sess_hash`, `cycle`, crypted `filters`) - pass exactly these args in the next calls to work in the window;
@@ -40,6 +42,7 @@ Files do not go through the answers: get_file saves a file to the disk of the st
 new files are {"path"} (stdio) / {"upload"} of upload_file (HTTP) / small {"name","text"|"base64"}; a file upload window - submit_file_upload.
 Tasks may come as notifications: get_notifications shows them like the popups of web, notification_update closes / postpones a handled one.
 Comments "(N, unread M)" are not read by you: get_value / get_cell show them (#unread) and mark them as read, mark_comments_read marks without opening.
+Documentation of Totum (interface, fields, tables, codes and functions): search_docs finds sections by words, read_docs reads them (no internet needed).
 TXT;
 
     protected MCPTools $Tools;
@@ -137,7 +140,7 @@ TXT;
                     $this->setCryptKey($User);
                     $text = $this->Tools->call($this->Config, $User, $name, $args);
                     $content = $this->Tools->extraContent();
-                    $isError = false;
+                    $isError = $this->Tools->isFailed();
                     break;
                 } catch (tableSaveOrDeadLockException $e) {
                     $this->resetConfig();
@@ -154,6 +157,8 @@ TXT;
         } finally {
             if ($isError) {
                 $this->resetConfig();
+            } elseif ($this->Tools->isRolledBack()) {
+                $this->freshConfig();
             }
             $garbage = ob_get_clean();
             if ($garbage !== '' && $garbage !== false) {

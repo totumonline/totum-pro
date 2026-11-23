@@ -5,6 +5,7 @@ namespace totum\moduls\MCP;
 use totum\common\Cycle;
 use totum\common\Totum;
 use totum\fieldTypes\File;
+use totum\moduls\Table\TableController;
 use totum\tableTypes\aTable;
 
 /**
@@ -18,6 +19,11 @@ class MCPMarkdown
     public const CATEGORIES = ['param' => 'Params', 'filter' => 'Filters', 'column' => 'Columns', 'footer' => 'Footers'];
     protected const TABLE_FORMAT_FLAGS = ['block', 'blockadd', 'blockdelete', 'blockorder', 'blockduplicate', 'hideadd'];
     protected const ROW_FORMAT_FLAGS = ['block', 'blockdelete', 'blockorder', 'blockduplicate'];
+    /* keys of cell / row formats shown by the usual marks (formatMarks, rowId) — not repeated in #style(…) */
+    protected const STYLE_SKIP = ['block', 'icon', 'text', 'textasvalue', 'comment', 'placeholder', 'fieldParams'];
+    protected const STYLE_ROW_SKIP = ['block', 'blockdelete', 'blockorder', 'blockduplicate', 'rowcomment'];
+    /* format keys that change the view of web only with false */
+    protected const STYLE_FALSE_KEYS = ['showhand', 'expand'];
     protected const CHANGED_ROWS_AS_CARDS = 3;
     /* how to read/write values of field types (legend of get_table_schema) */
     protected const TYPE_HINTS = [
@@ -48,6 +54,10 @@ class MCPMarkdown
     protected array $fields;
     protected array $control;
     protected array $tableFormat = [];
+    /* visual formats (#style) are shown: read_table / get_row with styles: true, get_cell */
+    protected bool $styles = false;
+    /* ##names of user colors met in #style — for the legend (stylesSection) */
+    protected array $userColors = [];
 
     public function __construct(protected aTable $Table, array $form, protected bool $isWrite)
     {
@@ -58,6 +68,12 @@ class MCPMarkdown
     public function setTableFormat(array $f): static
     {
         $this->tableFormat = $f;
+        return $this;
+    }
+
+    public function withStyles(bool $on = true): static
+    {
+        $this->styles = $on;
         return $this;
     }
 
@@ -356,6 +372,9 @@ class MCPMarkdown
         if ($place = $this->buttonPlace($field['name'])) {
             $title .= ' ' . $place;
         }
+        if ($this->styles && ($style = $this->styleMark(['panelColor' => $field['panelColor'] ?? null], []))) {
+            $title .= ' ' . $style;
+        }
         return $title;
     }
 
@@ -571,8 +590,78 @@ class MCPMarkdown
             $marks[] = '!ERR ' . static::esc(static::plain(static::scalar($cell['e'])));
         }
         $marks = array_merge($marks, $this->formatMarks($f, $value === ''));
+        if ($this->styles && ($style = $this->styleMark($f))) {
+            $marks[] = $style;
+        }
 
         return trim($value . ($marks ? ' ' . implode(' ', $marks) : ''));
+    }
+
+    /**
+     * Visual formats of web that the usual marks do not show (color, bold, background, italic, decoration, progress, align, tab, …)
+     * in the syntax of setFormat: `#style(color: ##tomato; bold: true; align: "center")`; ##name — user color (ttm__colors, see stylesSection)
+     */
+    public function styleMark(array $f, array $skip = self::STYLE_SKIP): string
+    {
+        $style = $this->styleText($f, $skip);
+        return $style === '' ? '' : '#style(' . $style . ')';
+    }
+
+    protected function styleText(array $f, array $skip = self::STYLE_SKIP): string
+    {
+        $parts = [];
+        foreach ($f as $key => $value) {
+            if (in_array($key, $skip, true) || $value === null || $value === '' || $value === []
+                || ($value === false && !in_array($key, static::STYLE_FALSE_KEYS, true))) {
+                continue;
+            }
+            $parts[] = $key . ': ' . $this->styleValue($value);
+        }
+        return static::esc(implode('; ', $parts));
+    }
+
+    /**
+     * A value of a format like in a code: ##name and numbers as is, strings in quotes; ##names are remembered for the legend
+     */
+    protected function styleValue(mixed $value): string
+    {
+        if (!is_string($value)) {
+            return static::scalar($value);
+        }
+        if (str_starts_with($value, '##')) {
+            $this->userColors[substr($value, 2)] = true;
+        }
+        return str_starts_with($value, '##') || is_numeric($value) ? $value : '"' . $value . '"';
+    }
+
+    /**
+     * Table format of the rows part (interlace) and the legend of the ##user colors met in #style
+     */
+    public function stylesSection(bool $withTable = true): string
+    {
+        $lines = [];
+        if ($withTable && isset($this->tableFormat['interlace']) && is_scalar($this->tableFormat['interlace']) && $this->tableFormat['interlace'] !== '') {
+            $interlace = (string)$this->tableFormat['interlace'];
+            foreach (explode('/', $interlace) as $part) {
+                $this->styleValue(trim($part));
+            }
+            $lines[] = 'table format: interlace: "' . static::esc($interlace) . '" (colors of odd/even rows "odd/even" or % of darkening of even rows)';
+        }
+        if ($this->userColors) {
+            $colors = [];
+            try {
+                $colors = TableController::getColorsArray($this->Table->getTotum());
+            } catch (\Throwable) {
+            }
+            $legend = [];
+            foreach (array_keys($this->userColors) as $name) {
+                $legend[] = '##' . $name . ' = ' . (isset($colors[$name])
+                        ? ($colors[$name][0] ?: '-') . ($colors[$name][1] ? ' (dark theme ' . $colors[$name][1] . ')' : '')
+                        : 'not in ttm__colors: web uses the HTML color ' . $name);
+            }
+            $lines[] = 'user colors (table ttm__colors; ##name — the light color, the dark one in the dark theme): ' . static::esc(implode(', ', $legend));
+        }
+        return $lines ? "\n## Styles\n" . implode("\n", $lines) . "\n" : '';
     }
 
     public function formatMarks(array $f, bool $isEmpty = false): array
@@ -873,6 +962,9 @@ class MCPMarkdown
         if (!empty($f['rowcomment']) && is_scalar($f['rowcomment'])) {
             $id .= ' #comment:"' . static::esc(static::plain((string)$f['rowcomment'])) . '"';
         }
+        if ($this->styles && ($style = $this->styleMark($f, static::STYLE_ROW_SKIP))) {
+            $id .= ' ' . $style;
+        }
         return $id;
     }
 
@@ -959,6 +1051,17 @@ class MCPMarkdown
         if (!empty($f['comment']) && is_scalar($f['comment'])) {
             $out .= 'format comment (hint to the cell): ' . static::plain((string)$f['comment']) . "\n";
         }
+        if (($style = $this->styleText($f)) !== '') {
+            $out .= 'style (visual format of web): ' . $style . "\n";
+        }
+        if ($field['category'] === 'column' && ($style = $this->styleText(is_array($data['rowF'] ?? null) ? $data['rowF'] : [], static::STYLE_ROW_SKIP)) !== '') {
+            $out .= 'style of the row (setRowFormat; the style of the cell overrides it): ' . $style . "\n";
+        }
+        if (!empty($field['panelColor']) && is_string($field['panelColor'])) {
+            $out .= 'panel color of the field (background of the title and of the cell without a format background): '
+                . static::esc($this->styleValue($field['panelColor'])) . "\n";
+        }
+        $out .= ltrim(str_replace("## Styles\n", '', $this->stylesSection(false)), "\n");
 
         $out .= "\n### Value\n" . $this->fullValue($field, $cell, $data['full']) . "\n";
 

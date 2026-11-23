@@ -189,7 +189,7 @@ trait MCPActionsTrait
             foreach (array_diff_key($cells, ['params' => 1]) as $fields) {
                 array_push($fieldNames, ...array_map($clearName, $fields));
             }
-            $formatted = $this->Table->getValuesAndFormatsForClient(['rows' => $rows], 'web', $loaded, fieldNames: array_values(array_unique($fieldNames)));
+            $formatted = $this->mcpFormat(['rows' => $rows], 'web', $loaded, fieldNames: array_values(array_unique($fieldNames)));
             foreach ($formatted['rows'] as $row) {
                 if ($flag && $action !== 'click' && !empty($row['f'][$flag])) {
                     throw new errorException('Row ' . $row['id'] . ' is blocked by format (#' . $flag . '): ' . $action . ' is not allowed');
@@ -203,7 +203,7 @@ trait MCPActionsTrait
         }
         if (!empty($cells['params'])) {
             $names = array_values(array_unique(array_map($clearName, $cells['params'])));
-            $params = $this->Table->getValuesAndFormatsForClient(['params' => array_intersect_key($this->Table->getTbl()['params'], array_flip($names))],
+            $params = $this->mcpFormat(['params' => array_intersect_key($this->Table->getTbl()['params'], array_flip($names))],
                 'web', [], fieldNames: $names)['params'] ?? [];
             foreach ($params as $name => $param) {
                 if (!empty($param['f']['block'])) {
@@ -267,13 +267,13 @@ trait MCPActionsTrait
             $item = $this->Table->getTbl()['rows'][$id];
             $mainField = $this->Table->getTableRow()['main_field'] ?? null;
             $names = array_values(array_unique(array_filter([$fieldName, $mainField && key_exists($mainField, $fields) ? $mainField : null])));
-            $formatted = $this->Table->getValuesAndFormatsForClient(['rows' => [$item]], 'web', [$id], fieldNames: $names)['rows'][0];
+            $formatted = $this->mcpFormat(['rows' => [$item]], 'web', [$id], fieldNames: $names)['rows'][0];
             $cell = $formatted[$fieldName] ?? ['v' => null];
             $rowF = $formatted['f'] ?? [];
             $rowTitle = $mainField && $mainField !== $fieldName && isset($formatted[$mainField]) ? $formatted[$mainField] : null;
         } else {
             $item = $this->Table->getTbl()['params'];
-            $cell = $this->Table->getValuesAndFormatsForClient(['params' => [$fieldName => $item[$fieldName] ?? ['v' => null]]], 'web',
+            $cell = $this->mcpFormat(['params' => [$fieldName => $item[$fieldName] ?? ['v' => null]]], 'web',
                     [], fieldNames: [$fieldName])['params'][$fieldName] ?? ['v' => null];
         }
 
@@ -818,10 +818,24 @@ trait MCPActionsTrait
         }
     }
 
+    /**
+     * Values and formats for the answers in the section "views" of the calculation log, like web (SELECTS AND FORMATS):
+     * the log of a call with debug.log c / a has no formatting of the answer
+     */
+    protected function mcpFormat(array $data, string $viewType, array $pageIds, ?array $fieldNames = null): array
+    {
+        $Log = $this->Table->calcLog(['name' => 'SELECTS AND FORMATS']);
+        try {
+            return $this->Table->getValuesAndFormatsForClient($data, $viewType, $pageIds, $fieldNames);
+        } finally {
+            $this->Table->calcLog($Log, 'result', 'done');
+        }
+    }
+
     protected function mcpFormatInsertRow(array $raw): array
     {
         $this->mcpResetSelectViewLists();
-        return $this->Table->getValuesAndFormatsForClient(['rows' => [$raw]], 'edit', [])['rows'][0];
+        return $this->mcpFormat(['rows' => [$raw]], 'edit', [])['rows'][0];
     }
 
     /**
@@ -895,7 +909,7 @@ trait MCPActionsTrait
         $params = array_intersect_key($this->Table->getTbl()['params'] ?? [], array_flip($paramsNames));
 
         $this->mcpResetSelectViewLists();
-        $formatted = $this->Table->getValuesAndFormatsForClient(['rows' => $rows, 'params' => $params], 'web', $loaded);
+        $formatted = $this->mcpFormat(['rows' => $rows, 'params' => $params], 'web', $loaded);
 
         return [
             'mcpChanges' => true,

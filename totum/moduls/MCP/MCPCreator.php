@@ -2,6 +2,7 @@
 
 namespace totum\moduls\MCP;
 
+use totum\common\DryRun;
 use totum\common\errorException;
 use totum\common\FormatParamsForSelectFromTable;
 use totum\common\Totum;
@@ -24,7 +25,25 @@ CREATOR VIEW (admin layer). The structure of Totum is data of system tables, cha
   get_field_settings shows the settings of a type (with a field — its values); write data_src as {"setting": value} — only the changed settings, the others are kept (a new field takes the defaults of the panel); null switches a setting off.
   Add a field: insert_row {"table":"tables_fields","data":{"table_id":<table id>,"category":"column","title":…,"data_src":{"type":"number", …}}} + add_row with insert_hash.
 - get_table_schema shows "## Creator view": the row of the table in tables and the rows (ids) of its fields in tables_fields.
+- search_codes — grep through all the codes: fields (code, codeAction, codeSelect, format…), tables (default_action, row_format…), data (crons, notification_codes, ttm__custom_functions…):
+  who uses a table — q "'orders'", a field — q "status" + word: true, a user function — q "specName" (they are rows of ttm__custom_functions: read_docs {"ref": "user-functions"};
+  in their code all the parameters always exist — not passed = null, so var(default:) does not work for them: check on empty, if(condition: $#p = ""; then: <default>; else: $#p)), all external calls — external: true. Before changing or testing a code find who calls it and what it changes.
+- Testing a system you do not know: 1) get_table_schema (codes of the fields), search_codes — the entry points (actions on add/change/delete, buttons, crons, default_action) and who else writes the table;
+  2) search_codes external: true — what leaves the system (mail, http…), mocks for them; 3) reproduce the action of the user with the same tool + debug (rolled back), read the log and "Errors in the log";
+  4) check the results in the same run (exec_code: the action, then selects — after the rollback nothing is left); a new code — exec_code with its text before saving it. Details: CREATOR.md "Testing an unknown system".
+- Docs: before writing a code read the functions you use (read_docs {"function": "select"}), settings — read_docs {"setting": …} / {"table_setting": …}, syntax — read_docs {"ref": "syntax"}; search_docs finds by words.
 - Deleting a row of tables / tables_fields deletes the table / the field WITH ITS DATA — ask the user before. System tables are not deleted.
+- Debugging: every tool of a table has the parameter debug — the calculation log (like "Debugging" of web: debug.log c codes, a action codes, C changes, s selects, f formats, flds time)
+  in a transaction that is ROLLED BACK (debug.commit: true saves). External actions that a rollback does not undo (email, http, ssh, exec, db, imap, services, schema, gom) are blocked:
+  the run STOPS at the first one and shows it (function, what it would do, where) — show it to the user and ask; then repeat with debug.allow: [kind] (or without debug for real).
+  on_block "skip" — not done (the function returns null), the run goes on: the list of all external actions of the run. exec_code runs an action code in the context of a table / row the same way.
+  Mocks: debug.mocks [{"function": "getFromScript", "match"?: "text of the uri…", "field"?, "id"?, "result": …}] — the action is NOT done, the function returns the result
+  (what the real call returns, in the format the code expects) and the run goes on; not with commit.
+- MOCKS IN FIELDS: when a code of a field has external calls (get_table_schema, column "external calls": "(no mock)"), write mocks into the help of the field
+  inside <agent>…</agent> (hidden in web, shown to agents) — one line per call: mock <function or kind>[ "<text of the details>"]: <result — JSON or text>, e.g.
+  <agent>mock getFromScript "api.cbr.ru": {"rate": 92.5}</agent> · <agent>mock emailSend: true</agent>. Debug runs take them for blocked calls of the code of that field
+  (journal: mocked (help of the field …)) and go on — so the field can be tested later without the real call. Do it when you create or change such a field;
+  the result must be realistic: ask the user or take a real answer (a run with allow) — not invented data that hides errors. Keep the rest of the help as it is.
 TXT;
 
     protected ?MCPFieldSettings $Settings = null;
@@ -197,7 +216,8 @@ TXT;
         return $out . "\n" . MCPMarkdown::mdTable(['setting', 'title', 'kind', 'state', 'value', 'default', 'parent', 'values'], $rows)
             . "\nstate: on — works (the core takes it into the field); off — a switchable setting that is off (a value switches it on); "
             . "hidden — its parent is off: it does not work, set the parent first (checkbox true / a value)\n"
-            . "kinds: checkbox — true/false; string, html; code — totum code (\"=: …\", several lines); integer, number; select — a key of values (multiple — array of keys); json — object/array\n";
+            . "kinds: checkbox — true/false; string, html; code — totum code (\"=: …\", several lines); integer, number; select — a key of values (multiple — array of keys); json — object/array\n"
+            . 'docs: a setting — read_docs {"setting": "<setting>"}, the type — read_docs {"field_type": "' . $type . '"}, functions of codes — read_docs {"function": "<name>"}' . "\n";
     }
 
     /**
@@ -284,23 +304,40 @@ TXT;
             . 'table: row ' . $id . ' of tables · type ' . $tableRow['type'] . ' · ' . $place . ' · sort ' . ($tableRow['sort'] ?? '') . ' · actual ' . ($tableRow['actual'] ?? '')
             . ($isCalcs ? ' · version ' . ($tableRow['__version'] ?? '?') : '') . ' · codes of the table: ' . ($codes ? implode(', ', $codes) : 'none') . "\n"
             . '- settings of the table: get_row {"table":"tables","id":' . $id . '}; change — edit {"table":"tables","rows":{"' . $id . '":{…}}}'
-            . ' (the type' . ($isCalcs ? ' and the cycles table are' : ' is') . " fixed)\n"
+            . ' (the type' . ($isCalcs ? ' and the cycles table are' : ' is') . ' fixed); a setting in the docs — read_docs {"table_setting": "<name>"}' . "\n"
             . '- fields: rows of tables_fields — read_table {"table":"tables_fields","filters":{"f_table":"' . $id . '"'
             . ($isCalcs ? ',"fl_version":"' . ($tableRow['__version'] ?? '') . '"' : '') . '}}; settings of a field — get_field_settings {"table":"'
             . $tableRow['name'] . '","field":"<name>"}, change — edit of its data_src; a new field — insert_row of tables_fields with table_id ' . $id . "\n";
 
         $rows = [];
+        $withoutMocks = [];
         foreach ($Table->getFields() as $name => $field) {
             $fieldCodes = [];
+            $calls = [];
             foreach (['code' => 'code', 'codeAction' => 'action', 'codeSelect' => 'select', 'format' => 'format'] as $param => $title) {
                 if (!empty($field[$param])) {
                     $triggers = $param === 'codeAction' ? array_keys(array_filter(['add' => 'CodeActionOnAdd', 'change' => 'CodeActionOnChange',
                         'delete' => 'CodeActionOnDelete', 'click' => 'CodeActionOnClick'], fn($flag) => !empty($field[$flag]))) : [];
                     $fieldCodes[] = $title . ($triggers ? ' (' . implode(', ', $triggers) . ')' : '');
+                    /* a field keeps its codes parsed: lines of the code are the values, ==strings== / ==usedFields== — service keys */
+                    $code = is_array($field[$param])
+                        ? implode("\n", array_filter($field[$param], fn($line, $key) => is_string($line) && !str_starts_with((string)$key, '=='), ARRAY_FILTER_USE_BOTH))
+                        : (string)$field[$param];
+                    $calls += DryRun::externalCalls($code);
                 }
             }
-            $rows[] = [$name, $field['id'] ?? '', $field['category'], $field['ord'] ?? '', $field['type'], implode(', ', $fieldCodes)];
+            $external = [];
+            foreach (array_keys($calls) as $function) {
+                $hasMock = DryRun::hasHelpMock($field['help'] ?? null, $function);
+                $external[] = $function . ($hasMock ? ' (mock)' : ' (no mock)');
+                if (!$hasMock) {
+                    $withoutMocks[] = $name . ': ' . $function;
+                }
+            }
+            $rows[] = [$name, $field['id'] ?? '', $field['category'], $field['ord'] ?? '', $field['type'], implode(', ', $fieldCodes), implode(', ', $external)];
         }
-        return $out . MCPMarkdown::mdTable(['name', 'field id', 'category', 'ord', 'type', 'codes'], $rows);
+        return $out . MCPMarkdown::mdTable(['name', 'field id', 'category', 'ord', 'type', 'codes', 'external calls'], $rows)
+            . ($withoutMocks ? 'external calls without a mock in <agent> of the help of the field: ' . implode('; ', $withoutMocks)
+                . ' — write «mock <function>: <result>» lines there (see the instructions of the creator view), then debug runs go on with them' . "\n" : '');
     }
 }
