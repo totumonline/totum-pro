@@ -196,6 +196,10 @@ trait FuncOperationsTrait
             setlocale(LC_CTYPE, $localeOld);
         }
 
+        if ($this->dryRunReplaced('ssh', 'execSSH', ['ssh' => $string, 'stdin' => is_string($params['stdin'] ?? null) ? $params['stdin'] : null], $mock)) {
+            return $mock;
+        }
+
         if (!($params['stdin'] ?? '') || !is_string($params['stdin'])) {
             return shell_exec($string);
         }
@@ -300,6 +304,11 @@ trait FuncOperationsTrait
                 'headers' => $headers,
                 'method' => ($params['method'] ?? 'GET')
             ];
+        }
+
+        if ($this->dryRunReplaced('http', 'getFromScript', ['uri' => $link, 'method' => $params['method'] ?? ($post === null ? 'GET' : 'POST'),
+            'post' => $post, 'headers' => $params['headers'] ?? null, 'parallel' => $timeout === 'parallel'], $mock)) {
+            return $mock;
         }
 
         try {

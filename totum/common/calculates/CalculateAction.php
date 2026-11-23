@@ -19,6 +19,7 @@ use DirectoryTree\ImapEngine\Support\Str as ImapStr;
 use SoapClient;
 use totum\common\criticalErrorException;
 use totum\common\Crypt;
+use totum\common\DryRunStopException;
 use totum\common\errorException;
 use totum\common\Field;
 use totum\common\FormatParamsForSelectFromTable;
@@ -132,6 +133,9 @@ class CalculateAction extends Calculate
                         $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
                     );
 
+                    $emails = array_filter($emails,
+                        fn($email) => !$this->dryRunReplaced('email', 'notificationSend', ['to' => $email, 'title' => $params['title'], 'body' => $params['eml']]));
+
                     try {
                         foreach ($emails as $email) {
                             $this->Table->getTotum()->getConfig()->sendMail(
@@ -173,6 +177,9 @@ class CalculateAction extends Calculate
                     if ($this->Table->getTotum()->getConfig()->isExecSSHOn('inner')) {
                         foreach ($users as $user) {
                             $Vars = ['user' => $user['id'], 'title' => $params['title'], 'html' => $html];
+                            if ($this->dryRunReplaced('exec', 'notificationSend', ['custom' => $name, 'code' => $code, 'vars' => $Vars])) {
+                                continue;
+                            }
 
                             $data = ['code' => $code, 'vars' => $Vars];
 
@@ -242,6 +249,10 @@ class CalculateAction extends Calculate
                 $Vars = [];
                 foreach ($params['var'] ?? [] as $v) {
                     $Vars = array_merge($Vars, $this->getExecParamVal($v, 'var'));
+                }
+
+                if ($this->dryRunReplaced('exec', 'exec', ['ssh' => $params['ssh'], 'code' => $code, 'vars' => $Vars], $mock)) {
+                    return $mock;
                 }
 
                 $data = ['code' => $code, 'vars' => $Vars];
@@ -342,6 +353,9 @@ class CalculateAction extends Calculate
         }
         if (empty($params['gzstring'])) {
             throw new errorException($this->translate('Scheme string is empty.'));
+        }
+        if ($this->dryRunReplaced('schema', 'schemaGzStringUpload', ['gzstring' => strlen($params['gzstring']) . ' bytes'], $mock)) {
+            return $mock;
         }
         $pathDbPsql = $this->Table->getTotum()->getConfig()->getSshPostgreConnect('psql');
 
@@ -450,6 +464,9 @@ class CalculateAction extends Calculate
     protected function funcSchemaUpdate($params)
     {
         $params = $this->getParamsArray($params);
+        if ($this->dryRunReplaced('schema', 'schemaUpdate', ['matches_name' => $params['matches_name'] ?? null], $mock)) {
+            return $mock;
+        }
         $TotumInstall = new TotumInstall(
             $this->Table->getTotum()->getConfig(),
             $this->Table->getTotum()->getUser(),
@@ -752,6 +769,14 @@ class CalculateAction extends Calculate
             }
         }
 
+        if ($this->dryRunReplaced('email', 'emailSend', [
+            'to' => $params['to'], 'title' => $params['title'], 'body' => $params['body'],
+            'files' => array_map(fn($f) => is_array($f) ? ($f['name'] ?? '') : $f, (array)($params['files'] ?? [])),
+            'from' => $params['from'] ?? null, 'smtp' => $params['smtp'] ?? null,
+        ], $mock)) {
+            return $mock;
+        }
+
         try {
             if ($smtpData) {
                 $r = $this->Table->getTotum()->getConfig()->sendMailWithSMTP(
@@ -804,6 +829,8 @@ class CalculateAction extends Calculate
 
         try {
             return $this->getParamsArray($params, [], ['error', 'catch'])['try'];
+        } catch (DryRunStopException $e) {
+            throw $e;
         } catch (Exception $e) {
             $this->vars[$paramsBefore['error'] ?? 'exception'] = $e->getMessage();
             return $this->execSubCode($paramsBefore['catch'], 'catch');
@@ -825,6 +852,9 @@ class CalculateAction extends Calculate
             'soap',
             $this->Table->getTotum()->getConfig()->getSettings('bfl') ?? []
         );
+        if ($this->dryRunReplaced('http', 'getFromSoap', ['wsdl' => $params['wsdl'] ?? null, 'func' => $params['func'] ?? null, 'params' => $params['params'] ?? null], $mock)) {
+            return $mock;
+        }
         try {
             $soapClient = new SoapClient(
                 $params['wsdl'] ?? null,
@@ -2416,6 +2446,9 @@ class CalculateAction extends Calculate
     {
         $params = $this->getParamsArray($params, [], []);
         $this->__checkNotEmptyParams($params, ['name', 'folder', 'uid']);
+        if ($this->dryRunReplaced('imap', 'proImapGetEmail', ['name' => $params['name'], 'folder' => $params['folder'], 'uid' => $params['uid']], $mock)) {
+            return $mock;
+        }
 
         return $this->__withImap($params['name'], function (Mailbox $mailbox) use ($params) {
             $message = (new Folder($mailbox, $this->__imapFolderPath($params['folder'])))->messages()

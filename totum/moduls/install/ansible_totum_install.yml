@@ -672,6 +672,20 @@
       replace: "'secure' => true,"
     when: check_domain != ""
 
+  # Links to documents for agents in http (common for all schemas)
+
+  - name: Create symlinks for AGENTS.md, CREATOR.md and docs in http
+    file:
+      src: "/home/totum/totum-pro/{{ item }}"
+      dest: "/home/totum/totum-pro/http/{{ item }}"
+      state: link
+      owner: totum
+      group: totum
+    loop:
+      - AGENTS.md
+      - CREATOR.md
+      - docs
+
   # Add totum-gom service
 
   - name: Create symlink for Totum service configuration

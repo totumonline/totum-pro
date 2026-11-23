@@ -219,18 +219,43 @@ class File extends Field
             }
 
             if (copy($_FILES['file']['tmp_name'], $tmpFileName)) {
-                $mime = trim(shell_exec("file -b --mime-type {$tmpFileName}"));
-
-                if(preg_match('/^image\//', $mime)){
-                    $mimeExt = preg_replace('/^.*\/([a-z0-9]{1,10})$/', '$1', strtolower($mime));
-                    $_FILES['file']['name']=preg_replace("/.[^.]+$/i", '.'.$mimeExt, $_FILES['file']['name']);
-                }
-
-                static::checkAndCreateThumb($tmpFileName, $_FILES['file']['name'], $Config);
+                static::prepareTmpFile($tmpFileName, $_FILES['file']['name'], $Config);
                 return ['fname' => preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName)];
             }
         }
         return ['error' => $Config->getLangObj()->translate('File not received. May be too big.')];
+    }
+
+    /**
+     * Uploaded tmp file like fileUpload: the extension of an image follows its mime, the preview of an image is created
+     */
+    protected static function prepareTmpFile(string $tmpFileName, string &$name, Conf $Config): void
+    {
+        $mime = trim((string)shell_exec('file -b --mime-type ' . escapeshellarg($tmpFileName)));
+
+        if (preg_match('/^image\//', $mime)) {
+            $mimeExt = preg_replace('/^.*\/([a-z0-9]{1,10})$/', '$1', strtolower($mime));
+            $name = preg_replace("/.[^.]+$/i", '.' . $mimeExt, $name);
+        }
+
+        static::checkAndCreateThumb($tmpFileName, $name, $Config);
+    }
+
+    /**
+     * Tmp file of the user from a file or a string (agent interface): like fileUpload, the value of the field gets it as {name, tmpfile}
+     * @return string name of the tmp file (tmpfile)
+     */
+    public static function createUserTmpFile(Conf $Config, $userId, string &$name, ?string $sourceFile, ?string $content = null): string
+    {
+        $tmpFileName = tempnam($Config->getTmpDir(), $Config->getSchema() . '.' . $userId . '.');
+        if (!$tmpFileName) {
+            errorException::criticalException('Can\'t create tmpfile in ' . $Config->getTmpDir(), $Config);
+        }
+        if (is_null($sourceFile) ? file_put_contents($tmpFileName, (string)$content) === false : !copy($sourceFile, $tmpFileName)) {
+            throw new errorException($Config->getLangObj()->translate('Failed to copy a temporary file.'));
+        }
+        static::prepareTmpFile($tmpFileName, $name, $Config);
+        return preg_replace('`^.*/([^/]+)$`', '$1', $tmpFileName);
     }
 
     public function getLogValue($val, $row, $tbl = [])

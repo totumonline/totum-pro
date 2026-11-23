@@ -7,6 +7,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use totum\config\Conf;
+use totum\moduls\MCP\MCPFiles;
 
 class CleanTmps extends Command
 {
@@ -30,6 +31,7 @@ class CleanTmps extends Command
                 closedir($dh);
             }
         }
+        MCPFiles::cleanAgentsDir($Conf);
 
         return 0;
     }
