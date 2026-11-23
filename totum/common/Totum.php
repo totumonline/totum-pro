@@ -84,6 +84,7 @@ class Totum
     protected array $orderFieldCodeErrors = [];
     protected array $creatorWarnings = [];
     protected mixed $tablesUpdated;
+    protected ?DryRun $DryRun = null;
 
 
 
@@ -235,6 +236,14 @@ class Totum
     public function isAnyChages()
     {
         return !!$this->changedTables;
+    }
+
+    /**
+     * @return string[] names of tables changed in this request
+     */
+    public function getChangedTables(): array
+    {
+        return array_keys($this->changedTables);
     }
 
     protected function searchIndexUpdate()
@@ -475,6 +484,19 @@ class Totum
         $this->CalculateLog->setLogTypes($types);
     }
 
+    /**
+     * Dry run: external actions of codes (mail, http, ssh, separate processes…) are blocked by kinds — see DryRun
+     */
+    public function setDryRun(?DryRun $DryRun): void
+    {
+        $this->DryRun = $DryRun;
+    }
+
+    public function getDryRun(): ?DryRun
+    {
+        return $this->DryRun;
+    }
+
     public function addToInterfaceLink($uri, $target, $title = '', $postData = null, $width = null, $refresh = false, $elseData = [])
     {
         $this->interfaceLinks[] = ['uri' => $uri, 'target' => $target, 'title' => $title, 'postData' => $postData, 'width' => $width, 'refresh' => $refresh, 'elseData' => $elseData];
@@ -597,6 +619,22 @@ class Totum
         $this->hashes[$type][$hash] = $value;
 
         return $hash;
+    }
+
+    /**
+     * Parts of table descriptions and field helps for a group of users:
+     * <admin>…</admin> — only creators, <agent>…</agent> — only agents (MCP interface). Tags of the visible parts stay
+     */
+    public static function filterAudienceText(?string $text, bool $isCreator, bool $isAgent): string
+    {
+        $text = (string)$text;
+        if (!$isCreator) {
+            $text = preg_replace('`\s*<admin>.*?</admin>\s*`su', '', $text);
+        }
+        if (!$isAgent) {
+            $text = preg_replace('`\s*<agent>.*?</agent>\s*`su', '', $text);
+        }
+        return $text;
     }
 
     public function addTableUpdated(int|string $id, string $updated)

@@ -19,6 +19,19 @@ trait FuncServicesTrait
         return $answertype;
     }
 
+    /**
+     * Parameters of a service function for the journal of the dry run: long strings (files, templates) as their length
+     */
+    protected function serviceDryRunDetails(array $params): array
+    {
+        array_walk_recursive($params, function (&$v) {
+            if (is_string($v) && mb_strlen($v) > 300) {
+                $v = mb_strlen($v) . ' chars';
+            }
+        });
+        return $params;
+    }
+
     protected function serviceRequests(\totum\config\Conf $Config, $serviceName, array $datas, $comment = null): array
     {
         if (count($datas) > 10) {
@@ -50,6 +63,9 @@ trait FuncServicesTrait
     protected function funcServiceXlsxParser($params)
     {
         $params = $this->getParamsArray($params);
+        if ($this->dryRunReplaced('services', 'serviceXlsxParser', $this->serviceDryRunDetails($params), $mock)) {
+            return $mock;
+        }
         $Config = $this->Table->getTotum()->getConfig();
 
 
@@ -79,6 +95,9 @@ trait FuncServicesTrait
     protected function funcServiceAskOpenaiList($params)
     {
         $params = $this->getParamsArray($params);
+        if ($this->dryRunReplaced('services', 'serviceAskOpenaiList', $this->serviceDryRunDetails($params), $mock)) {
+            return $mock;
+        }
         $Config = $this->Table->getTotum()->getConfig();
 
         $data = [];
@@ -149,6 +168,9 @@ trait FuncServicesTrait
     protected function funcServiceAskOpenai($params)
     {
         $params = $this->getParamsArray($params, ['system', 'user'], ['system', 'user']);
+        if ($this->dryRunReplaced('services', 'serviceAskOpenai', $this->serviceDryRunDetails($params), $mock)) {
+            return $mock;
+        }
         $this->__checkNotArrayParams($params, ['comment']);
 
         $datas['system'] = [];
@@ -219,6 +241,10 @@ trait FuncServicesTrait
 
     protected function generateByTemplate($params, $serviceName, $extention)
     {
+        if ($this->dryRunReplaced('services', $serviceName === 'docx' ? 'serviceDocxGenerator' : 'serviceXlsxGenerator',
+            $this->serviceDryRunDetails($params), $mock)) {
+            return $mock;
+        }
 
         $this->__checkNotEmptyParams($params, ['template']);
         $this->__checkNotArrayParams($params, ['comment']);
@@ -302,6 +328,9 @@ trait FuncServicesTrait
     protected function funcServicePDFGenerator($params)
     {
         $params = $this->getParamsArray($params);
+        if ($this->dryRunReplaced('services', 'servicePDFGenerator', $this->serviceDryRunDetails($params), $mock)) {
+            return $mock;
+        }
         $answertype = $this->__checkAnswertype($params);
 
 

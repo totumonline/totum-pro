@@ -683,6 +683,25 @@ class Calculate
         return $this->newLog;
     }
 
+    /**
+     * Dry run (Totum::setDryRun): an external action of the code is done (false), not done (true — the function returns $result:
+     * a mock or null) or stops the run. Mocks of the help of the field of the code (<agent>) are used for blocked actions
+     * @throws \totum\common\DryRunStopException
+     */
+    protected function dryRunReplaced(string $kind, string $function, array $details, mixed &$result = null): bool
+    {
+        $result = null;
+        if (!($DryRun = $this->Table->getTotum()->getDryRun())) {
+            return false;
+        }
+        return !$DryRun->check($kind, $function, $details, array_filter([
+            'table' => $this->Table->getTableRow()['name'],
+            'cycle' => $this->Table->getCycle()?->getId(),
+            'field' => $this->varName,
+            'id' => $this->row['id'] ?? null,
+        ], fn($v) => $v !== null && $v !== ''), $this->Table->getFields()[$this->varName]['help'] ?? null, $result);
+    }
+
     public function getError()
     {
         return $this->error;
@@ -1879,13 +1898,14 @@ class Calculate
 
     protected function execSpecFunc(array $funcRow, array|string $params)
     {
-        $params = $this->getParamsArray($params, $multiple = $funcRow['multiple']??[]);
+        $params = $this->getParamsArray($params, $multiple = ($funcRow['multiple'] ?? null) ?: []);
+        $required = ($funcRow['required'] ?? null) ?: [];
 
         $CA = new static($funcRow['code_totum']);
         try {
             $Vars = [];
-            foreach ($funcRow['all_parameters'] as $pName) {
-                if (!in_array($pName, $funcRow['required'])) {
+            foreach (($funcRow['all_parameters'] ?? null) ?: [] as $pName) {
+                if (!in_array($pName, $required)) {
                     if (in_array($pName, $multiple)) {
                         $Vars[$pName] = $params[$pName] ?? [];
                     } else {

@@ -62,6 +62,10 @@ trait FuncDbTrait
     protected function funcProDbExecQuery($params)
     {
         $params = $this->getParamsArray($params);
+        if ($this->dryRunReplaced('db', 'proDbExecQuery', ['name' => $params['name'] ?? $params['hash'] ?? null, 'query' => $params['query'] ?? null,
+            'params' => $params['params'] ?? null], $mock)) {
+            return $mock;
+        }
         $stmt = $this->__ProDbPDO($params);
 
         return $stmt->rowCount();

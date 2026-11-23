@@ -1,5 +1,8 @@
 http/fls/*/
 http/fls/*
+/http/AGENTS.md
+/http/CREATOR.md
+/http/docs
 .DS_Store
 Conf.php
 myLogs/
