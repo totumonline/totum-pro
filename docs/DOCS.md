@@ -104,7 +104,6 @@ Titles are given in English; a page has its title in its own language (the first
 | `optimization` | Optimization | PHP-FPM, PostgreSQL settings, CPU and RAM load, indexes; PRO custom indexes `ttm__custom_indexes` (BTREE of several fields, GIN of lists) · `custom-indexes` |
 | `profiler` | Load profiling | PRO profiling: activation, reading, parameters |
 | `proxy` | Installing Totum PRO behind a proxy | installation behind a proxy server |
-| `free-license` | Free license | free PRO license for 2 users |
 
 ## Pages of `<lang>/training-course/`
 The training course of the site (`/training-course`): a page is a part of the course, in the order of the course.
@@ -158,7 +157,7 @@ with a line of the videos, if any, and its steps `### <a name="<article>-N">`; a
 | `amoCRM` | amoCRM | connecting Totum to amoCRM: the sample, the integration, remotes and hooks |
 | `btx24` | Bitrix 24 | connecting Totum to Bitrix 24 |
 | `knowledge-base` | Knowledge base | ~100 questions of users from GitHub discussions with answers: codes (lists, rows, selects, dates, `tryCatch`), tmp tables and windows, cycles (adding, tabs, access, first table), access by roles and to rows, prefilters, formats and panels, files (url, pdf preview, deleting, email), print templates, forms and registration, notifications, remotes and external API, LDAP, Meilisearch, performance and the connection to the database |
-| `user-questions` | User questions | questions of users to the Totum assistant with checked answers (one section: **Вопрос**, **Ответ**, no source): `if` / empty values, lists (JSON literal, `listReplace`, rounding, pairs, templates), selects (display, code of a select, multiselects, defaults), cycles, `set` / `setList` / `insertList`, prefilters, formats and panels, files (links, access, Telegram), external API, crons |
+| `user-questions` | User questions | questions of users to the Totum assistant with checked answers (one section: **Вопрос**, **Ответ**, no source): `if` / empty values, comments in codes, lists and rows (JSON literal, nested JSON, `listReplace`, `listCut`, `rowAdd`, rounding, pairs, templates, `while` with `iterator`), selects (display, code of a select, multiselects, defaults), cycles (`linkToTable` with `cycle`, recalculation), `set` / `setList` / `insertList`, tmp tables, buttons (own add button, blocking, `$#ids`), dynamic columns, pagination, prefilters, formats and panels (`interlace`, hiding columns, multiline text, `panelHtml`, own JS), files (links, access, base64, xlsx/docx generator, Telegram), external API and SQL databases, sites over Totum, crons |
 
 New pages of every section must be added to these tables (the index of `read_docs` lists the pages by themselves, but not what is inside).
 
