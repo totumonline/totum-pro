@@ -9,6 +9,7 @@ use totum\config\Conf;
  * Documentation of Totum for agents (search_docs / read_docs) from the markdown files of docs/ — the same files as the documentation site:
  * docs/DOCS.md — the index, docs/<lang>/<section>/<page>.md — articles (sections: totum, training-course, how-to),
  * docs/links.md — numbered links "[N]: /page#anchor" shared by all languages (in the texts: [text][N]).
+ * Root pages (ROOT_PAGES, docs/<NAME>.md, common for all languages): ref "<NAME>" / "<NAME>#anchor", e.g. "ARCHITECTURE".
  * A section of a page is a heading (anchor <a name="…"> in it) with its text up to the next heading of the same or a higher level.
  * ref of a section: "page#anchor" like the links (a page of another section — "section/page#anchor"); a heading without anchor — "page#Title".
  */
@@ -19,6 +20,8 @@ class MCPDocs
     public const MAX_TEXT = 15000;
     public const DEFAULT_LIMIT = 10;
     public const MAX_LIMIT = 30;
+    /* search without a section: best hits of a not reference section shown in its block after the reference */
+    public const OTHER_SECTION_LIMIT = 3;
     /* short forms of read_docs: argument => [page, anchor prefix] */
     public const SHORT_REFS = [
         'function' => ['functions', 'fn-'],
@@ -26,6 +29,8 @@ class MCPDocs
         'field_type' => ['fields', 'type-'],
         'table_setting' => ['tables', 'table-settings-'],
     ];
+    /* pages of the root of docs/ (not of a language): section '' */
+    public const ROOT_PAGES = ['ARCHITECTURE'];
 
     /** @var array parsed pages of the process [path => [mtime, page]] (stdio is a long-living process) */
     protected static array $cache = [];
@@ -98,20 +103,41 @@ class MCPDocs
         }
         usort($hits, fn($a, $b) => $b['score'] <=> $a['score']);
         $total = count($hits);
+        $out = '# Docs search: ' . MCPMarkdown::plain($q) . ' · ' . $this->lang . ($section ? '/' . $section : '') . ' · ' . $total . " found";
+        if (!$hits) {
+            return $out . "\nnothing is found: try other words (parts of words work: «добав» finds «добавление»), or read_docs without arguments — the index\n";
+        }
+
+        /* without a section the reference goes first, the other sections (training course, how-to) — blocks after it */
+        $bySec = [static::DEFAULT_SECTION => []];
+        foreach ($hits as $hit) {
+            $bySec[$hit['sec']][] = $hit;
+        }
+        $main = $section || empty($bySec[static::DEFAULT_SECTION]) ? $hits : $bySec[static::DEFAULT_SECTION];
+        $others = $main === $hits ? [] : array_diff_key($bySec, [static::DEFAULT_SECTION => true]);
+        if ($others) {
+            $out .= ' (' . implode(', ', array_map(fn($sec) => $sec . ' ' . count($bySec[$sec]), array_keys($bySec))) . ')';
+        }
+        $out .= "\n" . $note . "read a section: read_docs {\"ref\": \"<ref>\"}\n\n" . $this->hitsTable(array_slice($main, 0, $limit), $words)
+            . (count($main) > $limit ? "\nmore: " . (count($main) - $limit) . " — add words to narrow or raise limit (max " . static::MAX_LIMIT . ")\n" : '');
+        foreach ($others as $sec => $secHits) {
+            $out .= "\n## more in " . $sec . ': ' . count($secHits) . ' — search_docs ' . json_encode(['q' => $q, 'section' => $sec], JSON_UNESCAPED_UNICODE)
+                . "\n" . $this->hitsTable(array_slice($secHits, 0, static::OTHER_SECTION_LIMIT), $words);
+        }
+        return $out;
+    }
+
+    protected function hitsTable(array $hits, array $words): string
+    {
         $rows = [];
-        foreach (array_slice($hits, 0, $limit) as $hit) {
+        foreach ($hits as $hit) {
             $rows[] = [
                 '`' . $this->ref($hit['sec'], $hit['page'], $hit['item']) . '`',
                 MCPMarkdown::esc(implode(' › ', [...$hit['item']['path'], $hit['item']['title']])),
                 MCPMarkdown::esc($this->snippet($hit['item'], $words)),
             ];
         }
-        $out = '# Docs search: ' . MCPMarkdown::plain($q) . ' · ' . $this->lang . ($section ? '/' . $section : '') . ' · ' . $total . " found\n";
-        if (!$rows) {
-            return $out . "nothing is found: try other words (parts of words work: «добав» finds «добавление»), or read_docs without arguments — the index\n";
-        }
-        return $out . $note . "read a section: read_docs {\"ref\": \"<ref>\"}\n\n" . MCPMarkdown::mdTable(['ref', 'section', 'text'], $rows)
-            . ($total > $limit ? "\nmore: " . ($total - $limit) . " — add words to narrow or raise limit (max " . static::MAX_LIMIT . ")\n" : '');
+        return MCPMarkdown::mdTable(['ref', 'section', 'text'], $rows);
     }
 
     /* ======================== read_docs ======================== */
@@ -171,6 +197,10 @@ class MCPDocs
         if (is_file($this->dir . '/DOCS.md') && ($text = trim((string)file_get_contents($this->dir . '/DOCS.md'))) !== '') {
             $out .= "\n" . $text . "\n";
         }
+        $root = array_map(fn($name) => $name . ' — ' . $this->page('', $name)['title'], $this->pageNames(''));
+        if ($root) {
+            $out .= "\n## Root pages (all languages)\n- " . implode("\n- ", $root) . "\n";
+        }
         $out .= "\n## Pages of " . $this->lang . "\n";
         foreach ($this->sections() as $sec) {
             $pages = [];
@@ -197,6 +227,13 @@ class MCPDocs
         if (!$parts || count($parts) > 2 || array_filter($parts, fn($p) => !preg_match('/^[A-Za-z0-9_-]+$/', $p))) {
             throw new errorException('ref "' . $ref . '" must be "page", "page#anchor" or "section/page#anchor" (like the links of the docs)');
         }
+        if (count($parts) === 1) {
+            foreach (static::ROOT_PAGES as $rootPage) {
+                if (strcasecmp($rootPage, $parts[0]) === 0) {
+                    return ['', $rootPage, trim($anchor)];
+                }
+            }
+        }
         return count($parts) === 2 ? [$parts[0], $parts[1], trim($anchor)] : [static::DEFAULT_SECTION, $parts[0], trim($anchor)];
     }
 
@@ -212,11 +249,17 @@ class MCPDocs
 
     protected function pageNames(string $sec): array
     {
+        if ($sec === '') {
+            return array_values(array_filter(static::ROOT_PAGES, fn($name) => is_file($this->dir . '/' . $name . '.md')));
+        }
         return array_map(fn($path) => basename($path, '.md'), glob($this->dir . '/' . $this->lang . '/' . $sec . '/*.md') ?: []);
     }
 
     protected function pagePath(string $sec, string $name): string
     {
+        if ($sec === '') {
+            return $name . '.md';
+        }
         return $this->lang . '/' . $sec . '/' . $name . '.md';
     }
 
@@ -317,27 +360,49 @@ class MCPDocs
 
     protected function ref(string $sec, string $name, array $item): string
     {
-        return ($sec === static::DEFAULT_SECTION ? '' : $sec . '/') . $name . '#' . ($item['anchor'] ?: $item['title']);
+        return ($sec === static::DEFAULT_SECTION || $sec === '' ? '' : $sec . '/') . $name . '#' . ($item['anchor'] ?: $item['title']);
     }
 
     /* ======================== links ======================== */
 
     /**
-     * [text][N] → «text (→ page#anchor)» by links.md; with $withRefs = false — only the text
+     * [text][N] → «text (→ page#anchor)» by links.md; with $withRefs = false — only the text.
+     * Not in ``` / ~~~ blocks and `inline code`: codes have $list[0][1].
      */
     public function resolveLinks(string $text, bool $withRefs = true): string
     {
         $links = $this->links();
-        return preg_replace_callback('/(!?)\[([^\]\n]*)\]\[(\d+)\]/u', function ($m) use ($links, $withRefs) {
-            if ($m[1] === '!') {
-                return $m[0];
+        $lines = explode("\n", $text);
+        $fence = null;
+        foreach ($lines as &$line) {
+            if (preg_match('/^\s*(```|~~~)/', $line, $f)) {
+                $fence = $fence === null ? $f[1] : ($fence === $f[1] ? null : $fence);
+                continue;
             }
-            $target = $links[$m[3]] ?? null;
-            if (!$withRefs || !$target) {
-                return $m[2];
+            if ($fence !== null) {
+                continue;
             }
-            return $m[2] . ' (→ ' . $target . ')';
-        }, $text);
+            $parts = preg_split('/(`[^`]*`)/u', $line, -1, PREG_SPLIT_DELIM_CAPTURE);
+            foreach ($parts as $k => &$part) {
+                if ($k % 2) {
+                    continue;
+                }
+                $part = preg_replace_callback('/(!?)\[([^\]\n]*)\]\[(\d+)\]/u', function ($m) use ($links, $withRefs) {
+                    if ($m[1] === '!') {
+                        return $m[0];
+                    }
+                    $target = $links[$m[3]] ?? null;
+                    if (!$withRefs || !$target) {
+                        return $m[2];
+                    }
+                    return $m[2] . ' (→ ' . $target . ')';
+                }, $part);
+            }
+            unset($part);
+            $line = implode('', $parts);
+        }
+        unset($line);
+        return implode("\n", $lines);
     }
 
     /**

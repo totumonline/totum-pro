@@ -708,6 +708,45 @@ line_2: 0
 // Результат = 100.
 ```
 
+### <a name="sx-json"></a>JSON-литерал json``
+
+`` json`…` `` задает в коде список или `row` в формате JSON — синтаксический аналог [jsonExtract][700]:
+
+```totum
+list: json`[1, 2, 3]`
+row: json`{"key1": "value1", "key2": [1, 2]}`
+```
+
+Может использоваться прямо в параметрах функций:
+
+```totum
+=: if(condition: #status = json`[1, 3, 5]`; then: true; else: false)
+```
+
+#### <a name="sx-json-values"></a>Значения из кода внутри json``
+
+На месте **значения** (не ключа) можно писать обращения Totum — они будут вычислены и подставлены:
+
++ `$line` — строка кода, в том числе с элементом `$line[key]`, `$line[key][subkey]`;
++ `#field`, `#s.field`, `#old.field` и другие обращения к полям;
++ `$#var` — переменные кода (`$#nd`, `$#nu`, `$#lc`, переменные `listReplace` / `while` …);
++ `@table.field`, `@table.field[#id]` — [сокращенное обращение][217] к другой таблице;
++ `@$name` — [глобальная переменная][544], `$@name` — [процессная переменная][545].
+
+```totum
+=: json`{"field": #name, "date": $#nd, "line": $line, "item": $row[k], "list": $lst, "arr": [#id, $#nti, "txt"]}`
+	line: "line value"
+	row: rowCreate(field: "k" = "VAL")
+	lst: listCreate(item: 1; item: 2)
+
+// Результат: {"field":"tables","date":"2026-11-23","line":"line value","item":"VAL","list":["1","2"],"arr":[1,1,"txt"]}
+```
+
++ Подставляется значение строки как есть: список остается списком, `row` — `row`, числа из строк кода приходят так же, как их возвращает строка (в примере — `"1"`).
++ Обращение заканчивается на `,`, `:`, `}` или непарной `]`. Простая математика вычисляется (`` json`{"m": #id + 1}` `` → `{"m":"2"}`), а вызов функции (в нем есть `:` и `;`) внутри `` json`…` `` написать нельзя — вычислите его отдельной строкой кода и подставьте `$line`.
++ **Ключи** `row` — только строки в двойных кавычках: обращения на месте ключа не вычисляются. Если ключ нужно задать кодом, используйте [rowCreate][274] или [rowAdd][277].
++ Строки внутри `` json`…` `` пишутся в двойных кавычках, как в JSON. Невалидный JSON (пропущенная кавычка, скобка, запятая) — ошибка формата кода.
+
 ### <a name="sx-string-concatenation"></a>Конкатенация строк
 
 Конкатенация выполняется функцией [strAdd][240] или сахаром `str`:
@@ -778,7 +817,7 @@ Name-параметры могут быть использованы в обои
 Пример с группировкой:
 
 ```totum
-=: select(table: $#ntn; field: 'id'; where: qrow`'(field_1' > 100 && 'field_3' = true) || 'field_2' = true`)
+=: select(table: $#ntn; field: 'id'; where: qrow`('field_1' > 100 && 'field_3' = true) || 'field_2' = true`)
 
 // field_1 больше 100 и field_3 = true или field_2 равно true
 
@@ -789,18 +828,18 @@ Name-параметры могут быть использованы в обои
 Это ошибочный пример:
 
 ```totum
-=: select(table: $#ntn; field: 'id'; where: qrow`'(field_1' > 100 && 'field_3' = true) || 'field_2' = true && filed_4 = false`)
+=: select(table: $#ntn; field: 'id'; where: qrow`('field_1' > 100 && 'field_3' = true) || 'field_2' = true && 'field_4' = false`)
 
-// Результат ОШБК! тк на верхнем уровне используются II и &&
+// Результат: ОШБК! — на верхнем уровне смешаны || и &&
 
 ```
 
 Правильно будет:
 
 ```totum
-=: select(table: $#ntn; field: 'id'; where: qrow`'((field_1' > 100 && 'field_3' = true) || 'field_2' = true) && filed_4 = false`)
+=: select(table: $#ntn; field: 'id'; where: qrow`(('field_1' > 100 && 'field_3' = true) || 'field_2' = true) && 'field_4' = false`)
 
-// (field_1 больше 100 и field_3 = true или field_2 равно true) и filed_4 = false
+// (field_1 больше 100 и field_3 = true или field_2 равно true) и field_4 = false
 
 ```
 
@@ -808,9 +847,9 @@ Name-параметры могут быть использованы в обои
 
 
 ```totum
-=: select(table: $#ntn; field: 'id'; where: qrow`'(field_1' > 100 && 'field_3' = true) || 'field_2' = true`; where: 'filed_4' = false)
+=: select(table: $#ntn; field: 'id'; where: qrow`('field_1' > 100 && 'field_3' = true) || 'field_2' = true`; where: 'field_4' = false)
 
-// (field_1 больше 100 и field_3 = true или field_2 равно true) и filed_4 = false
+// (field_1 больше 100 и field_3 = true или field_2 равно true) и field_4 = false
 
 ```
 
@@ -819,7 +858,7 @@ Name-параметры могут быть использованы в обои
 Если у вас в сравнениях используется `id` в режиме `И` то запрос будет исполняться **сильно быстрее**, если поставить это условие в отдельный where вперед
 
 ```totum
-=: select(table: $#ntn; field: 'id'; where: 'id' != #id; where: qrow`'(field_1' > 100 && 'field_3' = true) || 'field_2' = true`)
+=: select(table: $#ntn; field: 'id'; where: 'id' != #id; where: qrow`('field_1' > 100 && 'field_3' = true) || 'field_2' = true`)
 
 // id не равно id текущей строки и (field_1 больше 100 и field_3 = true или field_2 равно true)
 
