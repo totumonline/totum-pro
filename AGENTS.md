@@ -6,6 +6,7 @@ Documents for agents — in the repo and on every server (the server links are s
 | this file: the project, working with Totum over MCP | `AGENTS.md` | `https://<host>/AGENTS.md` |
 | creator view of MCP: tree, tables, fields (`--creator=true` / header `TTM-Creator: true`) | [CREATOR.md](CREATOR.md) | `https://<host>/CREATOR.md` |
 | documentation of Totum: syntax, functions, fields, tables, interface | [docs/DOCS.md](docs/DOCS.md) | `https://<host>/docs/DOCS.md`, articles `https://<host>/docs/<lang>/totum/<page>.md` |
+| architectural patterns of Totum codes — required reading before development | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | `https://<host>/docs/ARCHITECTURE.md` |
 
 Over MCP the documentation is read without internet requests: `search_docs` / `read_docs` (see "Documentation (search_docs, read_docs)").
 
@@ -699,15 +700,22 @@ Both tools are in every mode (annotation `readOnlyHint`); they read the markdown
 {"name": "read_docs", "arguments": {"table_setting": "deleting"}}
 {"name": "read_docs", "arguments": {"field_type": "select"}}
 {"name": "read_docs", "arguments": {"ref": "syntax", "offset": 419}}
+{"name": "read_docs", "arguments": {"ref": "ARCHITECTURE#fix-lines"}}
 ```
 - Pages: `docs/<lang>/<section>/<page>.md` (sections `totum`, `training-course`, `how-to`), `lang` — argument / language of Totum (`Conf::getLang()`), `ru` if there are no docs of it.
+- Root pages `MCPDocs::ROOT_PAGES` — `docs/<NAME>.md`, common for all languages (section `''`): `ARCHITECTURE` (architectural patterns of codes, required reading before development).
+  ref `ARCHITECTURE` / `ARCHITECTURE#<anchor>` (case-insensitive); the index (`read_docs` without arguments) lists them in `## Root pages`; `search_docs` does not search them.
+  A new root page — a file in `docs/` + its name in `ROOT_PAGES`.
 - A section = a heading (anchor `<a name="…">` in it) with its text up to the next heading of the same or a higher level; headings in ``` / ~~~ blocks are not headings.
 - ref: `page`, `page#anchor`, `section/page#anchor` (like `links.md`, `/page/#anchor` and `.md` / `ru/` prefix are accepted); a heading without anchor — `page#Title`; anchors are case-insensitive.
   Short forms: `function` → `functions#fn-<name>`, `setting` → `fields#fields-settings-<name>`, `field_type` → `fields#type-<type>`, `table_setting` → `tables#table-settings-<name>`.
 - `search_docs`: words of 2+ letters, parts of words, case and ё/е insensitive; a section must have all the words (none — sections with some of them, with a note);
   score: word in the heading/anchor 10, in the own text of the section 1 per occurrence (max 5), the whole query equal to the title or to `fn-` / `fields-settings-` / `table-settings-` / `type-<q>` +100.
   Answer `| ref | section (path of headings) | text (fragment around the first word) |`, `more: N` above `limit` (default 10, max 30).
-- `read_docs`: numbered links `[text][N]` → `text (→ ref)` by `docs/links.md`; a text over 15000 chars is paged by lines (`next page: … "offset": N`),
+  Without `section` the reference (`totum`) goes first: the table has only its hits (`limit` is for them), the header counts by sections `(totum 9, training-course 41)`,
+  every other section with hits is a block after it — `## more in training-course: 41 — search_docs {"q":…,"section":"training-course"}` with its best 3 (`MCPDocs::OTHER_SECTION_LIMIT`).
+  No hits in the reference — the table is of all the sections, as with `section`.
+- `read_docs`: numbered links `[text][N]` → `text (→ ref)` by `docs/links.md` (not in ``` / ~~~ blocks and `inline code`: `$list[0][1]` is a code); a text over 15000 chars is paged by lines (`next page: … "offset": N`),
   its first page lists the subsections (a whole page with one `#` title — its chapters); not found — similar pages / anchors (`selectLst` → `fn-selectList`).
   Without arguments — `DOCS.md` + the list of pages of every section (title = the first heading).
 - Only files inside `docs/` (names `[A-Za-z0-9_-]`, `realpath` check). Parsed pages are cached in the process by mtime (stdio is long-living).
@@ -716,7 +724,7 @@ Both tools are in every mode (annotation `readOnlyHint`); they read the markdown
   anchors `fields-settings-<name>` / `table-settings-<name>` are the names of the settings (data_src / fields of `tables`). Removed the links of the old docs
   (`/install…`, `/ubuntu/#fpm|#nginx`, technical functions `fn-dateWeekDay`, `fn-getFromSoap`, `fn-getTableSource`, `fn-setForm…Format`, `fn-schemaGzString…`, `fn-servicePdfGenerator`,
   `fn-serviceAskOpenai…`, `fn-setFieldParams` — not documented, better not to use them); `interface#part-N` → the page / `sx-section-parameters`; `[24]` → `functions#part-9`.
-  Not documented settings: `cryptoKey`, `hideIframeAfterClick`. A broken ref is answered by `read_docs` with similar anchors.
+  A broken ref is answered by `read_docs` with similar anchors.
 - Check of the links after changes of the docs and the rules of `links.md` — section "Editing" of [docs/DOCS.md](docs/DOCS.md).
 
 ### Files (file fields, linkToFileUpload, linkToFileDownload) — `MCPFiles`

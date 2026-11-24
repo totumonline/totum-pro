@@ -267,3 +267,5 @@
 
 + **h_pro_auth_on_off** — включение [PRO-2FA][634].
 
++ **h_pro_argon2_options** — параметры хеширования паролей в режиме Argon2id (настройка поля Пароль [cryptoKey][698]): ассоциативный массив параметров `password_hash` PHP — `memory_cost`, `time_cost`, `threads`. Пусто — параметры PHP по умолчанию.
+
