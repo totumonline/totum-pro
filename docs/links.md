@@ -525,7 +525,6 @@
 [649]: /daemons
 [650]: /update
 [651]: /proxy
-[653]: /free-license
 [25]:/calculation-sequence#table-recalc
 [44]:/calculation-sequence#table-recalc
 [82]:/calculation-sequence#table-seq

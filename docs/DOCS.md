@@ -104,7 +104,6 @@ Titles are given in English; a page has its title in its own language (the first
 | `optimization` | Optimization | PHP-FPM, PostgreSQL settings, CPU and RAM load, indexes; PRO custom indexes `ttm__custom_indexes` (BTREE of several fields, GIN of lists) · `custom-indexes` |
 | `profiler` | Load profiling | PRO profiling: activation, reading, parameters |
 | `proxy` | Installing Totum PRO behind a proxy | installation behind a proxy server |
-| `free-license` | Free license | free PRO license for 2 users |
 
 ## Pages of `<lang>/training-course/`
 The training course of the site (`/training-course`): a page is a part of the course, in the order of the course.
