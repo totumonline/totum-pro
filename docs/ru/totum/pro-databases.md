@@ -14,6 +14,18 @@
 
 	Для `MySQL` необходимо установить модуль `PHP`: `apt -y install php8.5-mysql`
 
++ <a name="dsn"></a>`dsn` — строка подключения в формате [DSN PDO](https://www.php.net/manual/ru/pdo.construct.php) **без пароля**. Если `dsn` заполнен, Totum подключается по нему, а `type`, `host`, `port` и `database_name` не используются. Логин и пароль все равно берутся из `username` и `user_pass` (пароль в `dsn` не пишется — он хранился бы открытым текстом), опции — из `options`.
+
+	Нужен, когда подключению требуются параметры, которых нет в отдельных полях: `sslmode`, `charset`, unix-сокет, имя сервиса и т.п. Примеры:
+
+	```
+	pgsql:host=db.example.com;port=5432;dbname=shop;sslmode=require
+	mysql:host=10.0.0.5;port=3306;dbname=shop;charset=utf8mb4
+	mysql:unix_socket=/var/run/mysqld/mysqld.sock;dbname=shop
+	```
+
+	Если `dsn` пуст — строка собирается из полей: `<type>:host=<host>;port=<port>;dbname=<database_name>`.
+
 + `host` — хост БД к которой необходимо подключиться. Для удаленной базы необходимо обеспечить доступ по порту, а также разрешить дистанционный коннект для хоста, пользователя и базы.
 
 + `port` — порт коннекта.

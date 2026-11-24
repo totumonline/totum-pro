@@ -60,20 +60,87 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 
 + **offset** — [число][5] пропуск указанного количества элементов в порядке определенном в `order:`.
 
-**Пример:**
+#### <a name="fn-select-examples"></a>Примеры
 
-*orders (cycle_id: 1)*
-id | order_number
--- | ------------
-1 | 98
-2 | 99
-3 | 100
+**Выбрать значение из таблицы 'orders' из поля 'customer' выбрав по полю 'order_number' с условием, что значение 'order_number' равно 100**
 
 ```totum
-example: select(table: 'orders'; cycle: 1; field: 'id'; where: 'order_number' = 100)
-
-// Результат: 3
+=: select(table: 'orders'; field: 'customer'; where: 'order_number' = 100)
 ```
+
+Результат: customer_name
+
+**Выбрать значение из таблицы 'products' поля 'id' с условием что поле 'product_id' равно 200**
+
+```totum
+=: select(table: 'products'; field: 'id'; where: 'product_id' = 200)
+```
+
+Результат: 3
+
+**Выбрать значение поля 'user_num' из таблицы 'users' с условием, что значение поля 'status' равно 10 и отсортировать по полю 'created_at' по возрастанию**
+
+```totum
+=: select(table: 'users'; field: 'user_num'; where: 'status' = 10; order: 'created_at' asc)
+```
+
+Результат: 1567
+
+**Выбрать значение поля 'sum' из таблицы 'sales' с условием, что это последняя строка по сортировке в поле 'sale_date' и значение поля 'sum' больше или равно 50**
+
+```totum
+=: select(table: 'sales'; field: 'sum'; where: 'sum' >= 50; order: 'sale_date' desc)
+```
+
+Результат: 130.56
+
+**Выбрать значение из таблицы 'employees' поля 'id' с условием, что значение поля 'status' равно 5 и необходимо пропустить первые 2 элемента в отсортированном порядке по полю 'hire_date' по возрастанию**
+
+```totum
+=: select(table: 'employees'; field: 'id'; where: 'status' = 5; order: 'hire_date' asc; offset: 2)
+```
+
+Результат: 38
+
+**Выбрать значение поля 'sku' из таблицы 'inventory_tmp' (которая является временной таблицей) с условием, что значение поля 'count' равно 300**
+
+```totum
+=: select(table: 'inventory_tmp'; hash: #hash_field; field: 'sku'; where: 'count' = 300)
+```
+
+Результат: SKU-FG98346
+
+**Выбрать значение поля 'transaction_num' из таблицы 'transactions_in_cycle' (расчетная таблица внутри цикла) по условию, что значение поля 'sum' меньше или равно 400 и номер в 'transaction_num' минимальный**
+
+```totum
+=: select(table: 'transactions_in_cycle'; cycle: #cycle_number; field: 'transaction_num'; where: 'sum' <= 400; order: 'transaction_num' asc)
+```
+
+Результат: 293864
+
+**Выбрать значение из поля 'id' таблицы 'projects' с условием, что значение поля 'status' равно "stop" и поле 'project_number' равно "g-573"**
+
+```totum
+=: select(table: 'projects'; field: 'id'; where: 'status' = "stop"; where: 'project_number' = "g-573")
+```
+
+Результат: 582
+
+**Выбрать значение из поля 'status' таблицы 'tasks' с условием, что поле 'id' равно 15 и поле 'status' имеет тип Селект и нам нужно получить его отображение**
+
+```totum
+=: select(table: 'tasks'; sfield: 'status'; where: 'id' = 15)
+```
+
+Результат: Active
+
+**Выбрать отображение из поля 'type' (тип поля Селект) таблицы 'departments' с условием, что значение поля 'number' равно "active" и для расчета отображений в поле 'type' надо использовать значение поля 'ord_depart'**
+
+```totum
+=: select(table: 'departments'; sfield: 'type'; where: 'number' = "active"; tfield: 'ord_depart')
+```
+
+Результат: Sales
 
 ### <a name="fn-selectList"></a>selectList
 
@@ -82,7 +149,6 @@ example: select(table: 'orders'; cycle: 1; field: 'id'; where: 'order_number' = 
 =: selectList(table: ''; cycle: ; hash: ; field: ''; where: '' = ; order: '' asc)
 ```
 Возвращает [список значений][14] из строк поля `field` таблицы `table` в соответствии с сортировкой заданной в `order`.
-
 
 **Обязательные параметры**
 
@@ -134,20 +200,95 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 
 + **offset** — [число][5] пропуск указанного количества элементов в соответствии с сортировкой `order`.
 
-**Пример:**
+#### <a name="fn-selectList-examples"></a>Примеры
 
-*orders*
-id | order_number
--- | ------------
-1 | 98
-2 | 99
-3 | 100
+**Использовать функцию selectList для получения списка значений из поля 'id' таблицы 'users'**
 
 ```totum
-example: selectlist(table: 'orders'; field: 'id'; where: 'order_number' >= 99)
-
-// Результат: [2,3]
+=: selectList(table: 'users'; field: 'id')
 ```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'products' из поля 'product_name' с сортировкой 'product_name' по возрастанию**
+
+```totum
+=: selectList(table: 'products'; field: 'product_name'; order: 'product_name' asc)
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'orders' из пол` 'order_id' с условием, что 'order_date' больше или равна определенной дате**
+
+```totum
+=: selectList(table: 'orders'; field: 'order_id'; where: 'order_date' >= "2024-10-01")
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'employees' из поля 'employee_id' с сортировкой по убыванию по id**
+
+```totum
+=: selectList(table: 'employees'; field: 'employee_id'; order: 'id' desc)
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'sales' из поля 'sale_id' с ограничением на 10 элементов**
+
+```totum
+=: selectList(table: 'sales'; field: 'sale_id'; limit: 10)
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'inventory' по полю 'id' с пропуском первых 5 элементов**
+
+```totum
+= : selectList(table: 'inventory'; field: 'id'; offset: 5)
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из поля order_id таблицы 'transactions' с двумя условиями where: по полю 'transaction_id' которое равно 100 и 'status' равный active**
+
+```totum
+=: selectList(table: 'transactions'; field: 'order_id'; where: 'transaction_id' = 100; where: 'status' = "active")
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из поля project временной таблицы 'projects_tmp' с использованием параметра hash**
+
+```totum
+=: selectList(table: 'projects_tmp'; hash: "your_hash_value"; field: 'project')
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'tasks' (таблица внутри цикла) из поля 'task' с использованием параметра cycle**
+
+```totum
+= : selectList(table: 'tasks'; cycle: 1; field: 'task')
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка отображений из таблицы 'departments' по полю типа селект 'department_name' с использованием параметра sfield**
+
+```totum
+= : selectList(table: 'departments'; sfield: 'department_name'; field: 'department_name')
+```
+
+Результат: [list_of_values]
+
+**Использовать функцию selectList для получения списка значений из таблицы 'departments' находящейся внутри цикла из поля хедера 'h_department_num' из циклов с номерами 5 и 6**
+
+```totum
+=: selectList(table: 'departments'; cycle: json`[5,6]`; field: 'h_department_num')
+```
+
+Результат: [5,6]
 
 ### <a name="fn-selectRowListForSelect"></a>selectRowListForSelect
 
@@ -157,13 +298,11 @@ example: selectlist(table: 'orders'; field: 'id'; where: 'order_number' >= 99)
 ```
 Возвращает специальный [список][14] [ассоциативных массивов][30] для формирования отображения Селектов.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] таблица из которой берутся значения.
 
 + **field** — [name-параметр][3] поле в таблице `table` из которого берется отображение.
-
 
 **Необязательные параметры**
 
@@ -198,7 +337,6 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 	+ asc — по возрастанию.
 	+ desc — по убыванию.
 
-
 + **section** — [name-параметр][3], поле в таблице `table`, по которому будут сгруппированы значения.
 
 	+ [name-параметр][3]
@@ -216,48 +354,119 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 	+ Выполняется из окружения той таблицы в которой находится [Селект][36], но получает только `значения нестрочных полей` и `id` строки, плюс `$#ntn` и `$#nti`.
 	+ В отличии от функций контекстной панели работает в развернутом на редактирование селекте. 
 
+#### <a name="fn-selectRowListForSelect-examples"></a>Примеры
 
-**Пример 1:**
-
-*clients*
-id | client
--- | ---------
-1 | Alexey
-2 | Pavel
-3 | Boris
+**Получить список всех значений из таблицы 'clients' для отображения в поле Селект с сортировкой по id**
 
 ```totum
-example1: selectRowListForSelect(table: 'clients'; field: 'client'; order: 'client' asc)
-
-//Результат: 
-//[
-//{"value": 1, "is_del": false, "title":"Alexey"},
-//{"value": 3, "is_del": false, "title":"Boris"}
-//{"value": 2, "is_del": false, "title":"Pavel"}
-//]
+=: selectRowListForSelect(table: 'clients'; field: 'client'; order: 'id' asc)
 ```
-**Пример 2:**
 
-*tax_payments_types*
-id | key | value
--- | --- | -----
-1 | 0 | Общая система налогообложения
-2 | 1 | Упрощенная система налогообложения (Доход)
-3 | 2 | Упрощенная система налогообложения (Доход минус Расход)
-4 | 3 | Единый налог на вмененный доход
-5 | 4 | Единый сельскохозяйственный налог
-6 | 5 | Патентная система налогообложения
+Результат: [{"value": 1, "is_del": false, "title":"Alexey"}, {"value": 2, "is_del": false, "title":"Pavel"}, {"value": 3, "is_del": false, "title":"Boris"}]
+
+**В коде-селекта выбрать значения из таблицы 'tax_payments_types' для отображения в поле Селект с условием, что поле 'key' меньше 3**
 
 ```totum
-example2: selectRowListForSelect(table: 'tax_payments_types'; field: 'value'; bfield: 'key';  where: 'key' < 3; order: 'key' asc)
-
-// Результат: 
-// [
-// {"value": 0, "is_del": false, "title":"Общая система налогообложения"},
-// {"value": 1, "is_del": false, "title":"Упрощенная система налогообложения (Доход)"}
-// {"value": 2, "is_del": false, "title":"Упрощенная система налогообложения (Доход минус Расход)"}
-// ]
+=: selectRowListForSelect(table: 'tax_payments_types'; field: 'value'; where: 'key' < 3; order: 'key' asc)
 ```
+
+Результат:
+
+```
+[
+  {"value": 1, "is_del": false, "title": "Basic Subscription Plan"},
+  {"value": 2, "is_del": false, "title": "Premium Subscription Plan (Monthly)"},
+  {"value": 3, "is_del": false, "title": "Premium Subscription Plan (Annual)"}
+]
+```
+
+**Указать цикл для выборки для поля Селект в коде-селекта, значений из расчетной таблицы**
+
+```totum
+=: selectRowListForSelect(table: 'table_name'; cycle: 1; field: 'field_name')
+```
+
+Результат: [{"value": 1, "is_del": false, "title": "field_value_1"}, {"value": 2, "is_del": false, "title": "field_value_2"}, {"value": 3, "is_del": false, "title": "field_value_3"}]
+
+**Указать хэш временной таблицы для выборки для поля Селект в коде-селекта**
+
+```totum
+=: selectRowListForSelect(table: 'table_name'; hash: "your_hash_value"; field: 'field_name')
+```
+
+Результат: [{"value": 1, "is_del": false, "title": "field_value_1"}, {"value": 2, "is_del": false, "title": "field_value_2"}, {"value": 3, "is_del": false, "title": "field_value_3"}]
+
+**При выполнении кода-селекта для поля типа Селект отсортировать значения из таблицы 'products' по полю 'price' в порядке убывания**
+
+```totum
+=: selectRowListForSelect(table: 'products'; field: 'product_name'; order: 'price' desc)
+```
+
+Результат: [{"value": 1, "is_del": false, "title":"Product A"}, {"value": 2, "is_del": false, "title":"Product B"}, {"value": 3, "is_del": false, "title":"Product C"}]
+
+**При выполнении кода-селекта для поля типа Селект сгруппировать значения из таблицы 'employees' по полю 'department'**
+
+```totum
+=: selectRowListForSelect(table: 'employees'; field: 'employee_name'; section: 'department')
+```
+
+Результат: rowlist с данными селекта + метаданные в виде информации о группировке
+
+**При выполнении кода-селекта для поля типа Селект вывести несколько дополнительных полей в панели по правой кнопке мыши и в выпадающим списке при выборе значения из таблицы 'projects'**
+
+```totum
+=: selectRowListForSelect(table: 'projects'; field: 'project_name'; preview: 'project_manager'; preview: 'start_date'; preview: 'end_date')
+```
+
+Результат: rowlist с данными селекта + метаданные в виде информации о превью
+
+**При выполнении кода-селекта для поля типа Селект указать поле 'code' в качестве ключа для итогового списка значений из таблицы 'items', вместо 'id'**
+
+```totum
+=: selectRowListForSelect(table: 'items'; field: 'item_name'; bfield: 'code')
+```
+
+Результат: [{"value": "nG-10", "is_del": false, "title":"Item1"}, {"value": "nG-11", "is_del": false, "title":"Item2"}, {"value": "nG-12", "is_del": false, "title":"Item3"}]
+
+**Получить список всех значений из таблицы 'clients' для отображения в поле Селект с сортировкой по id, выбранный по двум условиям**
+
+```totum
+=: selectRowListForSelect(table: 'clients'; field: 'client'; where: 'condition1' = "value1"; where: 'condition2' = "value2"; order: 'id' asc)
+```
+
+Результат: [{"value": 1, "is_del": false, "title":"Alexey"}, {"value": 2, "is_del": false, "title":"Pavel"}, {"value": 3, "is_del": false, "title":"Boris"}]
+
+**Получить список всех значений из таблицы 'clients' для отображения в поле Селект с сортировкой по status и по полю date, выбранный по двум условиям**
+
+```totum
+=: selectRowListForSelect(table: 'clients'; field: 'client'; where: 'condition1' = "value1"; where: 'condition2' = "value2"; order: 'status' asc; order: 'date' asc)
+```
+
+Результат: [{"value": 1, "is_del": false, "title":"Alexey"}, {"value": 2, "is_del": false, "title":"Pavel"}, {"value": 3, "is_del": false, "title":"Boris"}]
+
+**Получить список всех значений из таблицы 'clients' для отображения в поле Селект с сортировкой по id, выбранный по двум условиям, если мы знаем, что второе условие может быть отключено при определенном значении поля в текущей таблице**
+
+```totum
+=: selectRowListForSelect(table: 'clients'; field: 'client'; where: 'condition1' = "value1"; where: 'condition2' = $if; order: 'id' asc)
+
+if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
+```
+
+Результат: [{"value": 1, "is_del": false, "title":"Alexey"}, {"value": 2, "is_del": false, "title":"Pavel"}, {"value": 3, "is_del": false, "title":"Boris"}]
+
+**При выборке значения для поля типа Селект посчитать кастомный превью на основе основания Селекта и поля в хедере**
+
+```totum
+=: selectRowListForSelect(table: 'table_name'; field: 'field_name'; previewscode: $preview_code)
+
+```preview_code:totum
+=: listCreate(item: $prevrow)
+	prevrow: rowCreate(field: "title" = "Custom Preview"; field: "value" = math`$sel * #h_multiplicator`; field: "name" = "some_name")
+		sel: select(table: 'table_name'; field: 'price'; where: 'id' = $#val)
+```
+```
+
+Результат: кастомный превью для значения в поле Селект
 
 ### <a name="fn-selectRowListForTree"></a>selectRowListForTree
 
@@ -286,7 +495,6 @@ example2: selectRowListForSelect(table: 'tax_payments_types'; field: 'value'; bf
 
 + **parent** — [name-параметр][3], поле содержащее значение `bfield` родительского элемента или [null][5], если это элемент верхнего уровня.
 
-
 **Необязательные параметры**
 
 + **cycle** — [число][5], [одно или список][14], определяет цикл, если таблица `table` является [расчетной в цикле][1].	
@@ -303,13 +511,63 @@ example2: selectRowListForSelect(table: 'tax_payments_types'; field: 'value'; bf
 
 + **roots** - — [числовой][5] [список][14], элементы, которые необходимо поставить первым уровнем дерева. В случае, использования, дерево строится от них, указывая в качестве их родителя `null`.
 
+#### <a name="fn-selectRowListForTree-examples"></a>Примеры
 
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево**
 
 ```totum
-example: selectRowListForTree(table: 'tree'; field: 'title'; parent: 'parent_id')
-
-// Результат: [{"value":35,"is_del":false,"title":"Производство","parent":null},{"value":45,"is_del":true,"title":"Закупка материалов и склад","parent":"35"} ]
+=: selectRowListForTree(table: 'tree'; field: 'title_field'; parent: 'parent_field')
 ```
+
+Результат: массив для Селект-дерево
+
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево и указать для получения оснований поле отличное от id**
+
+```totum
+=: selectRowListForTree(table: 'tree'; field: 'title_field'; parent: 'parent_field'; bfield: 'custom_base')
+```
+
+Результат: массив для Селект-дерево
+
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево, если нужные нам данные находятся во временной таблице**
+
+```totum
+=: selectRowListForTree(table: 'temp_table'; hash: "your_hash_value"; field: 'title_field'; parent: 'parent_field')
+```
+
+Результат: массив для Селект-дерево
+
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево, если нужные нам данные находятся в таблице внутри цикла**
+
+```totum
+=: selectRowListForTree(table: 'tree'; cycle: 1; field: 'title_field'; parent: 'parent_field')
+```
+
+Результат: массив для Селект-дерево
+
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево, с учетом условия выборки**
+
+```totum
+=: selectRowListForTree(table: 'tree'; field: 'title_field'; parent: 'parent_field'; where: 'status' = "active")
+```
+
+Результат: массив для Селект-дерево
+
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево, с учетом того, что нам нужно указать некоторые элементы как запрещенные к выбору, но отображаемые в списке**
+
+```totum
+=: selectRowListForTree(table: 'tree'; field: 'title_field'; parent: 'parent_field'; disabled: json`[1, 2, 3]`)
+```
+
+Результат: массив для Селект-дерево
+
+**Сделать запрос на получение данных из кода-селекта для поля типа Селект-Дерево, с учетом того, что нам нужно показать только некоторые ветки, задав их основания**
+
+```totum
+=: selectRowListForTree(table: 'tree'; field: 'title_field'; parent: 'parent_field'; roots: json`[1, 2, 3]`)
+```
+
+Результат: массив для Селект-дерево
 
 ### <a name="fn-selectTreeChildren"></a>selectTreeChildren
 
@@ -318,7 +576,6 @@ example: selectRowListForTree(table: 'tree'; field: 'title'; parent: 'parent_id'
 =: selectTreeChildren(table: ''; cycle: ; hash: ; id: ; parent: '')
 ```
 Возвращает [список][14] из id, дочерних по отношению к указанному в параметре `id`, а также дочерних к дочерним. Уровень вложенности не ограничен.
-
 
 **Обязательные параметры**
 
@@ -336,22 +593,47 @@ example: selectRowListForTree(table: 'tree'; field: 'title'; parent: 'parent_id'
 
 + **bfield** — [name-параметр][3] поле в таблице `table`. По умолчанию 'id'
 
-**Пример:**
+#### <a name="fn-selectTreeChildren-examples"></a>Примеры
 
-*tree*
-id | title | parent_id
--- | ----- | --------- 
-1 | Системные таблицы | null
-2 | Основные | 1
-3 | Доступы | 1
-32 | Документация | null
-33 | Настройки | 32
+**Получить все дочерние элементы для указанного элемента в таблице оформленной в виде 'tree'**
 
 ```totum
-example: selectTreeChildren(table: 'tree'; id: 1; parent: 'parent_id')
-
-// Результат: [2, 3]
+=: selectTreeChildren(table: 'tree'; id: 1; parent: 'parent_field')
 ```
+
+Результат: [2, 3]
+
+**Найти дочерние строки для элемента с id 14 в таблице оформленной как 'tree'**
+
+```totum
+=: selectTreeChildren(table: 'tree'; id: 14; parent: 'parent_field')
+```
+
+Результат: [3,4,5]
+
+**Получить все дочерние элементы для указанного элемента в таблице оформленной в виде 'tree', если она находится в цикле**
+
+```totum
+=: selectTreeChildren(table: 'tree'; cycle: 1; id: 1; parent: 'parent_field')
+```
+
+Результат: [2, 3]
+
+**Получить все дочерние элементы для указанного элемента в таблице оформленной в виде 'tree', если она является временной таблицей**
+
+```totum
+=: selectTreeChildren(table: 'tree'; hash: "your_hash_value"; id: 1; parent: 'parent_field')
+```
+
+Результат: [2, 3]
+
+**Указать поле, по которому будет производиться поиск дочерних элементов, если оно отличается от 'id' при поиске дочерних элементов в таблице оформленной как 'tree'**
+
+```totum
+=: selectTreeChildren(table: 'tree'; id: 1; parent: 'parent_field'; bfield: 'custom_base')
+```
+
+Результат: ["cb-10", "cb-12"]
 
 ### <a name="fn-selectRow"></a>selectRow
 
@@ -361,18 +643,15 @@ example: selectTreeChildren(table: 'tree'; id: 1; parent: 'parent_id')
 ```
 Возвращает [ассоциативный массив][30] с основаниями в виде [name][18] полей указанных в  `field` и отображениями в виде их значений. Если поля находятся в строчной части, то из первой строки [строчной части][13] в соответствии с условиями выборки `where` и сортировкой `order`. Если поля из нестрочных частей, `where` и `order` не применяются.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] таблица, из которой берутся значения.
-
 
 **Необязательные параметры**
 
 + **field** — множественный, [name-параметр][3] поле в таблице `table`.
 
 	Поддерживается вариант задания ключа для выбираемого поля: `fied: 'some_field' as "new_name"`
-
 
 + **cycle** — определяет цикл, если таблица `table` является [расчетной в цикле][1].	
 	
@@ -389,7 +668,6 @@ example: selectTreeChildren(table: 'tree'; id: 1; parent: 'parent_id')
 	+ Может быть как [одним значением][14], так и [списком][14]. В зависимости от этого могут получаться различные комбинации сравнений: [один к одному][19], [один ко многим][21], [многие ко многим][21].
 	+ Если по условиям выбираются значения из нескольких строк, то результатом работы функции будет являться [ассоциативный массив][30] из первой строки в соответствии с сортировкой заданной в `order`.
 	+ Если по условиям не выбирается ни одной строки, то результатом работы функции будет являться [пустой список][17].
-
 
 > Если в `were` передать значение `*ALL*`, то этот `where` будет выключен! Это можно сделать через отдельную строку, например:
 
@@ -420,26 +698,115 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 	+ `*HEADER*` — все поля хедера.
 	+ `*FOOTER*` — все поля футера.
 
-
 + **sfields** — [список][14] полей `sfield`.
 
 + **offset** — [число][5] пропуск указанного количества элементов в соответствии с сортировкой `order`.
 
+#### <a name="fn-selectRow-examples"></a>Примеры
 
-**Пример:**
-
-*clients*
-id | client | sum
--- | --------- | -----
-1 | Alexey | 10
-2 | Pavel | 20
-3 | Boris | 30
+**Выбрать строку из таблицы 'clients' с полями 'client' и 'sum'**
 
 ```totum
-example: selectrow(table: 'clients'; field: 'client'; field: 'sum'; order: 'id' desc)
-
-// Результат: {"client": "Boris", "sum": 30}
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum')
 ```
+
+Результат: {"client": "Alexey", "sum": "10"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с сортировкой по убыванию по полю 'id' где 'id' > 100**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'id' > 100; order: 'id' desc)
+```
+
+Результат: {"client": "John", "sum": "30"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с сортировкой по возрастанию по полю 'id' где 'client' неравен 100**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'client' != 100; order: 'id' asc)
+```
+
+Результат: {"client": "Mark", "sum": "60"}
+
+**Выбрать строку из таблицы 'clients' с полями 'client' и 'sum' с условием, что 'id' не равно списку из значений 2,3,4**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'id' != json`[2,3,4]`)
+```
+
+Результат: {"client": "Pavel", "sum": "15"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с условием, что 'sum' больше 15 и 'client' не равен "stop"**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'sum' > 15; where: 'client' != "stop")
+```
+
+Результат: {"client": "Pavel", "sum": "20"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с условием, что 'client' равно 'Alexey'**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'client' = "Alexey")
+```
+
+Результат: {"client": "Alexey", "sum": "10"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с условием, что 'client' неравен пустому значению**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'client' != "")
+```
+
+Результат: {"client": "Alexey", "sum": "10"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с условием, что 'sum' меньше 25 и сортировкой по убыванию по полю 'id'**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'sum' < 25; order: 'id' desc)
+```
+
+Результат: {"client": "Pavel", "sum": 20}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с условием, что 'status' равно 3 и сортировкой по возрастанию по полю 'sum'**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'status' = 3; order: 'sum' asc)
+```
+
+Результат: {"client": "Alexey", "sum": "10"}
+
+**Выбрать строку из таблицы 'clients' с полем 'client' и 'sum' с условием, что 'client' не равно 'Boris' и сортировкой по убыванию по полю 'sum'**
+
+```totum
+=: selectRow(table: 'clients'; field: 'client'; field: 'sum'; where: 'client' != "Boris"; order: 'sum' desc)
+```
+
+Результат: {"client": "Mark", "sum": "60"}
+
+**Выбрать строку из таблицы 'clients' со всеми полями строчной части**
+
+```totum
+=: selectRow(table: 'clients'; fields: "*ALL*")
+```
+
+Результат: {"id": "1", "client": "Alexey", "sum": 10}
+
+**Выбрать все поля хедера из таблицы 'clients'**
+
+```totum
+=: selectRow(table: 'clients'; fields: "*HEADER*")
+```
+
+Результат: {"h_types": ["A","B","C"], "h_count": "120"}
+
+**Выбрать все поля футера из таблицы 'clients'**
+
+```totum
+=: selectRow(table: 'clients'; fields: "*FOOTER*")
+```
+
+Результат: {"f_all_sum": "14500"; "f_all_count": "125"}
 
 ### <a name="fn-selectRowList"></a>selectRowList
 
@@ -449,12 +816,9 @@ example: selectrow(table: 'clients'; field: 'client'; field: 'sum'; order: 'id' 
 ```
 Возвращает [список][14] [ассоциативных массивов][30].
 
-
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, из которой берутся данные.
-
 
 **Необязательные параметры**
 
@@ -492,25 +856,175 @@ example: selectrow(table: 'clients'; field: 'client'; field: 'sum'; order: 'id' 
 
 + **offset** — [число][5] пропуск указанного количества элементов.
 
+#### <a name="fn-selectRowList-examples"></a>Примеры
 
-**Пример:**
-
-*clients*
-id | client | sum
--- | --------- | -----
-1 | Alexey | 10
-2 | Pavel | 20
-3 | Boris | 30
+**Выбрать значения всех полей строчной части из всех строк таблицы 'clients'**
 
 ```totum
-example: selectrowlist(table: 'clients'; field: 'client'; field: 'sum'; where: 'id' > 1; order: 'id' desc)
-
-// Результат: 
-// [
-// {"client": "Boris", "sum": 30},
-// {"client": "Pavel", "sum": 20},
-// ]
+=: selectRowList(table: 'clients'; fields: "*ALL*")
 ```
+
+Результат: [{"id": 1, "client": "Alexey", "sum": 10}, {"id": 2, "client": "Pavel", "sum": 20}, {"id": 3, "client": "Boris", "sum": 30}]
+
+**Выбрать список значений поля 'client' из таблицы 'clients' с ограничением по 'id' больше 10**
+
+```totum
+=: selectRowList(table: 'clients'; field: 'client'; where: 'id' > 10)
+```
+
+Результат: [{"client": "client_name"}, {"client": "client_name"}, ...]
+
+**Выбрать список значения из полей 'client' и 'sum' из таблицы 'clients' с сортировкой по 'id' по убыванию**
+
+```totum
+=: selectRowList(table: 'clients'; fields: json`["client", "sum"]`; order: 'id' desc)
+```
+
+Результат: [{"client": "Boris", "sum": 30}, {"client": "Pavel", "sum": 20}, {"client": "Alexey", "sum": 10}]
+
+**Выбрать список значений из поля 'client' из таблицы 'clients' с ограничением по 'id' больше или равно 10 и сортировкой по 'id' по убыванию**
+
+```totum
+=: selectRowList(table: 'clients'; field: 'client'; where: 'id' >= 10; order: 'id' desc)
+```
+
+Результат: [{"client": "client_name", "id": 10}, {"client": "client_name", "id": 11}, ...]
+
+**Выбрать список значений полей 'client' и 'contract' из таблицы 'clients' с ограничением по 'connector' равному 1578 и сортировкой по 'date' равной "10.07.2024" и по 'id' по возрастанию**
+
+```totum
+=: selectRowList(table: 'clients'; fields: json`["client", "contract"]`; where: 'connector' = 1578; where: 'date' = "2024-07-10"; order: 'id' asc)
+```
+
+Результат: [{"client": "client1", "contract": "contract1"}, {"client": "client2", "contract": "contract2"}]
+
+**Выбрать список значений полей 'client' и 'contract' из таблицы 'clients' находящейся в цикле 455 с условием, что нужно взять только первые 5 строк**
+
+```totum
+=: selectRowList(table: 'clients'; cycle: 455; fields: json`["client", "contract"]`; limit: 5)
+```
+
+Результат: [{"client": "value1", "contract": "value2"}, {"client": "value3", "contract": "value4"}, {"client": "value5", "contract": "value6"}, {"client": "value7", "contract": "value8"}, {"client": "value9", "contract": "value10"}]
+
+**Выбрать список значений из поля 'contract_number' из таблицы 'contracts' получив на выходе ассоциированный массив вместо простого списока**
+
+```totum
+=: selectRowList(table: 'contracts'; field: 'contract_number')
+```
+
+Результат: [{"contract_number": "value1"}, {"contract_number": "value2"}, ...]
+
+**Выбрать список значений из всех полей строчной части таблицы 'clients' с сортировкой по двум полям, сначала по 'date' по возрастанию а потом по 'id' по возрастанию**
+
+```totum
+=: selectRowList(table: 'clients'; fields: "*ALL*"; order: 'date' asc; order: 'id' asc)
+```
+
+Результат: [{...}, {...}, ...]
+
+**Выбрать список значений из полей 'client' и 'contract' из таблицы 'clients' с ограничением по 'type' равно 3 с учетом того, что поле 'contract' имеет тип селект и нам надо взять его отображение**
+
+```totum
+=: selectRowList(table: 'clients'; sfield: 'contract'; where: 'type' = 3)
+```
+
+Результат: [{"contract": "contract_display_value"}]
+
+**Выбрать список значений из полей 'client' и 'contract' из таблицы 'clients' с ограничением по 'type' равно 3 с учетом того, что поле 'contract' имеет тип селект и нам надо взять его отображение и одновременно значение. Значение надо получить в ключе 'contract_v' а отображение в ключе 'contract_t'**
+
+```totum
+=: selectRowList(table: 'clients'; field: 'client'; field: 'contract' as "contract_v"; sfield: 'contract' as "contract_t"; where: 'type' = 3)
+```
+
+Результат: [{"client": "client_value", "contract_v": "contract_value", "contract_t": "contract_display_value"}]
+
+**Выбрать список значений из всех полей строчной части таблицы 'clients' с сортировкой по двум полям, сначала по 'date' по возрастанию а потом по 'id' по возрастанию и с ограничением выборки по 'contract' равное "unlimited" с учетом того, что таблица 'clients' находится в цикле и нам нужно запросить данные из цикла номер 389**
+
+```totum
+=: selectRowList(table: 'clients'; cycle: 389; fields: "*ALL*"; where: 'contract' = "unlimited"; order: 'date' asc; order: 'id' asc)
+```
+
+Результат: [{...}, {...}, ...]
+
+**Выбрать список значений из полей 'client' и 'contract' из таблицы 'transactions' с ограничением по 'contract' больше или равно 3 с учетом того, что таблица 'transactions' это временная таблица**
+
+```totum
+=: selectRowList(table: 'transactions'; hash: #hash_field; field: 'client'; field: 'contract'; where: 'contract' >= 3)
+```
+
+Результат: [{"client": "value1", "contract": "value2"}, {"client": "value3", "contract": "value4"}]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' из таблицы 'transactions' с ограничением по 'type' которое должно быть не равно любому из значений "active","stop","pause"**
+
+```totum
+=: selectRowList(table: 'transactions'; fields: json`["client", "contract", "id"]`; where: 'type' != json`["active", "stop", "pause"]`)
+```
+
+Результат: [{"client": "Alexey", "contract": "C1", "id": "1"}, {"client": "Boris", "contract": "C3", "id": "3"}]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' используя раздельное указание из таблицы 'transactions' с ограничением по 'type', которое должно быть равно любому из значений "active","stop","pause" с учетом того, что таблица 'transactions' находится в цикле 900**
+
+```totum
+=: selectRowList(table: 'transactions'; cycle: 900; field: 'client'; field: 'contract'; field: 'id'; where: 'type' = json`["active", "stop", "pause"]`)
+```
+
+Результат: [{"client": "client_value", "contract": "contract_value", "id": "id_value"}, ...]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' используя раздельное указание из таблицы 'transactions' с ограничением по 'type', которое должно быть равно любому из значений "active","stop","pause" с учетом того, что таблица 'transactions' находится в цикле 900 и нам необходимо выбрать первые 10 значений**
+
+```totum
+=: selectRowList(table: 'transactions'; cycle: 900; fields: json`["client", "contract", "id"]`; where: 'type' = json`["active", "stop", "pause"]`; limit: 10)
+```
+
+Результат: [{"client": "client1", "contract": "contract1", "id": "1"}, {"client": "client2", "contract": "contract2", "id": "2"}, ...]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' используя раздельное указание из таблицы 'transactions' с ограничением по 'type', которое должно быть равно любому из значений "active","stop","pause" с учетом того, что таблица 'transactions' находится в цикле 900 и нам необходимо пропустить первые 10 значений, сортируя по 'id' по возрастанию**
+
+```totum
+=: selectRowList(table: 'transactions'; cycle: 900; field: 'client'; field: 'contract'; field: 'id'; where: 'type' = json`["active", "stop", "pause"]`; order: 'id' asc; offset: 10)
+```
+
+Результат: [{"client": "client_value", "contract": "contract_value", "id": "id_value"}, ...]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' используя раздельное указание из таблицы 'transactions' с ограничением по 'type', которое должно быть равно любому из значений "active" или "pause" с учетом того, что таблица 'transactions' находится в цикле 900 и нам необходимо пропустить первые 10 значений, сортируя по 'id' по возрастанию. При этом поле 'contract' это поле типа селект и нам надо сразу вычислить его отображение**
+
+```totum
+=: selectRowList(table: 'transactions'; cycle: 900; field: 'client'; sfield: 'contract'; field: 'id'; where: 'type' = json`["active", "pause"]`; order: 'id' asc; offset: 10)
+```
+
+Результат: [{"client": "client_value", "contract": "contract_display_value", "id": "id_value"}]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' используя раздельное указание из таблицы 'transactions' с ограничением по 'type', которое должно быть равно "active" или "pause" и с учетом поля 'check' которое должно быть равно true. Результат сортируем по 'id' по возрастанию.**
+
+```totum
+=: selectRowList(table: 'transactions'; field: 'client'; field: 'contract'; field: 'id'; where: 'type' = json`["active", "pause"]`; where: 'check' = true; order: 'id' asc)
+```
+
+Результат: [{"client": "client_value", "contract": "contract_value", "id": "id_value"}]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' используя раздельное указание из таблицы 'transactions' с ограничением по 'type', которое должно быть равно "active" или true. Результат сортируем по 'id' по возрастанию.**
+
+```totum
+=: selectRowList(table: 'transactions'; field: 'client'; field: 'contract'; field: 'id'; where: 'type' = json`["active", true]`; order: 'id' asc)
+```
+
+Результат: [{"client": "client1", "contract": "contract1", "id": "1"}, {"client": "client2", "contract": "contract2", "id": "2"}]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' из таблицы 'transactions' с ограничением по 'type', которое должно быть равно "active", true или пустота с учетом того, что все эти три поля селекты и нам надо получить их отображения. Результат сортируем по 'id' по возрастанию.**
+
+```totum
+=: selectRowList(table: 'transactions'; sfield: 'client'; sfield: 'contract'; sfield: 'id'; where: 'type' = json`["active", true, ""]`; order: 'id' asc)
+```
+
+Результат: [{"client": "client_display_value", "contract": "contract_display_value", "id": "id_display_value"}, ...]
+
+**Выбрать список значений из полей 'client', 'contract' и 'id' из таблицы 'transactions' с ограничением по 'type', которое должно быть равно "active", true или пустота с учетом того, что все эти три поля селекты и нам надо получить их отображения, задав их одним параметром. Результат сортируем по 'id' по возрастанию.**
+
+```totum
+=: selectRowList(table: 'transactions'; sfields: json`["client", "contract", "id"]`; where: 'type' = json`["active", true, ""]`; order: 'id' asc)
+```
+
+Результат: [{"client": "client_display_value", "contract": "contract_display_value", "id": "id_display_value"}, ...]
 
 ### <a name="fn-selectUnreadComments"></a>selectUnreadComments
 
@@ -528,7 +1042,6 @@ example: selectrowlist(table: 'clients'; field: 'client'; field: 'sum'; where: '
 
 + сами комменты (непрочитанные) в `comments`.
 
-
 **Обязательные параметры**
 
 + **field** — [name-параметр][3] поле в таблице `table`.
@@ -537,13 +1050,100 @@ example: selectrowlist(table: 'clients'; field: 'client'; field: 'sum'; where: '
 
 + **users** — [список][14] `id` пользователей, по которым нужно получить данные о комментариях.
 
-
-
 **Необязательные параметры**
 
 + **cycle** — [число][5], определяет цикл, если таблица `table` является [расчетной в цикле][1].	
 	
 + **id** — `id` строки, если запрос идет к строчной части.
+
+#### <a name="fn-selectUnreadComments-examples"></a>Примеры
+
+**Получить информацию о непрочитанных комментариях для пользователей с id 4, 5 и 8**
+
+```totum
+=: selectUnreadComments(users: json`[4,5,8]`; table: 'comments_table'; field: 'comments_field'; id: 123)
+```
+
+Результат:
+
+```
+[
+  {
+    "user": 5,
+    "num": 2,
+    "comments": [
+      [
+        "2024-09-16 19:51",
+        1,
+        "some comment"
+      ],
+      [
+        "2024-09-16 19:51",
+        1,
+        "other comment"
+      ]
+    ]
+  }
+]
+```
+
+**Указать id строки, если запрос идет к строчной части таблицы для получения информации о непрочитанных комментариях**
+
+```totum
+=: selectUnreadComments(users: json`[4,5,8]`; table: 'comments_table'; field: 'comments_field'; id: 123)
+```
+
+Результат:
+
+```
+[
+  {
+    "user": 5,
+    "num": 2,
+    "comments": [
+      [
+        "2024-09-16 19:51",
+        1,
+        "some comment"
+      ],
+      [
+        "2024-09-16 19:51",
+        1,
+        "other comment"
+      ]
+    ]
+  }
+]
+```
+
+**Задать цикл, если таблица является расчетной в цикле, для получения информации о непрочитанных комментариях**
+
+```totum
+=: selectUnreadComments(users: json`[4,5,8]`; table: 'comments_table'; cycle: 1; field: 'comments_field'; id: 123)
+```
+
+Результат:
+
+```
+[
+  {
+    "user": 5,
+    "num": 2,
+    "comments": [
+      [
+        "2024-09-16 19:51",
+        1,
+        "some comment"
+      ],
+      [
+        "2024-09-16 19:51",
+        1,
+        "other comment"
+      ]
+    ]
+  }
+]
+```
 
 ## <a name="part-3"></a>Даты
 
@@ -556,7 +1156,6 @@ example: selectrowlist(table: 'clients'; field: 'client'; field: 'sum'; where: '
 Возвращает текущую дату в указанном формате.
 
 Может быть заменен на [быстрые переменные][11] — `$#nd`, `$#ndt` и `$#ndts`.
-
 
 **Необязательные параметры**
 
@@ -585,42 +1184,103 @@ example: selectrowlist(table: 'clients'; field: 'client'; field: 'sum'; where: '
 		+ `i` — Минуты с ведущим нулём от 00 до 59
 		+ `s` — Секунды с ведущим нулём от 00 до 59
 
+#### <a name="fn-nowDate-examples"></a>Примеры
+
+**Получить текущую дату и время в формате '2024-10-01 10:23:15'**
 
 ```totum
-example1: nowdate()
-
-// Результат: "2018-01-15 20:48" 
+=: nowDate(format: "Y-m-d H:i:s")
 ```
+
+Результат: 2023-10-05 14:30:00
+
+**Получить текущую дату в формате '24/07/2024'**
 
 ```totum
-example2: nowdate(format: "Y-m-d")
-
-// Результат: "2018-01-15" 
+=: nowDate(format: "d/m/Y")
 ```
+
+Результат: 01/10/2023
+
+**Получить текущий год в формате '2024'**
 
 ```totum
-example3: nowdate(format: "H:i")
-
-// Результат: "20:48" 
+=: nowDate(format: 'Y')
 ```
+
+Результат: 2023
+
+**Получить текущий месяц числовом формате**
 
 ```totum
-example4: nowdate(format: "d.m.Y")
-
-// Результат: "15.01.2018" 
+=: nowDate(format: "m")
 ```
+
+Результат: 10
+
+**Получить текущий месяц текстовом формате**
 
 ```totum
-example5: nowdate(format: "d.m.Y (H:00)")
-
-// Результат: "15.01.2018 (20:00)" 
+=: nowDate(format: "F")
 ```
+
+Результат: October
+
+**Получить текущий день недели в текстовом формате**
 
 ```totum
-example6: nowdate(format: "z")
-
-// Результат: "15"
+=: nowDate(format: "l")
 ```
+
+Результат: Monday
+
+**Получить текущий день недели в виде номера дня недели**
+
+```totum
+=: nowDate(format: "N")
+```
+
+Результат: 1
+
+**Получить текущий день месяца**
+
+```totum
+=: nowDate(format: "j")
+```
+
+Результат: 6
+
+**Получить текущий час и минуты в формате '29:30'**
+
+```totum
+=: nowDate(format: "H:i")
+```
+
+Результат: 10:23
+
+**Получить текущую дату и время в формате '2024-06-01 10:20' без указания параметра 'format'**
+
+```totum
+=: nowDate()
+```
+
+Результат: 2023-10-01 10:23
+
+**Получить текущий порядковый номер недели года**
+
+```totum
+=: nowDate(format: "W")
+```
+
+Результат: 40
+
+**Получить текущий порядковый номер дня в году**
+
+```totum
+=: nowDate(format: "z")
+```
+
+Результат: 288
 
 ### <a name="fn-dateDiff"></a>dateDiff
 
@@ -628,8 +1288,14 @@ example6: nowdate(format: "z")
 ```totum
 =: dateDiff(date: ; date: ; unit: "day|year|month|hour|minute")
 ```
-Возвращает число, равное разнице между `date` и `date` выраженное в единице `unit`. Если вторая дата раньше первой — функция вернет отрицательное значение. Разница между датами возвращается в виде дробного значения.
+Возвращает число, равное разнице между `date` и `date` выраженное в единице `unit`. Разница между датами возвращается в виде дробного значения.
 
+Знак результата зависит от `unit`:
+
++ `day` (и `unit` не указан), `hour`, `minute` — разница считается по времени (вторая дата минус первая): если вторая дата раньше первой — функция вернет **отрицательное** значение.
++ `year`, `month` — разница считается по календарному интервалу между датами и **всегда положительна**: порядок дат на знак не влияет. Если нужен знак — сравните даты отдельно (например, `if(condition: $date2 < $date1; …)`).
+	+ `year` = полные года + месяцы / 12 + дни / 365.
+	+ `month` = полные месяцы (с учетом лет) + дни / 30.
 
 **Обязательные параметры**
 
@@ -642,7 +1308,6 @@ example6: nowdate(format: "z")
 	+ Если один из параметров указан с `H:i`, а другой без — то для сравнения параметру с отсутствующим `H:i` присваивается 00:00
 	+ Может быть передан в **unix timestamp** как число.
 
-
 + **unit** — параметр, определяющий, в какой величине отображается разница.
 	+ Передается как [одна][14] [строка][6] и может принимать одно из значений:
 		+ `year` — года
@@ -652,14 +1317,102 @@ example6: nowdate(format: "z")
 		+ `minute` — минуты
 	+ Параметр может отсутствовать, в этом случае его значению присваивается `day`.
 
+#### <a name="fn-dateDiff-examples"></a>Примеры
+
+**Вычислить разницу в днях между двумя датами**
 
 ```totum
-example: dateDiff(date: $date1; date: $date2; unit: "day")
-	date1: "2017-07-01"
-	date2: "2017-07-02 10:42"
-	
-// Результат: "1.4458333333333"
+=: dateDiff(date: $date1; date: $date2; unit: "day")
+
+  date1: "2023-10-01"
+  date2: "2023-10-10"
 ```
+
+Результат: 9
+
+**Вычислить разницу в годах между двумя датами**
+
+```totum
+=: dateDiff(date: $date1; date: $date2; unit: "year")
+
+  date1: "2020-01-01"
+  date2: "2023-01-01"
+```
+
+Результат: 3
+
+**Вычислить разницу в месяцах между двумя датами**
+
+```totum
+=: dateDiff(date: $date1; date: $date2; unit: "month")
+
+  date1: "2023-01-01"
+  date2: "2023-12-31"
+```
+
+Результат: 12
+
+**Вычислить разницу в часах между двумя датами**
+
+```totum
+=: dateDiff(date: $date1; date: $date2; unit: "hour")
+
+  date1: "2023-10-01 12:00"
+  date2: "2023-10-02 15:00"
+```
+
+Результат: 27
+
+**Вычислить разницу в минутах между двумя датами**
+
+```totum
+=: dateDiff(date: "2023-01-01 12:00"; date: "2023-01-01 12:30"; unit: "minute")
+```
+
+Результат: 30
+
+**Вычислить разницу между двумя датами, если одна из них указана с временем, а другая без**
+
+```totum
+=: dateDiff(date: $date1; date: $date2; unit: "day")
+
+  date1: "2023-10-01"
+  date2: "2023-10-02 10:42"
+```
+
+Результат: 1.4458333333
+
+**Вычислить разницу между двумя датами, если одна из них указана в формате unix timestamp**
+
+```totum
+=: dateDiff(date: 1672520400; date: "2023-01-01"; unit: "day")
+```
+
+Результат: 0
+
+**Вычислить отрицательную разницу между двумя датами**
+
+```totum
+=: dateDiff(date: "2023-10-10"; date: "2023-10-05"; unit: "day")
+```
+
+Результат: -5
+
+**Разница в месяцах и годах всегда положительна — порядок дат не влияет**
+
+```totum
+=: dateDiff(date: "2023-12-01"; date: "2023-10-01"; unit: "month")
+```
+
+Результат: 2 (а не -2; с `unit: "day"` те же даты дадут -61)
+
+**Вычислить разницу между двумя датами, если одна из них указана в формате 'Y-m-d', а другая в формате 'Y-m-d H:i'**
+
+```totum
+=: dateDiff(date: "2023-10-01"; date: "2023-10-01 12:00"; unit: "day")
+```
+
+Результат: 0.5
 
 ### <a name="fn-dateAdd"></a>dateAdd
 
@@ -713,7 +1466,6 @@ example: dateDiff(date: $date1; date: $date2; unit: "day")
 		+ `F` — Полное наименование месяца.
 		+ `l (lowercase L)` — Полное наименование дня недели.
 
-
 + **days** — [одно][14] целое [число][5], количество дней.
 
 + **hours** — [одно][14] целое [число][5], количество часов.
@@ -730,11 +1482,97 @@ example: dateDiff(date: $date1; date: $date2; unit: "day")
 	+ `es` — испанский.
 	+ `de` — немецкий.
 
-```totum
-example: dateAdd(date: "2017-10-01 10:00"; days: 1; hours: 2; minutes: 20)
+#### <a name="fn-dateAdd-examples"></a>Примеры
 
-// Результат: "2017-10-02 12:20"
+**Прибавить 5 дней к дате '2023-01-01'**
+
+```totum
+=: dateAdd(date: "2023-01-01"; days: 5)
 ```
+
+Результат: 2023-01-06 00:00
+
+**Вычесть 3 часа из даты '2023-01-01 12:00'**
+
+```totum
+=: dateAdd(date: "2023-01-01 12:00"; hours: -3)
+```
+
+Результат: 2023-01-01 09:00
+
+**Прибавить 2 месяца и 10 дней к дате '2023-01-01'**
+
+```totum
+=: dateAdd(date: "2023-01-01"; months: 2; days: 10)
+```
+
+Результат: 2023-03-11 00:00
+
+**Прибавить 1 год и 30 минут к дате '2023-01-01 23:45'**
+
+```totum
+=: dateAdd(date: "2023-01-01 23:45"; years: 1; minutes: 30)
+```
+
+Результат: 2024-01-02 00:15
+
+**Вычесть 15 минут из даты '2023-01-01 00:15'**
+
+```totum
+=: dateAdd(date: "2023-01-01 00:15"; minutes: -15)
+```
+
+Результат: 2023-01-01 00:00
+
+**Прибавить 6 месяцев к дате '2023-01-01' и вывести результат в формате 'd.m.Y'**
+
+```totum
+=: dateAdd(date: "2023-01-01"; months: 6; format: "d.m.Y")
+```
+
+Результат: 01.07.2023
+
+**Прибавить 10 дней и 5 часов к дате '2023-01-01'**
+
+```totum
+=: dateAdd(date: "2023-01-01"; days: 10; hours: 5)
+```
+
+Результат: 2023-01-11 05:00
+
+**Прибавить 1 день к дате '2023-01-01' и вывести результат в виде номера дня недели**
+
+```totum
+=: dateAdd(date: "2023-01-01"; days: 1; format: "N")
+```
+
+Результат: 1
+
+**Вычесть 1 месяц из даты '2023-01-01' и вывести результат в формате 'Y-m-d H:i'**
+
+```totum
+=: dateAdd(date: "2023-01-01"; months: -1; format: "Y-m-d H:i")
+```
+
+Результат: 2022-12-01 00:00
+
+**Прибавить 3 года к дате '2023-01-01' и вывести результат в формате 'Y-m-d'**
+
+```totum
+=: dateAdd(date: "2023-01-01"; years: 3; format: "Y-m-d")
+```
+
+Результат: 2026-01-01
+
+**Определить дату последнего дня месяца по переданной дате**
+
+```totum
+=: dateAdd(date: $df; days: -1; months: 1)
+
+df: dateFormat(date: $#nd; format: "Y-m-01")
+```
+
+Результат: 2023-10-30 00:00
 
 ### <a name="fn-dateFormat"></a>dateFormat
 
@@ -743,7 +1581,6 @@ example: dateAdd(date: "2017-10-01 10:00"; days: 1; hours: 2; minutes: 20)
 =: dateFormat(date: ; format: "d.m.Y H:i"; lang: )
 ```
 Возвращает преобразованную дату как [одну][14] [строку][6]. Если в `date` передан `list` или `rowList` то на выходе будет аналогичный `list`/`rowList` с всеми подходящими заменами. 
-
 
 **Обязательные параметры**
 
@@ -804,47 +1641,170 @@ example: dateAdd(date: "2017-10-01 10:00"; days: 1; hours: 2; minutes: 20)
 	
 	+ `replace: "three-part" = "value"` — в этом случае он сверяет значение и заменяет только при соответствии. Имеет приоритет перед форматированием даты.
 
+#### <a name="fn-dateFormat-examples"></a>Примеры
+
+**Как получить номер дня недели числом по дате переданной через вызов поля в текущей таблице?**
 
 ```totum
-example: dateFormat(date: "01.07.2017"; format: "d.m")
-
-// Результат: "01.07"
+=: dateFormat(date: #date_field; format: "N")
 ```
+
+Результат: 5
+
+**Как получить текстовое представление дня недели?**
 
 ```totum
-example2: dateFormat(date: "01.07.2017"; format: "F"; lang: "ru")
-
-// Результат: "июль"
+=: dateFormat(date: $#nd; format: "l")
 ```
+
+Результат: Friday
+
+**Как получить порядковый номер дня в году?**
 
 ```totum
-example3: dateFormat(date: "26.03.2021"; format: "l"; lang: "ru")
-
-// Результат: "Пятница"
+=: dateFormat(date: $#nd; format: "z")
 ```
+
+Результат: 282
+
+**Как получить порядковый номер недели года?**
 
 ```totum
-= : dateFormat(date: $rowlist; format: "d.Y"; keys: json`["format"]`)
-
-rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
-	~list: listCreate(item: "2023-01-01"; item: "2023-01-02"; item: "2023-01-03")
-	
-// Результат:
-//[
-//  {
-//    "out": "2023-01-01",
-//    "format": "01.2023"
-//  },
-//  {
-//    "out": "2023-01-02",
-//    "format": "02.2023"
-//  },
-//  {
-//    "out": "2023-01-03",
-//    "format": "03.2023"
-//  }
-//]
+=: dateFormat(date: $#nd; format: "W")
 ```
+
+Результат: 40
+
+**Как получить порядковый номер месяца с ведущим нулём?**
+
+```totum
+=: dateFormat(date: $#nd; format: "m")
+```
+
+Результат: 10
+
+**Как получить сокращенное наименование месяца?**
+
+```totum
+=: dateFormat(date: $#nd; format: "M")
+```
+
+Результат: Oct
+
+**Как получить количество дней в указанном месяце?**
+
+```totum
+=: dateFormat(date: #date_field; format: "t")
+```
+
+Результат: 31
+
+**Как определить, является ли год високосным?**
+
+```totum
+=: dateFormat(date: #date_field; format: "L")
+```
+
+Результат: 1
+
+**Как получить порядковый номер года?**
+
+```totum
+=: dateFormat(date: $#nd; format: "Y")
+```
+
+Результат: 2023
+
+**Как получить номер года в двухзначном формате?**
+
+```totum
+=: dateFormat(date: $#nd; format: "y")
+```
+
+Результат: 23
+
+**Как получить часы в 24-часовом формате с ведущим нулём?**
+
+```totum
+=: dateFormat(date: $#ndt; format: "H")
+```
+
+Результат: 20
+
+**Как получить минуты с ведущим нулём?**
+
+```totum
+=: dateFormat(date: $#ndt; format: "i")
+```
+
+Результат: 58
+
+**Как получить секунды с ведущим нулём?**
+
+```totum
+=: dateFormat(date: $#ndts; format: "s")
+```
+
+Результат: 31
+
+**Как получить полное наименование месяца?**
+
+```totum
+=: dateFormat(date: $#nd; format: "F")
+```
+
+Результат: October
+
+**Как получить полное наименование дня недели?**
+
+```totum
+=: dateFormat(date: $#nd; format: "l")
+```
+
+Результат: Friday
+
+**Как получить дату в формате timestamp?**
+
+```totum
+=: dateFormat(date: $#nd; format: 'U')
+```
+
+Результат: 1697040000
+
+**Как преобразовать дату в формат 'd.m'?**
+
+```totum
+=: dateFormat(date: #date_field; format: "d.m")
+```
+
+Результат: 01.07
+
+**Как преобразовать дату в формате 'F' на русском языке?**
+
+```totum
+=: dateFormat(date: #date_field; format: "F"; lang: "ru")
+```
+
+Результат: Ноябрь
+
+**Как преобразовать дату в формат 'l' на русском языке?**
+
+```totum
+=: dateFormat(date: #date_field; format: "l"; lang: "ru")
+```
+
+Результат: Понедельник
+
+**Как преобразовать список дат в формат 'd.Y'?**
+
+```totum
+=: dateFormat(date: $rowlist; format: "d.Y"; keys: json`["date"]`)
+
+rowlist: rowListCreate(field: "date" = $list)
+  list: listCreate(item: "2023-01-01"; item: "2023-01-02"; item: "2023-01-03")
+```
+
+Результат: [{"date":"01.2023"},{"date":"02.2023"},{"date":"03.2023"}]
 
 ### <a name="fn-dateIntervals"></a>dateIntervals
 
@@ -853,7 +1813,6 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 =: dateIntervals(date: $#nd; num: 10; type: "hour|day|week|month"; datetime: false)
 ```
 Возвращает `rowList` содержащий ключи `start` и `end`
-
 
 **Обязательные параметры**
 
@@ -910,6 +1869,80 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 	+ `sat`
 	+ `sun`
 
+#### <a name="fn-dateIntervals-examples"></a>Примеры
+
+**Создать 5 дневных интервалов, начиная с 2023-01-01**
+
+```totum
+=: dateIntervals(date: "2023-01-01"; num: 5; type: "day")
+```
+
+Результат: [{"start":"2023-01-01","end":"2023-01-01"},{"start":"2023-01-02","end":"2023-01-02"},{"start":"2023-01-03","end":"2023-01-03"},{"start":"2023-01-04","end":"2023-01-04"},{"start":"2023-01-05","end":"2023-01-05"}]
+
+**Создать 3 недельных интервала, начиная с 2023-01-01, с понедельника**
+
+```totum
+=: dateIntervals(date: "2023-01-01"; num: 3; type: "week"; weekdaystart: "mon")
+```
+
+Результат: [{"start":"2022-12-26","end":"2023-01-01"},{"start":"2023-01-02","end":"2023-01-08"},{"start":"2023-01-09","end":"2023-01-15"}]
+
+**Создать 10 месячных интервалов, начиная с текущей даты**
+
+```totum
+=: dateIntervals(date: $#nd; num: 10; type: "month")
+```
+
+Результат: [{"start":"2023-10-01","end":"2023-10-31"},{"start":"2023-11-01","end":"2023-11-30"},{"start":"2023-12-01","end":"2023-12-31"},{"start":"2024-01-01","end":"2024-01-31"},{"start":"2024-02-01","end":"2024-02-29"},{"start":"2024-03-01","end":"2024-03-31"},{"start":"2024-04-01","end":"2024-04-30"},{"start":"2024-05-01","end":"2024-05-31"},{"start":"2024-06-01","end":"2024-06-30"},{"start":"2024-07-01","end":"2024-07-31"}]
+
+**Создать 7 часовых интервалов, начиная с 2023-01-01 12:00**
+
+```totum
+=: dateIntervals(date: "2023-01-01 12:00"; num: 7; type: "hour"; datetime: true)
+```
+
+Результат: [{"start":"2023-01-01 12:00","end":"2023-01-01 12:59"},{"start":"2023-01-01 13:00","end":"2023-01-01 13:59"},{"start":"2023-01-01 14:00","end":"2023-01-01 14:59"},{"start":"2023-01-01 15:00","end":"2023-01-01 15:59"},{"start":"2023-01-01 16:00","end":"2023-01-01 16:59"},{"start":"2023-01-01 17:00","end":"2023-01-01 17:59"},{"start":"2023-01-01 18:00","end":"2023-01-01 18:59"}]
+
+**Создать 4 дневных интервала, начиная с 1672531200 (unix timestamp)**
+
+```totum
+=: dateIntervals(date: 1672531200; num: 4; type: "day")
+```
+
+Результат: [{"start":"2023-01-01","end":"2023-01-01"},{"start":"2023-01-02","end":"2023-01-02"},{"start":"2023-01-03","end":"2023-01-03"},{"start":"2023-01-04","end":"2023-01-04"}]
+
+**Создать 6 недельных интервалов, начиная с 2023-01-01, с дополнительным форматом даты 'd.m.Y'**
+
+```totum
+=: dateIntervals(date: "2023-01-01"; num: 6; type: "week"; format: "d.m.Y")
+```
+
+Результат: [{"start":"2022-12-26","end":"2023-01-01","startf":"26.12.2022","endf":"01.01.2023"},{"start":"2023-01-02","end":"2023-01-08","startf":"02.01.2023","endf":"08.01.2023"},{"start":"2023-01-09","end":"2023-01-15","startf":"09.01.2023","endf":"15.01.2023"},{"start":"2023-01-16","end":"2023-01-22","startf":"16.01.2023","endf":"22.01.2023"},{"start":"2023-01-23","end":"2023-01-29","startf":"23.01.2023","endf":"29.01.2023"},{"start":"2023-01-30","end":"2023-02-05","startf":"30.01.2023","endf":"05.02.2023"}]
+
+**Создать 8 месячных интервалов, начиная с 2023-01-01, с выводом в дополнительном формате 'Y-m-d H:i'**
+
+```totum
+=: dateIntervals(date: "2023-01-01"; num: 8; type: "month"; datetime: true)
+```
+
+Результат: [{"start":"2023-01-01 00:00","end":"2023-01-31 23:59"},{"start":"2023-02-01 00:00","end":"2023-02-28 23:59"},{"start":"2023-03-01 00:00","end":"2023-03-31 23:59"},{"start":"2023-04-01 00:00","end":"2023-04-30 23:59"},{"start":"2023-05-01 00:00","end":"2023-05-31 23:59"},{"start":"2023-06-01 00:00","end":"2023-06-30 23:59"},{"start":"2023-07-01 00:00","end":"2023-07-31 23:59"},{"start":"2023-08-01 00:00","end":"2023-08-31 23:59"}]
+
+**Создать 2 недельных интервала, начиная с 2023-01-01, с началом недели в воскресенье**
+
+```totum
+=: dateIntervals(date: "2023-01-01"; num: 2; type: "week"; weekdaystart: "sun")
+```
+
+Результат: [{"start":"2023-01-01","end":"2023-01-07"},{"start":"2023-01-08","end":"2023-01-14"}]
+
+**Создать 5 дневных интервалов, начиная с 2023-01-01, начав со вторника с дополнительным форматом в который вывести номер дня недели**
+
+```totum
+=: dateIntervals(date: "2023-01-01"; num: 5; type: "day"; weekdaystart: "tue"; format: "N")
+```
+
+Результат: [{"start":"2023-01-01","end":"2023-01-01","startf":"7","endf":"7"},{"start":"2023-01-02","end":"2023-01-02","startf":"1","endf":"1"},{"start":"2023-01-03","end":"2023-01-03","startf":"2","endf":"2"},{"start":"2023-01-04","end":"2023-01-04","startf":"3","endf":"3"},{"start":"2023-01-05","end":"2023-01-05","startf":"4","endf":"4"}]
+
 ## <a name="part-13"></a>Математические
 
 ### <a name="fn-round"></a>round
@@ -923,11 +1956,9 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 
 Возвращает [одно][14] [число][5]
 
-
 **Обязательные параметры**
 
 + **num** — [одно][14] [число][5] для округления.
-
 
 **Необязательные параметры**
 
@@ -941,14 +1972,87 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 
 + **decimals** — [одно][14] целое [число][6], количество знаков после запятой у результата работы функции.
 
+#### <a name="fn-round-examples"></a>Примеры
 
+**Округлить число 5.67 вверх до ближайшего целого**
 
 ```totum
-example: round(num: $limit; type: "up"; step: 0.25; decimals: 2)
-	limit: 3.56
-
-// Результат: 3.75
+=: round(num: 5.67; type: "up"; step: 1; decimals: 0)
 ```
+
+Результат: 6
+
+**Округлить число 4.32 вниз с шагом 0.1 и до 1 знака после запятой**
+
+```totum
+=: round(num: 4.32; type: "down"; step: 0.1; decimals: 1)
+```
+
+Результат: 4.3
+
+**Округлить число 7.8967 математически до 2 знаков после запятой**
+
+```totum
+=: round(num: 7.8967; decimals: 2)
+```
+
+Результат: 7.90
+
+**Округлить число 2.45 вверх с шагом 0.5 и до 1 знака после запятой**
+
+```totum
+=: round(num: 2.45; type: "up"; step: 0.5; decimals: 1)
+```
+
+Результат: 2.5
+
+**Округлить число 9.99 вниз до ближайшего целого**
+
+```totum
+=: round(num: 9.99; type: "down"; step: 1; decimals: 0)
+```
+
+Результат: 9
+
+**Округлить число 6.78 математически с шагом 0.25 и до 2 знаков после запятой**
+
+```totum
+=: round(num: 6.78; step: 0.25; decimals: 2)
+```
+
+Результат: 6.75
+
+**Округлить число 3.14159 вверх до 3 знаков после запятой**
+
+```totum
+=: round(num: 3.14159; type: "up"; decimals: 3)
+```
+
+Результат: 3.142
+
+**Округлить число 8.25 вниз с шагом 0.5 и до 2 знаков после запятой**
+
+```totum
+=: round(num: 8.25; type: "down"; step: 0.5; decimals: 2)
+```
+
+Результат: 8.00
+
+**Округлить число 1.234 математически до ближайшего целого**
+
+```totum
+=: round(num: 1.234)
+```
+
+Результат: 1
+
+**Округлить число 10.01 вверх с шагом 0.3 и до 2 знаков после запятой**
+
+```totum
+=: round(num: 10.01; type: "up"; step: 0.3; decimals: 2)
+```
+
+Результат: 10.20
 
 ### <a name="fn-modul"></a>modul
 
@@ -958,18 +2062,37 @@ example: round(num: $limit; type: "up"; step: 0.25; decimals: 2)
 ```
 Возвращает [одно][14] [число][5], абсолютное значение (модуль) числа, переданного в `num`.
 
-
 **Обязательные параметры**
 
 + **num** — [одно][14] [число][5].
 
+#### <a name="fn-modul-examples"></a>Примеры
 
+**Найти модуль отрицательного числа**
 
 ```totum
-example: modul(num: -3)
-
-// Результат: 3
+=: modul(num: -5)
 ```
+
+Результат: 5
+
+**Использовать функцию modul с отрицательным или положительным дробным числом**
+
+```totum
+=: modul(num: -3.5)
+```
+
+Результат: 3.5
+
+**Как в системе тотум на выходе кода получить всегда положительное число, если на вход могут приходить и положительные и отрицательные числа?**
+
+```totum
+=: modul(num: $input_number)
+
+input_number: -5
+```
+
+Результат: 5
 
 ### <a name="fn-numRand"></a>numRand
 
@@ -978,7 +2101,6 @@ example: modul(num: -3)
 =: numRand(min: ; max: )
 ```
 Возвращает [одно][14] [число][5] псевдослучайное значение в диапазоне от `min` (или 0) до `max` (или максимально возможного в вашей версии PHP случайного числа).
-
 
 **Необязательные параметры**
 
@@ -990,12 +2112,31 @@ example: modul(num: -3)
 
 	+ При отсутствии максимальное для платформы.
 
+#### <a name="fn-numRand-examples"></a>Примеры
+
+**Сгенерировать случайное число от 1 до 10**
 
 ```totum
-example: numRand(min: 0; max: 20)
-
-// Результат: 4
+=: numRand(min: 1; max: 10)
 ```
+
+Результат: 5
+
+**Получить случайное число без указания границ**
+
+```totum
+=: numRand()
+```
+
+Результат: 114785411
+
+**Получить случайное число в диапазоне от -10 до 10**
+
+```totum
+=: numRand(min: -10; max: 10)
+```
+
+Результат: -3
 
 ### <a name="fn-numTransform"></a>numTransform
 
@@ -1007,7 +2148,6 @@ example: numRand(min: 0; max: 20)
 
 Если в `data` передан `list` или `rowList` то на выходе будет аналогичный `list`/`rowList` с всеми подходящими заменами. 
 
-
 **Обязательные параметры**
 
 + **data** — строка для преобразования в число.
@@ -1018,37 +2158,80 @@ example: numRand(min: 0; max: 20)
 
 + **recursive** — по умолчанию `true` или `list` в котором указаны уровни замены `0` — верхний, `1` — следующий вложенный и так далее, для случаев, когда нужно заменить на определенном уровне волженности.
 
-
 **ПРИМЕРЫ**
 
-```totum
-example: numTransform(data: $transform)
-	transform: "5.87"
-//Результат: 
-```
+#### <a name="fn-numTransform-examples"></a>Примеры
+
+**Преобразовать строку '123' в число**
 
 ```totum
-= : numTransform(data: $rowlist; keys: json`["format"]`)
-
-rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
-	~list: listCreate(item: "10500"; item: "10600"; item: "10700")
-	
-// Результат:
-//[
-//  {
-//    "format": 10500,
-//    "out": "10500"
-//  },
-//  {
-//    "format": 10600,
-//    "out": "10600"
-//  },
-//  {
-//    "format": 10700,
-//    "out": "10700"
-//  }
-//]
+= : numTransform(data: "123")
 ```
+
+Результат: 123
+
+**Преобразовать строку '45.67' в число**
+
+```totum
+=: numTransform(data: "45.67")
+```
+
+Результат: 45.67
+
+**Преобразовать строку '0' в число**
+
+```totum
+=: numTransform(data: "0")
+```
+
+Результат: 0
+
+**Преобразовать список строк ['10', '20', '30'] в список чисел**
+
+```totum
+=: numTransform(data: json`["10", "20", "30"]`)
+```
+
+Результат: [10, 20, 30]
+
+**Преобразовать rowList с ключами 'value' и 'text', где 'value' содержит строки чисел, в rowList с числами в ключе 'value'**
+
+```totum
+=: numTransform(data: $rowlist; keys: json`["value"]`)
+
+rowlist: rowListCreate(field: "value" = $list_num; field: "text" = $list_text)
+	list_num: listCreate(item: "100"; item: "200"; item: "300")
+	list_text: listCreate(item: "Alex"; item: "John"; item: "Dani")
+```
+
+Результат: [{"value":100,"text":"Alex"},{"value":200,"text":"John"},{"value":300,"text":"Dani"}]
+
+**Преобразовать структуру вида {"text":"Some text","value":{"sum":"400","last_actions":[{"sum":"100","date":"2024-01-05"},{"sum":"150","date":"2024-01-06"},{"sum":"170","date":"2024-01-07"}]}} в котором необходимо преобразовать числа как строки в числа только в ключе sum не входящем в ключ last_actions**
+
+```totum
+=: numTransform(data: $row; keys: json`["sum"]`; recursive: json`[1]`)
+
+row: rowCreate(field: "text" = "Some text"; field: "value" = $value)
+	value: rowCreate(field: "sum" = "400"; field: "last_actions" = $last_actions)
+		last_actions: listCreate(item: $action1; item: $action2; item: $action3)
+			action1: rowCreate(field: "sum" = "100"; field: "date" = "2024-01-05")
+			action2: rowCreate(field: "sum" = "150"; field: "date" = "2024-01-06")
+			action3: rowCreate(field: "sum" = "170"; field: "date" = "2024-01-07")
+```
+
+Результат: {"text":"Some text","value":{"sum":400,"last_actions":[{"sum":"100","date":"2024-01-05"},{"sum":"150","date":"2024-01-06"},{"sum":"170","date":"2024-01-07"}]}}
+
+**Преобразовать в число строки в ключе value в rowlist не задивая числа как строки в ключе text**
+
+```totum
+=: numTransform(data: $rowlist; keys: json`["value"]`)
+
+rowlist: rowListCreate(field: "value" = $list_num; field: "text" = $list_text)
+	list_num: listCreate(item: "100"; item: "200"; item: "300")
+	list_text: listCreate(item: "Alex"; item: "John"; item: "Dani")
+```
+
+Результат: [{"value": 100, "text": "Alex"}, {"value": 200, "text": "John"}, {"value": 300, "text": "Dani"}]
 
 ## <a name="part-4"></a>Текстовые строки
 
@@ -1060,18 +2243,9 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 ```
 Возвращает [строку][6], из последовательно соединенных указанных строк. Конкатенация строк.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5], множественный параметр, определяющий части соединяемых строк.
-
-
-
-```totum
-example: strAdd(str: "Приятного использования "; str: "TOTUM")
-
-// Результат: "Приятного использования TOTUM"
-```
 
 Для этой функции есть сахар `str`:
 
@@ -1085,6 +2259,91 @@ str: str`"#" + $#nfv ++ "—" ++ #field`
 + `+` — склеивает без пробела.
 + `++` — склеивает, добавляя пробел.
 
+#### <a name="fn-strAdd-examples"></a>Примеры
+
+**Объединить две строки без пробела**
+
+```totum
+=: strAdd(str: "First row"; str: "Second row")
+```
+
+Результат: "First rowSecond row"
+
+**Объединить две строки с пробелом**
+
+```totum
+=: strAdd(str: "First row"; str: " "; str: "Second row")
+```
+
+Результат: "First row Second row"
+
+**Объединить строку и число**
+
+```totum
+=: strAdd(str: "Some string"; str: 123)
+```
+
+Результат: "Some string123"
+
+**Объединить три строки**
+
+```totum
+=: strAdd(str: "First string"; str: " "; str: "Second string"; str: " "; str: "Third string")
+```
+
+Результат: "First string Second string Third string"
+
+**Объединить строки с использованием сахара `str`**
+
+```totum
+=: str`#field1 ++ #field2`
+```
+
+Результат: "data_field_1 data_field_2"
+
+**Объединить строки с использованием `+`**
+
+```totum
+=: str`"First string" + "Second string"`
+```
+
+Результат: "First stringSecond string"
+
+**Объединить строки с использованием `++`**
+
+```totum
+=: str`#field1 ++ #field2`
+```
+
+Результат: "data_field_1 data_field_2"
+
+**Объединить строки, содержащие специальные символы**
+
+```totum
+=: strAdd(str: "@#$%^&*"; str: "Another text")
+```
+
+Результат: "@#$%^&*Another text"
+
+**Объединить строки, содержащие переменные**
+
+```totum
+=: strAdd(str: $#variable1; str: " "; str: $#variable2)
+```
+
+Результат: "data_variable1 data_variable2"
+
+**Объединить строки, содержащие результаты других функций**
+
+```totum
+=: strAdd(str: $result1; str: " "; str: $result2)
+
+result1: "some_function1"
+result2: "some_function2"
+```
+
+Результат: "data_result1 data_result2"
+
 ### <a name="fn-strReplace"></a>strReplace
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
@@ -1092,7 +2351,6 @@ str: str`"#" + $#nfv ++ "—" ++ #field`
 =: strReplace(str: ; from: ; to: )
 ```
 Ищет в `str:` все прямые вхождения `from` и заменяет их на `to`. Возвращает [одну][14] [строку][6].
-
 
 **Обязательные параметры**
 
@@ -1107,28 +2365,47 @@ str: str`"#" + $#nfv ++ "—" ++ #field`
 	
 	+ Если `from` передается как [список][14], то `to` тоже может быть передан как [список][14], тогда замены будут произведены в соответствии с совпадениями элементов списков.
 
+#### <a name="fn-strReplace-examples"></a>Примеры
+
+**Заменить все вхождения подстроки 'abc' на 'xyz' в строке 'abc123abc'**
 
 ```totum
-example1: strreplace(str: "Двигатели R3 и R5 в режиме зажигания"; from: "3"; to: "4")
-
-// Результат: "Двигатели R4 и R5 в режиме зажигания"
+=: strReplace(str: "abc123abc"; from: "abc"; to: "xyz")
 ```
 
+Результат: xyz123xyz
+
+**Заменить все вхождения подстроки '2022' на '2023' в строке 'Happy new 2022 year!'**
 
 ```totum
-example2: strreplace(str: "Двигатели R3 и R5 в режиме зажигания"; from: "R"; to: "M")
-
-// Результат: "Двигатели M3 и M5 в режиме зажигания"
+=: strReplace(str: "Happy new 2022 year!"; from: "2022"; to: "2023")
 ```
 
+Результат: Happy new 2023 year!
+
+**Заменить все вхождения подстроки 'cat' на 'dog' в строке 'The cat sat on the mat'**
 
 ```totum
-example3: strreplace(str: "Двигатели R3 и M5 в режиме зажигания"; from: $from; to: $to)
-	from: listcreate(item: "R3"; item: "M5")
-	to: listcreate(item: "S2"; item: "T7")
-
-// Результат: "Двигатели S2 и T7 в режиме зажигания"
+=: strReplace(str: "The cat sat on the mat"; from: "cat"; to: "dog")
 ```
+
+Результат: The dog sat on the mat
+
+**Заменить все вхождения подстроки '1' на 'one' в строке '12345'**
+
+```totum
+=: strReplace(str: "12345"; from: "1"; to: "one")
+```
+
+Результат: one2345
+
+**Заменить все вхождения подстроки 'hello' на 'hi' в строке 'hello world, hello everyone'**
+
+```totum
+=: strReplace(str: "hello world, hello everyone"; from: "hello"; to: "hi")
+```
+
+Результат: hi world, hi everyone
 
 ### <a name="fn-strRegMatches"></a>strRegMatches
 
@@ -1138,14 +2415,11 @@ example3: strreplace(str: "Двигатели R3 и M5 в режиме зажи�
 ```
 Возвращает `true` или `false` — совпадение с шаблоном.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5] строка/текст для анализа.
 
 + **template** — [одна][14] [строка][6] шаблон PCRE (perl-совместимых регулярных выражений). **!БЕЗ ОГРАНИЧИТЕЛЕЙ (delimiters)** `/png/` —› `png`
-
-
 
 **Необязательные параметры**
 
@@ -1157,14 +2431,53 @@ example3: strreplace(str: "Двигатели R3 и M5 в режиме зажи�
 	
 + **flags** — [PCRE-флаги](https://www.php.net/manual/ru/reference.pcre.pattern.modifiers.php). По умолчанию, передается `u- utf-8` режим.
 
+#### <a name="fn-strRegMatches-examples"></a>Примеры
 
+**В коде проверить, содержит ли строка слово 'car'**
 
 ```totum
-example: if(condition: $reg = true; then: $#matches; else: "Совпадение не найдено")
-reg: strRegMatches(str: "Сашина машина шуршит шинами"; template: "\s+(шина[^\s]*)"; matches: "matches"; flags: "u")
-
-// Результат: [" шинами","шинами"]
+=: strRegMatches(str: "some car run in a forest"; template: "car")
 ```
+
+Результат: true
+
+**В коде найти первое слово, начинающиеся на 's' в строке**
+
+```totum
+=: if(condition: $matches = true; then: $#matches[0])
+
+matches: strRegMatches(str: "some string starts with s"; template: "\bs\w*"; matches: "matches"; flags: "u")
+```
+
+Результат: some
+
+**В коде определить есть ли в переданной строке цифры и вернуть true если есть**
+
+```totum
+=: strRegMatches(str: #input_string; template: "\d")
+```
+
+Результат: true
+
+**В коде проверить есть ли в строке текста 'type: fixed-open' слово 'fixed' без учета регистра и если есть то какой у него тип — слово после '-', которое мне и нужно получить**
+
+```totum
+=: if(condition: $reg = true; then: $#matches[1]; else: "No have matches")
+
+reg: strRegMatches(str: "type: fixed-open"; template: "fixed-(\w+)"; matches: "matches"; flags: "iu")
+```
+
+Результат: open
+
+**В коде проверить есть ли в строке текста 'type: fixed-open' слово 'fixed' и если есть то какой у него тип — слово после '-', которое мне и нужно получить**
+
+```totum
+=: if(condition: $reg = true; then: $#matches[1]; else: "No have matches")
+
+reg: strRegMatches(str: "type: fixed-open"; template: "fixed-(\w+)"; matches: "matches"; flags: "u")
+```
+
+Результат: open
 
 ### <a name="fn-strRegAllMatches"></a>strRegAllMatches
 
@@ -1174,14 +2487,11 @@ reg: strRegMatches(str: "Сашина машина шуршит шинами"; t
 ```
 Возвращает `true` если в `str` есть одно или больше совпадение с шаблоном, если нет то `false`.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5] строка/текст для анализа.
 
 + **template** — [одна][14] [строка][6] шаблон PCRE (perl-совместимых регулярных выражений). **!БЕЗ ОГРАНИЧИТЕЛЕЙ (delimiters)** `/png/` —› `png`
-
-
 
 **Необязательные параметры**
 
@@ -1193,35 +2503,27 @@ reg: strRegMatches(str: "Сашина машина шуршит шинами"; t
 	
 + **flags** — [PCRE-флаги](https://www.php.net/manual/ru/reference.pcre.pattern.modifiers.php). По умолчанию, передается `u- utf-8` режим.
 
+#### <a name="fn-strRegAllMatches-examples"></a>Примеры
 
-**Пример:**
-
-*Разбить текст на строки и найти первое слово в каждой строке*
-
-*str*
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diem 
-nonummy nibh euismod tincidunt ut lacreet dolore magna aliguam erat volutpat. 
-Ut wisis enim ad minim veniam, quis nostrud exerci tution ullamcorper suscipit 
-lobortis nisl ut aliquip ex ea commodo consequat.
+**В коде проверить, содержит ли строка текста заданный шаблон регулярного выражения и получить список всех совпадений с шаблоном в виде списка**
 
 ```totum
-example: if(condition: $reg = true; then: $#matches; else: "Совпадение не найдено")
-	reg: strRegAllMatches(str: #str; template: "\s*([^\n ]+)[^\n]+(?:\n|$)"; matches: "matches"; flags: "mu")
+=: if(condition: $reg = true; then: $#matches; else: "No have matches")
 
-//  Результат: [
-//  [
-//    "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diem \n",
-//    "nonummy nibh euismod tincidunt ut lacreet dolore magna aliguam erat volutpat. \n",
-//    "Ut wisis enim ad minim veniam, quis nostrud exerci tution ullamcorper suscipit \n",
-//    "lobortis nisl ut aliquip ex ea commodo consequat."
-//  ],
-//  [
-//    "Lorem",
-//    "nonummy",
-//    "Ut",
-//    "lobortis"
-//  ]
-//  ]
+reg: strRegAllMatches(str: "some string starts with s"; template: "\bs\w*";  matches: "matches"; flags: "u")
+```
+
+Результат:
+
+```
+[
+  [
+    "some",
+    "string",
+    "starts",
+    "s"
+  ]
+]
 ```
 
 ### <a name="fn-numFormat"></a>numFormat
@@ -1235,7 +2537,6 @@ example: if(condition: $reg = true; then: $#matches; else: "Совпадение
 > Если из внешней системы приходит число в экспонентной записи `2,3е+15` то оно переводится в формат тотума функцией [numFormat][460].
 
 > Максимальный размер числа обрабатываемого `numFormat` до точки — 17 разрядов. При превышении на 64-разрядной машине итоговый результат будет случайным числом.
-
 
 **Обязательные параметры**
 
@@ -1265,36 +2566,114 @@ example: if(condition: $reg = true; then: $#matches; else: "Совпадение
 	
 	+ `replace: "three-part" = "value"` — в этом случае он сверяет значение и заменяет только при соответствии. Имеет приоритет перед форматированием даты.
 
+#### <a name="fn-numFormat-examples"></a>Примеры
+
+**В кодах отформатировать число с двумя знаками после запятой**
+
 ```totum
-example: numFormat(num: $num; decimals: 1; decsep: ","; thousandssep: " "; unittype: " r.")
+=: numFormat(num: $num; decimals: 2)
 
-num: 10000.34 
-
-// Результат: "10 000,34 r."
+num: 1234.567
 ```
+
+Результат: 1234.57
+
+**В кодах показать число с использованием запятой в качестве разделителя десятичных знаков**
+
+```totum
+=: numFormat(num: $num; decsep: ",")
+
+num: 1234.56
+```
+
+Результат: 1234,56
+
+**В кодах добавить префикс к числу при форматировании**
+
+```totum
+=: numFormat(num: $num; decimals: 2; decsep: ","; thousandssep: " "; prefix: "prefix")
+
+num: 12345.67
+```
+
+Результат: prefix12 345,67
+
+**Отформатировать число с разделителем тысяч в виде запятой**
+
+```totum
+=: numFormat(num: $num; thousandssep: ",")
+
+num: 1234567.89
+```
+
+Результат: 1,234,567.89
+
+**Добавить постфикс к числу при форматировании**
+
+```totum
+=: numFormat(num: $num; unittype: "postfix")
+
+num: 12345.67
+```
+
+Результат: 12345.67postfix
+
+**Отформатировать список чисел указав два знака после запятой, запятая как разделитель тысяч и префикс в виде валюты доллар**
+
+```totum
+=: numFormat(num: $list; decimals: 2; thousandssep: ","; prefix: "$ ")
+
+list: listCreate(item: 1234.56; item: 7890.12; item: 3456.78)
+```
+
+Результат: ["$ 1,234.56","$ 7,890.12","$ 3,456.78"]
+
+**Отформатировать числа в rowList с указанием ключей для замены**
 
 ```totum
 = : numFormat(num: $rowlist; thousandssep: ","; unittype: " €"; keys: json`["format"]`)
 
 rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
-	~list: listCreate(item: "10500"; item: "10600"; item: "10700")
-	
-// Результат:
-//[
-//  {
-//    "out": "10500",
-//    "format": "10,500 €"
-//  },
-//  {
-//    "out": "10600",
-//    "format": "10,600 €"
-//  },
-//  {
-//    "out": "10700",
-//    "format": "10,700 €"
-//  }
-//]
+	~list: listCreate(item: 10500; item: 10600; item: 10700)
 ```
+
+Результат: [{"out":"10500","format":"10,500 €"},{"out":"10600","format":"10,600 €"},{"out":"10700","format":"10,700 €"}]
+
+**Использовать параметр replace для замены null и пустых строк в списке чисел переданном на форматирование**
+
+```totum
+=: numFormat(num: $list; replace: "unnoun value"; thousandssep: ",")
+
+list: listCreate(item: ""; item: 1000; item: 2000)
+```
+
+Результат: ["unnoun value","1,000","2,000"]
+
+**При форматировании rowlist с числами и текстом, где числа расположены в ключе sum и некоторые равны пустоте, изменить форматирование чисел и заменить пустоты на строку pending**
+
+```totum
+=: numFormat(num: $rowlist; thousandssep: ","; replace: "pending"; keys: json`["sum"]`)
+
+rowlist: rowListCreate(field: "sum" = $list; field: "description" = $description)
+	list: listCreate(item: ""; item: 1000; item: 2000)
+	description: listCreate(item: "Item 1"; item: "Item 2"; item: "Item 3")
+```
+
+Результат: [{"sum":"pending","description":"Item 1"},{"sum":"1,000","description":"Item 2"},{"sum":"2,000","description":"Item 3"}]
+
+**Преобразовать структуру вида {"text":"Some text","value":{"sum":"400","last_actions":[{"sum":"100","date":"2024-01-05"},{"sum":"150","date":"2024-01-06"},{"sum":"170","date":"2024-01-07"}]}} в котором необходимо отформатировать числа только в ключе sum входящем в ключ last_actions и оформить их в виде чисел с разделителем десятичных запятая и двумя знаками после запятой**
+
+```totum
+=: numFormat(num: $rowlist; decimals: 2; decsep: ","; keys: json`["sum"]`; recursive: json`[3]`)
+
+rowlist: rowCreate(field: "text" = "Some text"; field: "value" = $value)
+	value: rowCreate(field: "sum" = "400"; field: "last_actions" = $last_actions)
+		last_actions: rowListCreate(field: "sum" = $list; field: "date" = $dates)
+			list: listCreate(item: "100"; item: "150"; item: "170")
+			dates: listCreate(item: "2024-01-05"; item: "2024-01-06"; item: "2024-01-07")
+```
+
+Результат: {"text":"Some text","value":{"sum":"400","last_actions":[{"sum":"100,00","date":"2024-01-05"},{"sum":"150,00","date":"2024-01-06"},{"sum":"170,00","date":"2024-01-07"}]}}
 
 ### <a name="fn-strRandom"></a>strRandom
 
@@ -1304,12 +2683,9 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 ```
 Возвращает [строку][6] длинной `length`, составленную из перечисленных символов.
 
-
 **Обязательные параметры**
 
 + **length** — [число][5], длина результирующей строки.
-
-
 
 **Необязательные параметры**
 
@@ -1331,12 +2707,55 @@ rowlist: rowListCreate(field: "format" = $list; field: "out" = $list)
 	+ `true` — использовать символы !@#$%^&*()_+=-%,.;:
 	+ `!@#$%^&` — использовать только указанные символы.
 
+#### <a name="fn-strRandom-examples"></a>Примеры
+
+**Сгенерировать строку длиной 10 символов, используя только цифры**
 
 ```totum
-example: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "true")
-
-// Результат: "z4yF9"
+=: strRandom(length: 10; numbers: "true"; letters: "false"; symbols: "false")
 ```
+
+Результат: 1234567890
+
+**Создать строку длиной 8 символов, включающую только буквы a, b, c, d и символы @, #, $**
+
+```totum
+=: strRandom(length: 8; numbers: "false"; letters: "abcd"; symbols: "@#$")
+```
+
+Результат: b#$@ba@c
+
+**Получить строку длиной 6 символов, состоящую из всех букв английского алфавита и цифр 1, 2, 3**
+
+```totum
+=: strRandom(length: 6; numbers: "123"; letters: "true"; symbols: "false")
+```
+
+Результат: iwZJw1
+
+**Сгенерировать строку длиной 12 символов, используя все доступные символы**
+
+```totum
+=: strRandom(length: 12; numbers: "true"; letters: "true"; symbols: "true")
+```
+
+Результат: (QUEbHqChYky
+
+**Создать строку длиной 4 символа, включающую только символы !, @, #, $ и цифры 1, 2, 3, 4, 5**
+
+```totum
+=: strRandom(length: 4; numbers: "12345"; letters: "false"; symbols: "!@#$")
+```
+
+Результат: 14#!
+
+**Получить строку длиной 7 символов, состоящую только из букв английского алфавита**
+
+```totum
+=: strRandom(length: 7; numbers: "false"; letters: "true"; symbols: "false")
+```
+
+Результат: oSyuVcI
 
 ### <a name="fn-strEncrypt"></a>strEncrypt
 
@@ -1350,10 +2769,35 @@ example: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "true")
 
 > Внимание: что бы дешифровать записанные данные потребуется идентичный ключ. Скопируйте его если переносите данные на другой сервер!
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5].
+
+#### <a name="fn-strEncrypt-examples"></a>Примеры
+
+**Зашифровать строку 'Hello, World!'**
+
+```totum
+=: strEncrypt(str: "Hello, World!")
+```
+
+Результат: encrypted_string
+
+**Зашифровать строку, содержащую число, например '12345'**
+
+```totum
+=: strEncrypt(str: "12345")
+```
+
+Результат: encrypted_string
+
+**Зашифровать строку, содержащую специальные символы, например '!@#$%^&*()'**
+
+```totum
+=: strEncrypt(str: "!@#$%^&*()")
+```
+
+Результат: encrypted_string
 
 ### <a name="fn-strDecrypt"></a>strDecrypt
 
@@ -1367,10 +2811,19 @@ example: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "true")
 
 > Расшифровка возможна только с Ключом, примененным при шифровании.
 
-
 **Обязательные параметры**
 
 + **str** — шифрованная функцией `strEncrypt` строка`
+
+#### <a name="fn-strDecrypt-examples"></a>Примеры
+
+**Расшифровать строку, зашифрованную функцией strEncrypt**
+
+```totum
+=: strDecrypt(str: #encrypted_string)
+```
+
+Результат: decrypted_string
 
 ### <a name="fn-strUrlEncode"></a>strUrlEncode
 
@@ -1380,10 +2833,19 @@ example: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "true")
 ```
 Возвращает url-кодированную строку.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5]
+
+#### <a name="fn-strUrlEncode-examples"></a>Примеры
+
+**Закодировать строку 'Hello World' с помощью функции strUrlEncode**
+
+```totum
+=: strUrlEncode(str: "Hello World")
+```
+
+Результат: Hello%20World
 
 ### <a name="fn-strUrlDecode"></a>strUrlDecode
 
@@ -1395,10 +2857,19 @@ example: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "true")
 
 > При получении данных в [remotes][436] применять не требуется — при получении url-кодированной строки в `get` в [remotes][436] она декодируется автоматически.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5]
+
+#### <a name="fn-strUrlDecode-examples"></a>Примеры
+
+**Декодировать URL-кодированную строку**
+
+```totum
+=: strUrlDecode(str: #encoded_url)
+```
+
+Результат: url_unencoded
 
 ### <a name="fn-strBaseEncode"></a>strBaseEncode
 
@@ -1408,18 +2879,19 @@ example: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "true")
 ```
 Возвращает [строку][6] кодированную в base64.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5] для кодирования.
 
+#### <a name="fn-strBaseEncode-examples"></a>Примеры
 
+**Закодировать строку 'Hello world!' в base64**
 
 ```totum
-example: strBaseEncode(str: "строка для кодирования")
-
-// Результат: 0YHRgtGA0L7QutCwINC00LvRjyDQutC+0LTQuNGA0L7QstCw0L3QuNGP
+=: strBaseEncode(str: "Hello world!")
 ```
+
+Результат: SGVsbG8gd29ybGQh
 
 ### <a name="fn-strBaseDecode"></a>strBaseDecode
 
@@ -1435,12 +2907,15 @@ example: strBaseEncode(str: "строка для кодирования")
 
 + **str** — [одна][14] [строка][6] или [число][5] в base64 для декодирования.
 
+#### <a name="fn-strBaseDecode-examples"></a>Примеры
+
+**Декодировать base64 строку**
 
 ```totum
-example: strBaseDecode(str: "0YHRgtGA0L7QutCwINC00LvRjyDQutC+0LTQuNGA0L7QstCw0L3QuNGP")
-
-// Результат: строка для кодирования
+=: strBaseDecode(str: #base64_string)
 ```
+
+Результат: base64_undecoded_string
 
 ### <a name="fn-strLength"></a>strLength
 
@@ -1450,18 +2925,19 @@ example: strBaseDecode(str: "0YHRgtGA0L7QutCwINC00LvRjyDQutC+0LTQuNGA0L7QstCw0L3
 ```
 Возвращает [число][5] — длину `str`.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5] для определения длины.
 
+#### <a name="fn-strLength-examples"></a>Примеры
 
+**Определить длину строки 'Hello world!'**
 
 ```totum
-example: strLength(str: "Totum")
-
-// Результат: 5
+=: strLength(str: "Hello world!")
 ```
+
+Результат: 12
 
 ### <a name="fn-strRepeat"></a>strRepeat
 
@@ -1471,20 +2947,29 @@ example: strLength(str: "Totum")
 ```
 Возвращает [строку][6] из `str`, повторенного `num` раз.
 
-
 **Обязательные параметры**
 
 + **num** — [одно][14] [число][5], количество раз повторения.
 
 + **str** — [одна][14] [строка][6] или [число][5] для повторения.
 
+#### <a name="fn-strRepeat-examples"></a>Примеры
 
+**Повторить строку 'abc' 3 раза**
 
 ```totum
-example: strRepeat(str: "-"; num: 5)
-
-// Результат: "-----"
+=: strRepeat(str: "abc"; num: 3)
 ```
+
+Результат: abcabcabc
+
+**Создать строку из 10 повторений символа '*'**
+
+```totum
+=: strRepeat(str: "*"; num: 10)
+```
+
+Результат: **********
 
 ### <a name="fn-strSplit"></a>strSplit
 
@@ -1494,12 +2979,9 @@ example: strRepeat(str: "-"; num: 5)
 ```
 Возвращает список из строк — `str` разбитое по `separator`.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] из которой будет формироваться [список][14].
-
-
 
 **Необязательные параметры**
 
@@ -1507,27 +2989,49 @@ example: strRepeat(str: "-"; num: 5)
 
 + **limit** — максимальное [число][5] элементов в возвращаемом списке.
 
-
-**Пример:**
-
-*str*
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diem 
-nonummy nibh euismod tincidunt ut lacreet dolore magna aliguam erat volutpat. 
-Ut wisis enim ad minim veniam, quis nostrud exerci tution ullamcorper suscipit 
-lobortis nisl ut aliquip ex ea commodo consequat.
   
 
-```totum
-example: strSplit(str: #str; separator: $#nl)
+#### <a name="fn-strSplit-examples"></a>Примеры
 
-// Результат: 
-//	[
-//  "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diem ",
-//  "  nonummy nibh euismod tincidunt ut lacreet dolore magna aliguam erat volutpat. ",
-//  "  Ut wisis enim ad minim veniam, quis nostrud exerci tution ullamcorper suscipit ",
-//  "  lobortis nisl ut aliquip ex ea commodo consequat."
-//  ]
+**Разбить строку '4-n-587' по дефисам**
+
+```totum
+=: strSplit(str: "4-n-587"; separator: "-")
 ```
+
+Результат: ["4", "n", "587"]
+
+**Разбить строку по запятым**
+
+```totum
+=: strSplit(str: #str; separator: ",")
+```
+
+Результат: ["Lorem ipsum dolor sit amet", " consectetuer adipiscing elit", " sed diem nonummy nibh euismod tincidunt ut lacreet dolore magna aliguam erat volutpat. Ut wisis enim ad minim veniam", " quis nostrud exerci tution ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat."]
+
+**Разбить строку по точкам**
+
+```totum
+=: strSplit(str: #str; separator: ".")
+```
+
+Результат: ["Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diem nonummy nibh euismod tincidunt ut lacreet dolore magna aliguam erat volutpat", " Ut wisis enim ad minim veniam, quis nostrud exerci tution ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat"]
+
+**Разбить строку по символу новой строки**
+
+```totum
+=: strSplit(str: #str; separator: $#nl)
+```
+
+Результат: ["some string", "some string from new line"]
+
+**Ограничить количество элементов в возвращаемом списке при разбиении строки**
+
+```totum
+=: strSplit(str: #str; separator: ","; limit: 2)
+```
+
+Результат: ["Lorem ipsum dolor sit amet", " consectetuer adipiscing elit"]
 
 ### <a name="fn-strTransform"></a>strTransform
 
@@ -1536,7 +3040,6 @@ example: strSplit(str: #str; separator: $#nl)
 =: strTransform(str: ; to: "upper|lower|capitalize")
 ```
 Возвращает измененную [строку][6].
-
 
 **Обязательные параметры**
 
@@ -1548,12 +3051,47 @@ example: strSplit(str: #str; separator: $#nl)
 	+ `lower` — сделать все буквы строчными.
 	+ `capitalize` — сделать каждую первую букву слова заглавной.
 
+#### <a name="fn-strTransform-examples"></a>Примеры
+
+**Сделать все буквы строки заглавными**
 
 ```totum
-example: strTransform(str: "elon musk"; to: "capitalize")
-
-// Результат: Elon Musk
+=: strTransform(str: "some string"; to: "upper")
 ```
+
+Результат: SOME STRING
+
+**Сделать все буквы строки строчными**
+
+```totum
+=: strTransform(str: "Some string"; to: "lower")
+```
+
+Результат: some string
+
+**Сделать первую букву каждого слова заглавной**
+
+```totum
+=: strTransform(str: "some string"; to: "capitalize")
+```
+
+Результат: Some String
+
+**Преобразовать строку 'hello world' в заглавные буквы**
+
+```totum
+=: strTransform(str: "hello world"; to: "upper")
+```
+
+Результат: HELLO WORLD
+
+**Преобразовать строку 'HELLO WORLD' в строчные буквы**
+
+```totum
+=: strTransform(str: "HELLO WORLD"; to: "lower")
+```
+
+Результат: hello world
 
 ### <a name="fn-textByTemplate"></a>textByTemplate 
 
@@ -1563,7 +3101,6 @@ example: strTransform(str: "elon musk"; to: "capitalize")
 ```
 
 Возвращает `html`.
-
 
 **Обязательные параметры**
 
@@ -1575,29 +3112,28 @@ example: strTransform(str: "elon musk"; to: "capitalize")
 
 + **text** — [одна][14] [строка][6] шаблон (используется если `template` отсутствует).
 
+#### <a name="fn-textByTemplate-examples"></a>Примеры
 
-**Пример:**
-
-id | Name template | type | styles | html
--- | ------------ | ---- | ------ | ----
-28 | kp | page | .title{font-size: 20px;}.text-main{font-size: 14px}.text-footer{padding-top: 20px; font-size: 14px} | &lt;div class=&quot;title&quot;&gt; {title}&lt;/div&gt;&lt;div class=&quot;text-main&quot;&gt; {text}&lt;/div&gt;&lt;div class=&quot;text-footer&quot;&gt; {footer}&lt;/div&gt;
+**Создать HTML с использованием шаблона из таблицы Шаблонов**
 
 ```totum
-example1: textByTemplate(template: "kp"; data: $data)
-	data: rowCreate(field: "title" = "Title"; field: "text" = "Text"; field: "footer" = "Footer")
-	
-// Результат: "<style>.title{font-size: 20px;}.text-main{font-size: 14px}.text-footer{padding-top: 20px; font-size: 14px}</style><body><div class="title">  Title</div><div class="text-main">  Text</div><div class="text-footer">  Footer</div></body>"
+=: textByTemplate(template: "template name"; data: $data)
+
+data: rowCreate(field: "title" = "Some title"; field: "text" = "Some text"; field: "sum" = 450)
 ```
+
+Результат: <div>Some text with Some title and 450</div>
+
+**Создать HTML с использованием шаблона переданного из поля текущей таблицы в котором надо заменить ключи sum (берем из поля текущей таблицы), count (рассчитываем в коде) и order num (берем из быстрой переменной)**
 
 ```totum
-example2: textByTemplate(text: $template; data: $data)
-	data: rowCreate(field: "title" = "Title"; field: "text" = "Text"; field: "footer" = "Footer")
- 
- ```template:html
- <div>Some text with {title}, {text} and {footer}</div>
- ```
+=: textByTemplate(text: #template; data: $data)
 
+	data: rowCreate(field: "sum" = #sum; field: "count" = $count; field: "order_num" = $#order_num)
+	count: 10
 ```
+
+Результат: <div>Some text with replaced keys</div>
 
 ### <a name="fn-strMd5"></a>strMd5
 
@@ -1607,18 +3143,19 @@ example2: textByTemplate(text: $template; data: $data)
 ```
 Возвращает [строку][6] в виде md5-хеша.
 
-
 **Обязательные параметры**
 
 + **str** - [одна][14] [строка][6] или [число][5] для хеширования.
 
+#### <a name="fn-strMd5-examples"></a>Примеры
 
+**Получить md5-хеш строки 'password123'**
 
 ```totum
-example: strMd5(str: "some row")
-
-// Результат: "15e79710ef30825afe1dc5c4d3fb5849"
+=: strMd5(str: "password123")
 ```
+
+Результат: 482c811da5d5b4bc6d497ffa98491e38
 
 ### <a name="fn-strGz"></a>strGz
 
@@ -1628,20 +3165,19 @@ example: strMd5(str: "some row")
 ```
 Возвращает gz-упакованную строку `str`.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5] для упаковки.
 
+#### <a name="fn-strGz-examples"></a>Примеры
+
+**Сжать строку 'Hello, World!' в архив gzip**
 
 ```totum
-example: set(table: 'testsimp'; field: 'file' = $fileList)
-	fileList: listCreate(item: $fileRow)
-		fileRow: rowCreate(field: "filestring" = $gz; field: "name" = "text.txt.gz")
-			gz: strGz(str: "Test row")
-
-// В ячейке file таблицы testsimp — файл text.txt.gz
+=: strGz(str: "Hello, World!")
 ```
+
+Результат: gzip_string
 
 ### <a name="fn-strUnGz"></a>strUnGz
 
@@ -1651,19 +3187,19 @@ example: set(table: 'testsimp'; field: 'file' = $fileList)
 ```
 Возвращает распакованную gz-строку `str` или `false`, если строку декодировать не удалось.
 
-
 **Обязательные параметры**
 
 + **str** — gz-строка для распаковки.
 
+#### <a name="fn-strUnGz-examples"></a>Примеры
 
+**Распаковать gz-строку, содержащую текстовый файл**
 
 ```totum
-example: strUnGz(str: $fileContent)
-	fileContent: fileGetContent(file: #gzfile[0]["file"])
-// Результат: распакованный текст из файла
-
+=: strUnGz(str: "Gz file string")
 ```
+
+Результат: "some text or file"
 
 ### <a name="fn-strPart"></a>strPart
 
@@ -1673,11 +3209,9 @@ example: strUnGz(str: $fileContent)
 ```
 Возвращает часть от переданной в него строки.
 
-
 **Обязательные параметры**
 
 + **str** — [строка][6] или число.
-
 
 **Необязательные параметры**
 
@@ -1689,20 +3223,49 @@ example: strUnGz(str: $fileContent)
 
 	Если задать отрицательное число, то старт будет взят от конца строки.
 
-
 **ПРИМЕРЫ**
 
-```totum
-example_1: strPart(str: "7718767895"; length: 4; offset: 4)
+#### <a name="fn-strPart-examples"></a>Примеры
 
-//Результат: "7678"
-```
+**Извлечь первые 3 символа из строки 'HDS19873'**
 
 ```totum
-example_2: strPart(str: "-string-"; length: -1; offset: 1)
-
-//Результат: "string"
+=: strPart(str: "HDS19873"; length: 3)
 ```
+
+Результат: HDS
+
+**Получить последние 5 символов из строки 'HDS78298'**
+
+```totum
+=: strPart(str: "HDS78298"; length: 5; offset: -5)
+```
+
+Результат: 78298
+
+**Получить 5 символов из строки 'HDS78298', пропустив первые 3**
+
+```totum
+=: strPart(str: "HDS78298"; length: 5; offset: 3)
+```
+
+Результат: 78298
+
+**Из строки 'HDS78298' отбросить последние 5 символов**
+
+```totum
+=: strPart(str: "HDS78298"; length: -5)
+```
+
+Результат: HDS
+
+**Из строки '[HDS78298]' отбросить первый и последний символ**
+
+```totum
+=: strPart(str: "[HDS78298]"; length: -1; offset: 1)
+```
+
+Результат: DS7829
 
 ### <a name="fn-strTrim"></a>strTrim
 
@@ -1712,10 +3275,21 @@ example_2: strPart(str: "-string-"; length: -1; offset: 1)
 ```
 Возвращает строку, отрезая пробельные символы в начале и конце строки.
 
-
 **Обязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5]
+
+#### <a name="fn-strTrim-examples"></a>Примеры
+
+**Удалить пробелы в начале и конце строки**
+
+```totum
+=: strTrim(str: $string)
+
+string: " some string "
+```
+
+Результат: some string
 
 ## <a name="part-6"></a>Списки
 
@@ -1727,7 +3301,6 @@ example_2: strPart(str: "-string-"; length: -1; offset: 1)
 ```
 Создает [список][14] из элементов.
 
-
 **Необязательный множественный параметр**
 
 + **item** — элементы, из которых создается список. Количество параметров определяет количество элементов в списке.
@@ -1736,27 +3309,99 @@ example_2: strPart(str: "-string-"; length: -1; offset: 1)
 	+ Порядок элементов в списке будет соответствовать тому порядку, в котором они указаны в функции.
 	+ При отсутствии параметров будет создан [пустой список][30].
 
+#### <a name="fn-listCreate-examples"></a>Примеры
 
-
-```totum
-example1: listCreate(item: 1; item: 2; item: 4; item: "")
-
-// Результат: [1,2,4,""]
-```
-
+**При помощи функции создать список из чисел**
 
 ```totum
-example2: listCreate(item: "Alex"; item: "Sam"; item: "Mike")
-
-// Результат: ["Alex","Sam","Mike"]
+=: listCreate(item: 1; item: 2; item: 3; item: 4; item: 5)
 ```
 
+Результат: [1,2,3,4,5]
+
+**При помощи функции создать список из строк**
 
 ```totum
-example3: listCreate()
-
-// Результат: []
+=: listCreate(item: "string1"; item: "string2"; item: "string3")
 ```
+
+Результат: ["string1","string2","string3"]
+
+**При помощи функции создать пустой список**
+
+```totum
+=: listCreate()
+```
+
+Результат: []
+
+**При помощи функции создать список из дат**
+
+```totum
+=: listCreate(item: "2023-01-01"; item: "2023-02-01"; item: "2023-03-01")
+```
+
+Результат: ["2023-01-01","2023-02-01","2023-03-01"]
+
+**При помощи функции создать список из булевых значений**
+
+```totum
+=: listCreate(item: true; item: false; item: true)
+```
+
+Результат: [true,false,true]
+
+**При помощи функции создать список, содержащий как числа, так и строки**
+
+```totum
+=: listCreate(item: 1; item: "string1"; item: 2; item: "string2")
+```
+
+Результат: [1,"string1",2,"string2"]
+
+**При помощи функции создать список из одиночных значений и списков**
+
+```totum
+=: listCreate(item: 1; item: json`[2,3]`; item: "string1"; item: json`["string2","string3"]`)
+```
+
+Результат: [1,[2,3],"string1",["string2","string3"]]
+
+**При помощи функции создать список с элементами в определенном порядке**
+
+```totum
+=: listCreate(item: 1; item: "string1"; item: 2; item: "string2")
+```
+
+Результат: [1,"string1",2,"string2"]
+
+**При помощи функции создать список состоящий из вложенных списков**
+
+```totum
+=: listCreate(item: json`[1,2,3]`; item: json`[4,5,6]`; item: json`[7,8,9]`)
+```
+
+Результат: [[1,2,3],[4,5,6],[7,8,9]]
+
+**При помощи функции создать список из ассоциативных массивов row**
+
+```totum
+=: listCreate(item: $row_1; item: $row_2; item: $row_3)
+
+row_1: rowCreate(field: "key1" = "value1")
+row_2: rowCreate(field: "key2" = "value2")
+row_3: rowCreate(field: "key3" = "value3")
+```
+
+Результат: [{"key1":"value1"},{"key2":"value2"},{"key3":"value3"}]
+
+**При помощи функции создать такой элемент json`[]`**
+
+```totum
+=: listCreate()
+```
+
+Результат: []
 
 ### <a name="fn-listMax"></a>listMax
 
@@ -1765,7 +3410,6 @@ example3: listCreate()
 =: listMax(list: ; default: )
 ```
 Возвращает максимальное значение списка. Результатом работы является [одно значение][14], за исключением случая, когда возвращается значение, указанное в параметре `default`.
-
 
 **Обязательные параметры**
 
@@ -1780,38 +3424,67 @@ example3: listCreate()
 	+ Задается как [одинарное значение или список][14] из [чисел][5], [строк][6], [дат][7] или [булевого значения][8].
 	+ При отсутствии параметра при передаче в `list` пустого списка функция вернет `ОШБК!`
 
+#### <a name="fn-listMax-examples"></a>Примеры
+
+**Найти максимальное значение в списке чисел**
 
 ```totum
+=: listMax(list: $list)
 
-example1: listmax(list: $list1)
-	list1: listCreate(item: 35; item: 78; item: 13)
-
-// Результат: 78
+list: listCreate(item: 10; item: 250; item: 300)
 ```
 
+Результат: 300
+
+**Найти максимальное значение в списке строк, представляющих числа**
 
 ```totum
-example2: listmax(list: $list2)
-	list2: listCreate(item: "11"; item: "12"; item: "2")
+=: listMax(list: $list)
 
-// Результат: 12
+list: listCreate(item: "11"; item: "12"; item: "2")
 ```
 
+Результат: 12
+
+**Найти максимальное значение в списке дат**
 
 ```totum
-example3: listmax(list: $list3)
-	list3: listCreate()
+=: listMax(list: $list)
 
-// Результат: "ERR!"
+list: listCreate(item: "2023-01-01"; item: "2023-05-15"; item: "2023-03-10")
 ```
 
+Результат: 2023-05-15
+
+**Найти максимальное значение в списке строк**
 
 ```totum
-example4: listmax(list: $list4; default: 0)
-	list4: listCreate()
+=: listMax(list: $list)
 
-// Результат: 0
+list: listCreate(item: "apple"; item: "banana"; item: "cherry")
 ```
+
+Результат: cherry
+
+**Найти максимальное значение в списке, содержащем смешанные типы данных**
+
+```totum
+=: listMax(list: $list)
+
+list: listCreate(item: 10; item: "20"; item: "2023-01-01"; item: 15)
+```
+
+Результат: 2023-01-01
+
+**Избежать ошибки при передаче в listMax пустого списка**
+
+```totum
+=: listMax(list: $list; default: "")
+
+list: listCreate()
+```
+
+Результат: ""
 
 ### <a name="fn-listMin"></a>listMin
 
@@ -1821,14 +3494,11 @@ example4: listmax(list: $list4; default: 0)
 ```
 Возвращает минимальное значение списка. Результатом работы является [одно значение][14], за исключением случая, когда возвращается значение, указанное в параметре `default`.
 
-
 **Обязательные параметры**
 
 + **list** — [список][14] [чисел][5], [строк][6], [дат][7] в котором ищется максимальное значение.
 
 	+ Если передан ряд чисел, то они будут обрабатываться как числа даже если переданы как строки.
-
-
 
 **Необязательные параметры**
 
@@ -1837,38 +3507,67 @@ example4: listmax(list: $list4; default: 0)
 	+ Задается как [одинарное значение или список][14] из [чисел][5], [строк][6], [дат][7] или [булевого значения][8].
 	+ При отсутствии параметра при передаче в `list` пустого списка функция вернет `ОШБК!`.
 
+#### <a name="fn-listMin-examples"></a>Примеры
+
+**Найти минимальное значение в списке чисел**
 
 ```totum
+=: listMin(list: $list)
 
-example1: listMin(list: $list1)
-	list1: listCreate(item: 35; item: 78; item: 13)
-
-// Результат: 13
+list: listCreate(item: 35; item: 78; item: 13)
 ```
 
+Результат: 13
+
+**Найти минимальное значение в списке строк, представляющих числа**
 
 ```totum
-example2: listMin(list: $list2)
-	list2: listCreate(item: "11"; item: "12"; item: "2")
+=: listMin(list: $list)
 
-// Результат: 2
+list: listCreate(item: "11"; item: "12"; item: "2")
 ```
 
+Результат: 2
+
+**Найти минимальное значение в списке дат**
 
 ```totum
-example3: listMin(list: $list3)
-	list3: listCreate()
+=: listMin(list: $list)
 
-// Результат: "ERR!"
+list: listCreate(item: "2023-10-01"; item: "2023-09-15"; item: "2023-08-20")
 ```
 
+Результат: 2023-08-20
+
+**Найти минимальное значение в списке строк**
 
 ```totum
-example4: listmax(list: $list4; default: 0)
-	list4: listCreate()
+=: listMin(list: $list)
 
-// Результат: 0
+list: listCreate(item: "apple"; item: "banana"; item: "cherry")
 ```
+
+Результат: apple
+
+**Найти минимальное значение в списке, содержащем смешанные типы данных**
+
+```totum
+=: listMin(list: $list)
+
+list: listCreate(item: 35; item: "78"; item: "13"; item: 22)
+```
+
+Результат: 13
+
+**Избежать ошибки при передаче в listMin пустого списка**
+
+```totum
+=: listMin(list: $list; default: "")
+
+list: listCreate()
+```
+
+Результат: ""
 
 ### <a name="fn-listSum"></a>listSum
 
@@ -1880,18 +3579,99 @@ example4: listmax(list: $list4; default: 0)
 
 Все элементы списка должны быть [числовыми][5] значениями. 
 
-
 **Обязательные параметры**
 
 + **list** — [список][14] [чисел][5] значения которого суммируются.
 
+#### <a name="fn-listSum-examples"></a>Примеры
+
+**Посчитать сумму чисел в списке [1, 2, 3, 4, 5]**
 
 ```totum
-example: listsum(list: $list)
-	list: listCreate(item: 10; item: 5; item: 5)
+=: listSum(list: $list)
 
-// Результат: 20
+list: listCreate(item: 1; item: 2; item: 3; item: 4; item: 5)
 ```
+
+Результат: 15
+
+**Использовать функцию listSum для списка с отрицательными числами [-1, -2, -3]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: -1; item: -2; item: -3)
+```
+
+Результат: -6
+
+**Применить функцию listSum для пустого списка**
+
+```totum
+=: listSum(list: $#lc)
+```
+
+Результат: 0
+
+**Вычислить сумму чисел в списке с дробными значениями [1.5, 2.5, 3.5]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: 1.5; item: 2.5; item: 3.5)
+```
+
+Результат: 7.5
+
+**Использовать функцию listSum для списка с одним элементом [10]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: 10)
+```
+
+Результат: 10
+
+**Посчитать сумму чисел в списке с большими значениями [1000, 2000, 3000]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: 1000; item: 2000; item: 3000)
+```
+
+Результат: 6000
+
+**Применить функцию listSum для списка с повторяющимися числами [2, 2, 2, 2]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: 2; item: 2; item: 2; item: 2)
+```
+
+Результат: 8
+
+**Использовать функцию listSum для списка с нулями [0, 0, 0, 0]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: 0; item: 0; item: 0; item: 0)
+```
+
+Результат: 0
+
+**Вычислить сумму чисел в списке с положительными и отрицательными значениями [10, -5, 15, -10]**
+
+```totum
+=: listSum(list: $list)
+
+list: listCreate(item: 10; item: -5; item: 15; item: -10)
+```
+
+Результат: 10
 
 ### <a name="fn-listCount"></a>listCount
 
@@ -1901,29 +3681,43 @@ example: listsum(list: $list)
 ```
 Возвращает [одно][14] [число][5], количество элементов списка `list:`.
 
-
 **Обязательные параметры**
 
 + **list** — [список][14], элементы которого подсчитываются.
 
 	+ Элементы list могут быть [одинарными значениями, списками][14] [чисел][5], [строк][6], [дат][7] и [булевых значений][8].
 
+#### <a name="fn-listCount-examples"></a>Примеры
+
+**Посчитать количество элементов в списке строк**
 
 ```totum
-example1: listcount(list: $list1)
-	list1: listCreate(item: "Alex"; item: "Sam"; item: "Mike")
+=: listCount(list: $list)
 
-// Результат: 3
+list: listCreate(item: "Alex"; item: "Sam"; item: "Mike")
 ```
 
+Результат: 3
 
+**Посчитать количество элементов в списке чисел**
 
 ```totum
-example2: listcount(list: $list2)
-	list2: listCreate(item: 5; item: 10; item: 5)
+=: listCount(list: $list)
 
-// Результат: 3
+list: listCreate(item: 5; item: 10; item: 5)
 ```
+
+Результат: 3
+
+**Посчитать количество элементов в смешанном списке, содержащем строки, числа и даты**
+
+```totum
+=: listCount(list: $list)
+
+list: listCreate(item: "Alex"; item: 10; item: "2023-10-01")
+```
+
+Результат: 3
 
 ### <a name="fn-listUniq"></a>listUniq
 
@@ -1933,19 +3727,41 @@ example2: listcount(list: $list2)
 ```
 Возвращает [список][14] уникальных элементов списка `list`.
 
-
 **Обязательные параметры**
 
 + **list** — [список][14], в котором осуществляется поиск уникальных элементов: [чисел][5], [строк][6], [дат][7] или [булевых значений][8].
 
+#### <a name="fn-listUniq-examples"></a>Примеры
 
+**Обработать список дат так, что бы остались только уникальные значения**
 
 ```totum
-example: listuniq(list: $list)
-list: listCreate(item: "Alex"; item: "Sam"; item: "Alex")
+=: listUniq(list: $list)
 
-// Результат: ["Alex","Sam"]
+list: listCreate(item: "2023-01-01"; item: "2023-01-02"; item: "2023-01-01")
 ```
+
+Результат: ["2023-01-01","2023-01-02"]
+
+**Обработать список чисел так, что бы остались только уникальные значения**
+
+```totum
+=: listUniq(list: $list)
+
+list: listCreate(item: 1; item: 2; item: 1; item: 3)
+```
+
+Результат: [1,2,3]
+
+**Обработать список строк так, что бы остались только уникальные значения**
+
+```totum
+=: listUniq(list: $list)
+
+list: listCreate(item: "Alex"; item: "Sam"; item: "Alex")
+```
+
+Результат: ["Alex","Sam"]
 
 ### <a name="fn-listItem"></a>listItem
 
@@ -1968,21 +3784,57 @@ list: listCreate(item: "Alex"; item: "Sam"; item: "Alex")
 
 	+ Нумерация элементов списка начинается с 0 (ноль).
 
+#### <a name="fn-listItem-examples"></a>Примеры
 
-
-```totum
-example: listitem(list: $list2; item: 1)
-	list2: listCreate(item: "Alex"; item: "Sam"; item: "Alex")
-
-// Результат: "Sam"
-```
+**Выбрать второй элемент из списка чисел**
 
 ```totum
-example2: $list2_2[1]
-	list2_2: listCreate(item: "Alex"; item: "Sam"; item: "Alex")
+=: listItem(list: $list; item: 1)
 
-// Результат: "Sam"
+list: listCreate(item: 10; item: 20; item: 30)
 ```
+
+Результат: 20
+
+**Получить элемент списка строк по индексу**
+
+```totum
+=: listItem(list: $list; item: 1)
+
+list: listCreate(item: "Alex"; item: "Sam"; item: "Alex")
+```
+
+Результат: Sam
+
+**Использовать функцию listItem для выбора элемента из списка дат**
+
+```totum
+=: listItem(list: $list; item: 1)
+
+list: listCreate(item: "2023-01-01"; item: "2023-02-01"; item: "2023-03-01")
+```
+
+Результат: 2023-02-01
+
+**Выбрать элемент из списка булевых значений**
+
+```totum
+=: listItem(list: $list; item: 0)
+
+list: listCreate(item: true; item: false; item: true)
+```
+
+Результат: true
+
+**Выбрать первый элемент из списка**
+
+```totum
+=: listItem(list: $list; item: 0)
+
+list: listCreate(item: 10; item: 20; item: 30)
+```
+
+Результат: 10
 
 ### <a name="fn-listJoin"></a>listJoin
 
@@ -1992,25 +3844,85 @@ example2: $list2_2[1]
 ```
 Возвращает объединенные в [строку][6] значения [списка][14] или [ассоциированного массива][30]. `str` — строка, которая вставляется между элементами (клей).
 
-
 **Обязательные параметры**
 
 + **list** — [список][14] или [ассоциированный массив][30], которые будут трансформироваться в строку.
-
-
 
 **Необязательные параметры**
 
 + **str** — [одна][14] [строка][6] или [число][5] использующаяся как клей.
 
+#### <a name="fn-listJoin-examples"></a>Примеры
 
+**Объединить элементы списка с использованием пробела в качестве клея**
 
 ```totum
-example: listJoin(list: $list; str: "-")
-	list: listCreate(item: 1; item: 2; item: 3)
+=: listJoin(list: $list; str: " ")
 
-// Результат: "1-2-3"
+list: listCreate(item: "element1"; item: "element2"; item: "element3")
 ```
+
+Результат: element1 element2 element3
+
+**Объединить элементы ассоциированного массива с использованием запятой в качестве клея**
+
+```totum
+=: listJoin(list: $assoc_row; str: ",")
+
+assoc_row: rowCreate(field: "key1" = "value1"; field: "key2" = "value2"; field: "key3" = "value3")
+```
+
+Результат: value1,value2,value3
+
+**Объединить элементы списка без использования клея**
+
+```totum
+=: listJoin(list: $list)
+
+list: listCreate(item: "element1"; item: "element2"; item: "element3")
+```
+
+Результат: element1element2element3
+
+**Объединить элементы списка, состоящего из строк, с использованием точки с запятой и пробелом в качестве клея**
+
+```totum
+=: listJoin(list: $list; str: "; ")
+
+list: listCreate(item: "element1"; item: "element2"; item: "element3")
+```
+
+Результат: element1; element2; element3
+
+**Объединить элементы ассоциированного массива, где ключи и значения являются строками, с использованием дефиса в качестве клея**
+
+```totum
+=: listJoin(list: $assoc_row; str: "-")
+
+assoc_row: rowCreate(field: "key1" = "value1"; field: "key2" = "value2"; field: "key3" = "value3")
+```
+
+Результат: value1-value2-value3
+
+**Объединить элементы ассоциированного массива, где ключи являются строками, а значения числами, с использованием символа '|' в качестве клея**
+
+```totum
+=: listJoin(list: $assoc_row; str: "|")
+
+assoc_row: rowCreate(field: "key1" = 1; field: "key2" = 2; field: "key3" = 3)
+```
+
+Результат: 1|2|3
+
+**Объединить элементы списка, состоящего из смешанных типов данных (строки и числа), с использованием символа '+' в качестве клея**
+
+```totum
+=: listJoin(list: $list; str: "+")
+
+list: listCreate(item: "element1"; item: 2; item: "element3")
+```
+
+Результат: element1+2+element3
 
 ### <a name="fn-listCross"></a>listCross
 
@@ -2020,22 +3932,102 @@ example: listJoin(list: $list; str: "-")
 ```
 Возвращает [список][14] значений, содержащий все значения первого списка, которые содержатся во всех последующих списках. Может быть задано любое количество списков, в которых будет искаться пересечение. 
 
-
 **Обязательные параметры**
 
 + **list** — [списки][14] [чисел][5], [строк][6], [дат][7] или [булевых значений][8] в которых будут искаться пересечения, множественный параметр.
 
+#### <a name="fn-listCross-examples"></a>Примеры
 
+**Найти пересечение двух списков чисел**
 
 ```totum
+=: listCross(list: $list1; list: $list2)
 
-example: listcross(list: $list1; list: $list2; list: $list3)
-    list1: listCreate(item: 1; item: 1; item: 2; item: 3)
-    list2: listCreate(item: 1; item: 2; item: 3)
-    list3: listCreate(item: 1; item: 2)
-
-// Результат: [1, 1, 2]
+list1: listCreate(item: 1; item: 2; item: 3)
+list2: listCreate(item: 2; item: 3; item: 4)
 ```
+
+Результат: [2, 3]
+
+**Найти пересечение трех списков строк**
+
+```totum
+=: listCross(list: $list1; list: $list2; list: $list3)
+
+list1: listCreate(item: "a"; item: "b"; item: "c")
+list2: listCreate(item: "b"; item: "c"; item: "d")
+list3: listCreate(item: "c"; item: "d"; item: "e")
+```
+
+Результат: ["c"]
+
+**Найти пересечение списков дат**
+
+```totum
+=: listCross(list: $list1; list: $list2)
+
+list1: listCreate(item: "2023-01-01"; item: "2023-02-01"; item: "2023-03-01")
+list2: listCreate(item: "2023-02-01"; item: "2023-03-01"; item: "2023-04-01")
+```
+
+Результат: ["2023-02-01", "2023-03-01"]
+
+**Найти пересечение списков булевых значений**
+
+```totum
+=: listCross(list: $list1; list: $list2)
+
+list1: listCreate(item: true; item: false; item: true)
+list2: listCreate(item: true; item: true; item: false)
+```
+
+Результат: [true, false, true]
+
+**Найти пересечение списков с повторяющимися элементами**
+
+```totum
+=: listCross(list: $list1; list: $list2; list: $list3)
+
+list1: listCreate(item: 1; item: 1; item: 2; item: 3)
+list2: listCreate(item: 1; item: 2; item: 3)
+list3: listCreate(item: 1; item: 2)
+```
+
+Результат: [1, 1, 2]
+
+**Найти пересечение списков, если один из них пустой**
+
+```totum
+=: listCross(list: $list1; list: $list2)
+
+list1: listCreate(item: 1; item: 2; item: 3)
+list2: listCreate()
+```
+
+Результат: []
+
+**Найти пересечение списков, если все списки пустые**
+
+```totum
+=: listCross(list: $list1; list: $list2; list: $list3)
+
+list1: listCreate()
+list2: listCreate()
+list3: listCreate()
+```
+
+Результат: []
+
+**Найти пересечение списков, если один из них содержит только уникальные элементы**
+
+```totum
+=: listCross(list: $list1; list: $list2)
+
+list1: listCreate(item: 1; item: 2; item: 3)
+list2: listCreate(item: 2; item: 3; item: 4)
+```
+
+Результат: [2, 3]
 
 ### <a name="fn-listAdd"></a>listAdd
 
@@ -2044,7 +4036,6 @@ example: listcross(list: $list1; list: $list2; list: $list3)
 =: listAdd(list: ; list: ; item: )
 ```
 Складывает списки в указанном порядке и возвращает [список][14]. Может быть задано любое количество списков, которые будут сложены вместе. Значения в списках могут повторяться.
-
 
 **Обязательные множественные параметры**
 
@@ -2060,14 +4051,60 @@ example: listcross(list: $list1; list: $list2; list: $list3)
 	+ Задается как  [число][5], [строка][6], [дата][7] или [булевое значение][8].
 	+ Значения добавляются в конец списка в указанном порядке.
 
+#### <a name="fn-listAdd-examples"></a>Примеры
+
+**Объединить два списка чисел**
 
 ```totum
-example: listadd(list: $list1; list: $list2; item: 5)
-	list1: listCreate(item: 1; item: 2; item: 3)
-	list2: listCreate(item: 2; item: 3)
+=: listAdd(list: $list1; list: $list2)
 
-// Результат: [1,2,3,2,3,5]
+list1: listCreate(item: 1; item: 2; item: 3)
+list2: listCreate(item: 4; item: 5; item: 6)
 ```
+
+Результат: [1,2,3,4,5,6]
+
+**Объединить два списка строк**
+
+```totum
+=: listAdd(list: $list1; list: $list2)
+
+list1: listCreate(item: "a"; item: "b"; item: "c")
+list2: listCreate(item: "d"; item: "e"; item: "f")
+```
+
+Результат: ["a","b","c","d","e","f"]
+
+**Объединить список чисел и добавить к нему одно число**
+
+```totum
+=: listAdd(list: $list1; list: $list2; item: 5)
+list1: listCreate(item: 1; item: 2; item: 3)
+list2: listCreate(item: 4; item: 5; item: 6)
+```
+
+Результат: [1,2,3,4,5,6,5]
+
+**Объединить список строк и добавить к нему одну строку в начало списка**
+
+```totum
+=: listAdd(list: $add_first; list: $list)
+
+add_first: listCreate(item: "new_item")
+list: listCreate(item: "a"; item: "b"; item: "c")
+```
+
+Результат: ["new_item","a","b","c"]
+
+**Объединить список строк и добавить к нему одну строку в конец списка**
+
+```totum
+=: listAdd(list: $list; item: "new_item")
+
+list: listCreate(item: "a"; item: "b"; item: "c")
+```
+
+Результат: ["a","b","c","new_item"]
 
 ### <a name="fn-listMinus"></a>listMinus
 
@@ -2077,13 +4114,11 @@ example: listadd(list: $list1; list: $list2; item: 5)
 ```
 Возвращает [список][14]. Вычитает из первого списка значения, содержащиеся в последующих списках и отдельные значения. Может быть задано любое количество списков и отдельных значений.
 
-
 **Обязательные множественные параметры**
 
 Необходимо, чтобы присутствовало минимум два параметра, первый из которых `list`.
 
 + **list** — [список][14] [чисел][5], [строк][6], [дат][7] или [булевых значений][8], множественный параметр.
-
 
 **Необязательные множественные параметры**
 
@@ -2091,14 +4126,72 @@ example: listadd(list: $list1; list: $list2; item: 5)
 	
 	+ Задается как [одно][14] [число][5], [строка][6], [датой][7] или [булево значение][8]
 
+#### <a name="fn-listMinus-examples"></a>Примеры
+
+**Вычесть один список из другого**
 
 ```totum
-example: listminus(list: $list1; list: $list2; item: 2)
-	list1: listCreate(item: 1; item: 2; item: 2; item: 3; item: 4)
-	list2: listCreate(item: 3; item: 4; item: 5)
+=: listMinus(list: $list1; list: $list2)
 
-// Результат: [1]
+list1: listCreate(item: 1; item: 2; item: 2; item: 3; item: 4)
+list2: listCreate(item: 3; item: 4; item: 5)
 ```
+
+Результат: [1, 2, 2]
+
+**Исключить определенные значения из списка**
+
+```totum
+=: listMinus(list: $list; item: 2; item: 3)
+
+list: listCreate(item: 1; item: 2; item: 3; item: 4; item: 5)
+```
+
+Результат: [1, 4, 5]
+
+**Удалить элемент из списка если этот элемент повторяющийся**
+
+```totum
+=: listMinus(list: $list; item: 2)
+
+list: listCreate(item: 1; item: 2; item: 2; item: 3; item: 4)
+```
+
+Результат: [1, 3, 4]
+
+**Исключить дату из списка дат**
+
+```totum
+=: listMinus(list: $list; item: "2023-10-01")
+
+list: listCreate(item: "2023-09-30"; item: "2023-10-01"; item: "2023-10-02")
+```
+
+Результат: ["2023-09-30", "2023-10-02"]
+
+**Использовать несколько списков для вычитания значений**
+
+```totum
+=: listMinus(list: $list1; list: $list2; list: $list3)
+
+list1: listCreate(item: 1; item: 2; item: 3; item: 4; item: 5)
+list2: listCreate(item: 3; item: 4)
+list3: listCreate(item: 5)
+```
+
+Результат: [1, 2]
+
+**Из одного списка вычесть два других и еще одно отдельное значение**
+
+```totum
+=: listMinus(list: $list1; list: $list2; list: $list3; item: 2)
+
+list1: listCreate(item: 1; item: 2; item: 2; item: 3; item: 4; item: 5; item: 6)
+list2: listCreate(item: 3; item: 4; item: 5)
+list3: listCreate(item: 1)
+```
+
+Результат: [6]
 
 ### <a name="fn-listCut"></a>listCut
 
@@ -2107,7 +4200,6 @@ example: listminus(list: $list1; list: $list2; item: 2)
 =: listCut(list: ; cut: "first|last"; num: 1)
 ```
 Возвращает список, уменьшенный на `num` элементов с начала или с конца.
-
 
 **Обязательные параметры**
 
@@ -2118,30 +4210,73 @@ example: listminus(list: $list1; list: $list2; item: 2)
 	+ `first` — с начала.
 	+ `last`  — c конца.
 
-
 **Необязательные параметры**
 
 + **num** — [число][5], количество удаляемых элементов, по умолчанию — `1`.
 
 	+ Если при параметре `cut: "first"` передать `-1` останется последнее значение списка. 
 
+#### <a name="fn-listCut-examples"></a>Примеры
+
+**Удалить первые два элемента из списка чисел**
 
 ```totum
-example: listCut(list: $list; cut: "first"; num: 1)
-	list: listCreate(item: 1; item: 2)
-	
-// Результат: [2]
+=: listCut(list: $list; cut: "first"; num: 2)
+
+list: listCreate(item: 1; item: 2; item: 3; item: 4)
 ```
+
+Результат: [3, 4]
+
+**Удалить последний элемент из списка строк**
 
 ```totum
-//Получить номер последнего ключа в списке
+=: listCut(list: $list; cut: "last"; num: 1)
 
-= : listCut(list: $keys; cut: "first"; num: -1)
-	keys: rowKeys(row: $list)
-		list: listCreate(item: "10500"; item: "10600"; item: "10700")
-		
-// Результат: [2]
+list: listCreate(item: "a"; item: "b"; item: "c")
 ```
+
+Результат: ["a","b"]
+
+**Оставить только последний элемент в списке дат**
+
+```totum
+=: listCut(list: $list; cut: "first"; num: -1)
+
+list: listCreate(item: "2023-01-01"; item: "2023-02-01"; item: "2023-03-01")
+```
+
+Результат: ["2023-03-01"]
+
+**Удалить первые три элемента из списка**
+
+```totum
+=: listCut(list: $list; cut: "first"; num: 3)
+
+list: listCreate(item: 1; item: 2; item: 3; item: 4; item: 5)
+```
+
+Результат: [4, 5]
+
+**Удалить последние два элемента из списка чисел**
+
+```totum
+=: listCut(list: $list; cut: "last"; num: 2)
+
+list: listCreate(item: 1; item: 2; item: 3; item: 4)
+```
+
+Результат: [1,2]
+
+**Сократить список строк, удалив первый элемент**
+
+```totum
+=: listCut(list: $list; cut: "first")
+
+list: listCreate(item: "a"; item: "b"; item: "c")
+```
+
+Результат: ["b","c"]
 
 ### <a name="fn-listSection"></a>listSection
 
@@ -2159,33 +4294,6 @@ example: listCut(list: $list; cut: "first"; num: 1)
 
 + **item** — ключ, значения которого отбираются, для [списков][14] ключ числовой.
 
-
-**Пример 1:**
-
-*tree*
-id | title
--- | -----
-1 | Системные таблицы
-2 | Основные
-3 | Доступы
-32 | Документация
-
-```totum
-example1: listSection(list: $rowList; item: "id")
-	rowList: selectRowList(table: 'tree'; field: 'id'; field: 'title'; order: 'id' asc)
-
-// Результат: [1, 2, 3, 32]
-```
-
-**Пример 2:**
-
-```totum
-example2: listSection(list: $listList; item: 1)
-	listList: json`[[1,2,3],[4,5,6]]`
-	
-// Результат: [2,5]
-```
-
 Так как `listSection` используется достаточно часто, то в синтаксисе предусмотрено быстрое обращение к секции через `$name[[section]]`:
 
 ```totum
@@ -2194,6 +4302,28 @@ example3: $listList[[1]]
 	
 // Результат: [2,5]
 ```
+
+#### <a name="fn-listSection-examples"></a>Примеры
+
+**Получить список значений по ключу из списка ассоциированных массивов**
+
+```totum
+=: listSection(list: $rowList; item: "key")
+
+rowList: selectRowList(table: 'table_name'; field: 'key'; field: 'value'; order: 'key' asc)
+```
+
+Результат: ["key1", "key2", "key3", ...]
+
+**Извлечь значения из определенной колонки rowlist**
+
+```totum
+=: listSection(list: $rowList; item: "another_field")
+
+rowList: selectRowList(table: 'table_name'; field: 'column_name'; field: 'another_field'; order: 'column_name' asc)
+```
+
+Результат: ["af1", "af2", "af3", ...]
 
 ### <a name="fn-listFilter"></a>listFilter
 
@@ -2204,7 +4334,6 @@ example3: $listList[[1]]
 Возвращает [список][14] или [ассоциативный массив][30] из элементов, подходящих по условиям фильтрации.
 
 > Если в `list` передан список, результатом работы является **новый** список, у которого нумерация ключей идет с 0, для ассоциативного массива ключи сохраняются.
-
 
 **Обязательные параметры**
 
@@ -2249,51 +4378,127 @@ example3: $listList[[1]]
 
 + **savekeys** — по умалчанию отфильтрованный список имеет собственную нумерацию ключей, но если передать `true` — будут сохранены оригинальные ключи.
 
+#### <a name="fn-listFilter-examples"></a>Примеры
+
+**Отфильтровать список по значению ключа**
 
 ```totum
-example1: listFilter(list: $list; key: "item" = "tree"; item: "t")
+=: listFilter(list: json`[5,6,7,8]`; key: "key" = 1)
+```
+
+Результат: [6]
+
+**Отфильтровать ассоциативный массив по значению элемента**
+
+```totum
+=: listFilter(list: $rowlist; key: "item" = "plus_2"; item: "another_key")
+
+rowlist: rowListCreate(field: "some_key" = json`["sk_1","sk_2","sk_3"]`; field: "another_key" = json`["plus_1","plus_2","plus_3"]`; field: "third_key" = json`["minus_1","minus_2","minus_3"]`)
+```
+
+Результат: [{"some_key":"sk_2","another_key":"plus_2","third_key":"minus_2"}]
+
+**Использовать регулярное выражение для фильтрации списка**
+
+```totum
+=: listFilter(list: $list; key: "t" = "^tree$"; regexp: true)
+	
 	list: listCreate(item: $row_1; item: $row_2)
 		row_1: rowCreate(field: "t" = "pen"; field: "i" = 1)
 		row_2: rowCreate(field: "t" = "tree"; field: "i" = 2)
-
-// Результат:
-// [
-//  {
-//    "i": 2,
-//    "t": "tree"
-//  }
-// ]
 ```
 
+Результат: [{"i":2,"t":"tree"}]
+
+**Сохранить оригинальные ключи при фильтрации списка**
+
 ```totum
-example2: listFilter(list: $list; key: "t" = "tree")
+=: listFilter(list: json`[1,2,3,4,5]`; key: "value" > 3 num; savekeys: true)
+```
+
+Результат: {"3":4,"4":5}
+
+**Пропустить элементы, если ключ отсутствует в подмассиве**
+
+```totum
+=: listFilter(list: $list; key: "some_key" = "some_value"; skip: true)
+
+list: listCreate(item: $row_1; item: $row_2)
+	row_1: rowCreate(field: "some_key" = "some_value"; field: "another_key" = "another_value")
+	row_2: rowCreate(field: "another_key" = "another_value")
+```
+
+Результат: [{"some_key":"some_value","another_key":"another_value"}]
+
+**Отфильтровать список по нескольким условиям одновременно**
+
+```totum
+=: listFilter(list: $list; key: "value" > 2 num; key: "value" < 5 num)
+
+list: listCreate(item: 1; item: 2; item: 3; item: 4; item: 5)
+```
+
+Результат: [3,4]
+
+**Использовать параметр matches для сохранения совпадений**
+
+```totum
+=: listFilter(list: $list; key: "t" = "tree"; matches: "matches_list")
+	
 	list: listCreate(item: $row_1; item: $row_2)
 		row_1: rowCreate(field: "t" = "pen"; field: "i" = 1)
 		row_2: rowCreate(field: "t" = "tree"; field: "i" = 2)
-
-// Результат:
-// [
-//  {
-//    "i": 2,
-//    "t": "tree"
-//  }
-// ]
 ```
+
+Результат: [{"i":2,"t":"tree"}]
+
+**Отфильтровать список по строковому значению**
 
 ```totum
-example3: listFilter(list: $list; key: "i" < "2" str)
-	list: listCreate(item: $row_1; item: $row_2)
-		row_1: rowCreate(field: "t" = "pen"; field: "i" = 10)
-		row_2: rowCreate(field: "t" = "tree"; field: "i" = 50)
+=: listFilter(list: $list; key: "value" = "some_string")
 
-// Результат:
-// [
-//  {
-//    "i": 10,
-//    "t": "pen"
-//  }
-// ]
+list: listCreate(item: "some_string"; item: "another_string")
 ```
+
+Результат: ["some_string"]
+
+**Отфильтровать rowlist по нескольким условиям из разных ключей одновременно**
+
+```totum
+=: listFilter(list: $rowlist; key: "key_1" <= "B" str; key: "key_2" > 5 num)
+
+rowlist: rowListCreate(field: "key_1" = json`["A","B","C"]`; field: "key_2" = json`["3","6","9"]`)
+```
+
+Результат: [{"key_1":"B","key_2":"6"}]
+
+**Отфильтровать ассоциированный массив row, получив новый row только с ключами содержащими цифры**
+
+```totum
+=: listFilter(list: $row; key: "key" = "\d+"; regexp: true)
+
+row: rowCreate(field: "key1" = "v1"; field: "key2" = "v2"; field: "keyA" = "v3"; field: "keyB" = "v4")
+```
+
+Результат: {"key1":"v1","key2":"v2"}
+
+**Отфильтровать ассоциативный массив по значению элемента с условием, что элемент должен быть больше 5 и сравнение проводить как число**
+
+```totum
+=: listFilter(list: $rowlist; key: "key_2" > 5 num)
+
+rowlist: rowListCreate(field: "key_1" = json`["k1","k2","k3"]`; field: "key_2" = json`["3","6","9"]`)
+```
+
+Результат: [{"key_1":"k2","key_2":"6"},{"key_1":"k3","key_2":"9"}]
+
+**Отфильтровать список по значению ключа с условием, что ключ должен быть больше 3 (те пропустить первые 4 значения списка)**
+
+```totum
+=: listFilter(list: json`[1,2,3,4,5]`; key: "key" > 3)
+```
+
+Результат: [5]
 
 ### <a name="fn-listSearch"></a>listSearch
 
@@ -2344,33 +4549,109 @@ example3: listFilter(list: $list; key: "i" < "2" str)
 
 Если лист содержит элемент без ключа `item` будет возвращена ошибка!
 
+#### <a name="fn-listSearch-examples"></a>Примеры
+
+**Найти все ключи списка, где значение равно 'apple'**
 
 ```totum
-example1: listSearch(list: $list; key: "item" = "tree"; item: "t")
-	list: listCreate(item: $row_1; item: $row_2)
-		row_1: rowCreate(field: "t" = "pen"; field: "i" = 1)
-		row_2: rowCreate(field: "t" = "tree"; field: "i" = 2)
+=: listSearch(list: $list; key: "value" = "apple")
 
-// Результат: [1]
+list: listCreate(item: "apple"; item: "banana"; item: "apple")
 ```
 
-```totum
-example2: listSearch(list: $list; key: "t" = "tree")
-	list: listCreate(item: $row_1; item: $row_2)
-		row_1: rowCreate(field: "t" = "pen"; field: "i" = 1)
-		row_2: rowCreate(field: "t" = "tree"; field: "i" = 2)
-		
-// Результат: [1]
-```
+Результат: [0, 2]
+
+**Найти все ключи списка ассоциированный массивов rowlist, где значение ключа 'color' равно 'blue'**
 
 ```totum
-example3: listSearch(list: $list; key: "i" < "2" str)
-	list: listCreate(item: $row_1; item: $row_2)
-		row_1: rowCreate(field: "t" = "pen"; field: "i" = 10)
-		row_2: rowCreate(field: "t" = "tree"; field: "i" = 5)
-		
-// Результат: [0]
+=: listSearch(list: $rowlist; key: "color" = "blue")
+
+rowlist: rowListCreate(field: "color" = json`["red","blue","green"]`; field: "sku" = json`["sk1","sk2","sk3"]`)
 ```
+
+Результат: [1]
+
+**Найти все ключи списка, где значение больше 10**
+
+```totum
+=: listSearch(list: $list; key: "value" > 10)
+
+list: listCreate(item: 5; item: 15; item: 20; item: 8; item: 12)
+```
+
+Результат: [1,2,4]
+
+**Найти все ключи списка, где значение больше 10 с условием того, что мы будем сравнивать цифры как строки**
+
+```totum
+=: listSearch(list: $list; key: "value" > "10" str)
+
+list: listCreate(item: "5"; item: "15"; item: "20"; item: "10")
+```
+
+Результат: [1, 2]
+
+**Найти все ключи списка, где значение не равно 'banana'**
+
+```totum
+=: listSearch(list: $list; key: "value" != "banana")
+
+list: listCreate(item: "apple"; item: "banana"; item: "orange")
+```
+
+Результат: [0, 2]
+
+**Найти все ключи в rowlist, где значение в ключе 'status' равно 'active', а в ключе valid не равно true**
+
+```totum
+=: rowKeys(row: $filter)
+
+filter: listFilter(list: $rowlist; key: "status" = "active"; key: "valid" != true; savekeys: true)
+	
+	rowlist: rowListCreate(field: "status" = json`["active","inactive","active"]`; field: "valid" = json`[true,false,false]`)
+```
+
+Результат: [2]
+
+**Найти все ключи, где значение меньше или равно 100 сравнивая значения как строки**
+
+```totum
+=: listSearch(list: $list; key: "value" <= 100 str)
+
+list: listCreate(item: 50; item: 150; item: 100; item: 200)
+```
+
+Результат: [2]
+
+**Найти все ключи в списке ассоциированных массивов, где вложенное значение в ключе 'quantity' больше или равно 5**
+
+```totum
+=: listSearch(list: $rowlist; key: 'quantity' >= 5)
+
+rowlist: rowListCreate(field: 'quantity' = json`[36, 5, 7, 8]`; field: 'item' = json`["item1", "item2", "item3", "item4"]`)
+```
+
+Результат: [0, 1, 2, 3]
+
+**Найти все ключи в списке ассоциированных массивов, где вложенное значение в ключе 'value' больше или равно 5**
+
+```totum
+=: listSearch(list: $rowlist; key: "item" >= 5; item: "value")
+
+rowlist: rowListCreate(field: 'value' = json`[3, 5, 7, 2]`; field: 'item' = json`["item1", "item2", "item3", "item4"]`)
+```
+
+Результат: [1, 2]
+
+**Найти все ключи в списке ассоциированных массивов, где вложенное значение в ключе 'item' больше или равно 5**
+
+```totum
+=: listSearch(list: $rowlist; key: "item" >= 5; item: "item")
+
+rowlist: rowListCreate(field: 'item' = json`[3, 5, 7, 2]`; field: 'value' = json`["a", "b", "c", "d"]`)
+```
+
+Результат: [1, 2]
 
 ### <a name="fn-listSort"></a>listSort
 
@@ -2382,16 +4663,13 @@ example3: listSearch(list: $list; key: "i" < "2" str)
 
 > Внимание: сортировка спецсимволов в PHP (listSort) и PostgreSQL (параметры `order` в `select-функциях`) **РАЗЛИЧНА!** Полное сравнение в этом случае будет возвращать `false`. Для полной работоспособности в таких случаях не выполняйте `order` в `select`, а добавляйте еще один `listSort`.
 
-
 **Обязательные параметры**
 
 + **list** — [список][14] или [ассоциативный массив][30] для сортировки.
 
 	> Если в `list` передан список, результатом работы является **новый** список, у которого нумерация ключей идет с 0, для ассоциативного массива ключи сохраняются.
 
-
 **Необязательные параметры**
-
 
 + **type** — [строка][6], тип, к которому приводятся сортируемые элементы при сравнении.
 
@@ -2434,22 +4712,117 @@ example3: listSearch(list: $list; key: "i" < "2" str)
 	
 	Также в таком синтаксисе `key` является множественным параметром — результат сортировки по последовательному применению слева-направо.
 
+#### <a name="fn-listSort-examples"></a>Примеры
+
+**Отсортировать список чисел по возрастанию**
 
 ```totum
-example1: listSort(list: $list; type: "string"; direction: "asc")
-	list: listCreate(item: 1; item: 2; item: 11; item: 21)
-	
-// Результат: [1,11,2,21]
+=: listSort(list: $list; type: "number"; direction: "asc")
+
+list: listCreate(item: 11; item: 2; item: 1; item: 21)
 ```
 
+Результат: [1,2,11,21]
+
+**Отсортировать список строк по убыванию**
+
 ```totum
-example2: listSort(list: $list; key: "numbers" desc num)
-	rowlist: rowListCreate(field: "numbers" = $list_numbers; field: "name" = $list_name)
-		list_numbers: listCreate(item: 1; item: 2; item: 11; item: 21)
-		list_name: listCreate(item: "Alex"; item: "Mike"; item: "Sam"; item: "Dany")
-	
-// Результат: [{"numbers":"21","name":"Dany"},{"numbers":"11","name":"Sam"},{"numbers":"2","name":"Mike"},{"numbers":"1","name":"Alex"}]
+=: listSort(list: $list; type: "string"; direction: "desc")
+
+list: listCreate(item: "apple"; item: "cherry"; item: "date"; item: "banana")
 ```
+
+Результат: ["date","cherry","banana","apple"]
+
+**Отсортировать ассоциативный массив по значениям ключей**
+
+```totum
+=: listSort(list: $row; key: "key"; direction: "desc")
+
+row: rowCreate(field: "key1" = "value1"; field: "key2" = "value2"; field: "key3" = "value3")
+```
+
+Результат: {"key3":"value3","key2":"value2","key1":"value1"}
+
+**Отсортировать список чисел по убыванию**
+
+```totum
+=: listSort(list: $list; type: "number"; direction: "desc")
+
+list: listCreate(item: 11; item: 2; item: 1; item: 21)
+```
+
+Результат: [21,11,2,1]
+
+**Отсортировать список строк по возрастанию**
+
+```totum
+=: listSort(list: $list; type: "string"; direction: "asc")
+
+list: listCreate(item: "apple"; item: "cherry"; item: "banana")
+```
+
+Результат: ["apple","banana","cherry"]
+
+**Отсортировать список ассоциативных массивов по значениям в определенной колонке**
+
+```totum
+=: listSort(list: $rowlist; key: "column_3"; direction: "asc"; type: "nat")
+
+rowlist: rowListCreate(field: "column_1" = json`["v1","v2","v3"]`; field: "column_2" = json`["a2","a2","a1"]`; field: "column_3" = json`["b13","b22","b11"]`)
+```
+
+Результат: [{"column_1":"v3","column_2":"a1","column_3":"b11"},{"column_1":"v1","column_2": "a2","column_3":"b13"},{"column_1":"v2","column_2":"a2","column_3":"b22"}]
+
+**Отсортировать список ассоциативных массивов по значениям в двух колонках. В одно как строки в другой по типу префикс-число**
+
+```totum
+=: listSort(list: $rowlist; key: "column_1" asc str; key: "column_2" asc nat)
+
+rowlist: rowListCreate(field: "column_1" = json`["a1","a2","a1"]`; field: "column_2" = json`["n2","n1","n3"]`)
+```
+
+Результат: [{"column_1":"a1","column_2":"n2"},{"column_1":"a1","column_2":"n3"},{"column_1":"a2","column_2":"n1"}]
+
+**Отсортировать список ассоциативных массивов по значениям в двух колонках. В одной как числа в другой как строки**
+
+```totum
+=: listSort(list: $rowlist; key: "column_1" asc num; key: "column_2" asc str)
+
+rowlist: rowListCreate(field: "column_1" = json`["10","30","10"]`; field: "column_2" = json`["apple","banana","cherry"]`)
+```
+
+Результат: [{"column_1":"10","column_2":"apple"},{"column_1":"10","column_2":"cherry"},{"column_1":"30","column_2":"banana"}]
+
+**Отсортировать список с использованием типа сортировки 'regular'**
+
+```totum
+=: listSort(list: $list; direction: "asc")
+
+list: listCreate(item: "banana11"; item: "apple"; item: "cherry"; item: "banana2")
+```
+
+Результат: ["apple","banana11","banana2","cherry"]
+
+**Отсортировать список ассоциативных массивов по значениям в колонке value**
+
+```totum
+=: listSort(list: $rowlist; key: "item"; item: "value"; type: "number"; direction: "asc")
+
+rowlist: rowListCreate(field: "value" = json`[4,5,1]`; field: "some_key" = json`["a","b","c"]`)
+```
+
+Результат: [{"value":1,"some_key":"c"},{"value":4,"some_key":"a"},{"value":5,"some_key":"b"}]
+
+**Отсортировать список ассоциативных массивов по значениям в колонке key**
+
+```totum
+=: listSort(list: $rowlist; key: "item"; item: "key"; type: "nat"; direction: "asc")
+
+rowlist: rowListCreate(field: "key" = json`["v3","v1","v2"]`; field: "some_other_key" = json`["a","b","c"]`)
+```
+
+Результат: [{"key":"v1","some_other_key":"b"},{"key":"v2","some_other_key":"c"},{"key":"v3","some_other_key":"a"}]
 
 ### <a name="fn-listMath"></a>listMath
 
@@ -2458,7 +4831,6 @@ example2: listSort(list: $list; key: "numbers" desc num)
 =: listMath(list: ; num: ; list: ; operator: )
 ```
 Возвращает `list`, все элементы которого были изменены в соответствии с `operator` и `num`.
-
 
 **Обязательные параметры**
 
@@ -2477,21 +4849,91 @@ example2: listSort(list: $list; key: "numbers" desc num)
 	+ `*` — умножить
 	+ `/` — разделить
 
+#### <a name="fn-listMath-examples"></a>Примеры
+
+**Умножить все элементы списка на 5**
 
 ```totum
-example1: listMath(list: $list; num: 3; operator: "*")
-	list: listCreate(item: 1; item: 2; item: 11; item: 21)
-	
-// Результат: [ 3, 6, 33, 63]
+=: listMath(list: $list; num: 5; operator: "*")
+list: listCreate(item: 1; item: 2; item: 3; item: 4)
 ```
 
+Результат: [5, 10, 15, 20]
+
+**Разделить все элементы списка на 2**
+
 ```totum
-example2: listMath(list: $list1; list: $list2; operator: "*")
-	list1: listCreate(item: 1; item: 2; item: 11; item: 21)
-	list2: listCreate(item: 1; item: 2; item: 1; item: 1)
-	
-// Результат: [ 1, 4, 11, 21]
+=: listMath(list: $list; num: 2; operator: "/")
+
+list: listCreate(item: 2; item: 4; item: 8; item: 10)
 ```
+
+Результат: [1, 2, 4, 5]
+
+**Прибавить 10 ко всем элементам списка**
+
+```totum
+=: listMath(list: $list; num: 10; operator: "+")
+
+list: listCreate(item: 1; item: 2; item: 3; item: 4)
+```
+
+Результат: [11, 12, 13, 14]
+
+**Отнять 3 от всех элементов списка**
+
+```totum
+=: listMath(list: $list; num: 3; operator: "-")
+
+list: listCreate(item: 3; item: 4; item: 5; item: 6)
+```
+
+Результат: [0, 1, 2, 3]
+
+**Умножить элементы двух списков попарно**
+
+```totum
+=: listMath(list: $list1; list: $list2; operator: "*")
+
+list1: listCreate(item: 1; item: 2; item: 3; item: 4)
+list2: listCreate(item: 5; item: 6; item: 7; item: 2)
+```
+
+Результат: [5, 12, 21, 8]
+
+**Разделить элементы двух списков попарно**
+
+```totum
+=: listMath(list: $list1; list: $list2; operator: "/")
+
+list1: listCreate(item: 10; item: 20; item: 25; item: 40)
+list2: listCreate(item: 2; item: 4; item: 5; item: 8)
+```
+
+Результат: [5, 5, 5, 5]
+
+**Прибавить элементы двух списков попарно**
+
+```totum
+=: listMath(list: $list1; list: $list2; operator: "+")
+
+list1: listCreate(item: 1; item: 2; item: 3; item: 4)
+list2: listCreate(item: 5; item: 6; item: 7; item: 8)
+```
+
+Результат: [6, 8, 10, 12]
+
+**Сложить элементы трех списков**
+
+```totum
+=: listMath(list: $list1; list: $list2; list: $list3; operator: "+")
+
+list1: listCreate(item: 1; item: 2; item: 3; item: 4)
+list2: listCreate(item: 5; item: 6; item: 7; item: 8)
+list3: listCreate(item: 2; item: 3; item: 4; item: 8)
+```
+
+Результат: [8, 11, 14, 20]
 
 ### <a name="fn-listTrain"></a>listTrain
 
@@ -2501,17 +4943,41 @@ example2: listMath(list: $list1; list: $list2; operator: "*")
 ```
 Возвращает [список][14] из соединенных последовательно [списков][14] вложенных в [списки][14].
 
-
 **Обязательные параметры**
 
 + **list** — [список][14] списков.
 
+#### <a name="fn-listTrain-examples"></a>Примеры
+
+**Преобразовать список из списков в один список**
 
 ```totum
-example: listTrain(list: $lists)
+=: listTrain(list: $lists)
+	
 	lists: json`[[1,2],[3,4],[5,6]]`
-//Результат: [1,2,3,4,5,6]
 ```
+
+Результат: [1,2,3,4,5,6]
+
+**Получить плоский список из вложенных списков**
+
+```totum
+=: listTrain(list: $lists)
+	
+	lists: json`[[1,2],[3,4],[5,6]]`
+```
+
+Результат: [1,2,3,4,5,6]
+
+**Преобразовать список списков в один непрерывный список**
+
+```totum
+=: listTrain(list: $lists)
+	
+	lists: json`[[1,2],[3,4],[5,6]]`
+```
+
+Результат: [1,2,3,4,5,6]
 
 ### <a name="fn-listRepeat"></a>listRepeat
 
@@ -2521,28 +4987,47 @@ example: listTrain(list: $lists)
 ```
 Возвращает лист из повторенного `num` раз элемента `item`.
 
-
 **Обязательные параметры**
 
 + **num** — [число][5], количество повторений элемента `item:`.
 
 + **item** — значение любого типа.
 
+#### <a name="fn-listRepeat-examples"></a>Примеры
 
+**Создать список из 5 повторений строки 'hello'**
 
 ```totum
-example: listRepeat(item: $row; num: 2)
-	row: rowCreate(field: "test" = 1)
-	
-// Результат: [
-//  {
-//    "test": 1
-//  },
-//  {
-//    "test": 1
-//  }
-// ]
+=: listRepeat(item: "hello"; num: 5)
 ```
+
+Результат: ["hello","hello","hello","hello","hello"]
+
+**Создать список из 3 повторений числа 10**
+
+```totum
+=: listRepeat(item: 10; num: 3)
+```
+
+Результат: [10, 10, 10]
+
+**Создать список из 4 повторений объекта с полем 'name' и значением 'Totum'**
+
+```totum
+=: listRepeat(item: $row; num: 4)
+
+row: rowCreate(field: "name" = "Totum")
+```
+
+Результат: [{"name": "Totum"}, {"name": "Totum"}, {"name": "Totum"}, {"name": "Totum"}]
+
+**Создать список из 2 повторений массива [1, 2, 3]**
+
+```totum
+=: listRepeat(item: json`[1,2,3]`; num: 2)
+```
+
+Результат: [[1,2,3],[1,2,3]]
 
 ### <a name="fn-listNumberRange"></a>listNumberRange
 
@@ -2565,19 +5050,39 @@ example: listRepeat(item: $row; num: 2)
 	+ Если `step` < `0` — в порядке от `max` включительно до `min` исключительно.
 	+ Если `step` = `0` — `ERR!`
 
+#### <a name="fn-listNumberRange-examples"></a>Примеры
 
-
-```totum
-example1: listNumberRange(min: 1; max: 3; step: 0.5)
-
-// Результат: [1,1.5,2,2.5]
-```
+**Создать список чисел от 5 до 10 с шагом 1**
 
 ```totum
-example2: listNumberRange(min: 1; max: 3; step: -0.5)
-
-// Результат: [3,2.5,2,1.5]
+=: listNumberRange(min: 5; max: 11; step: 1)
 ```
+
+Результат: [5,6,7,8,9,10]
+
+**Создать список чисел от 10 до 5 с шагом -1**
+
+```totum
+=: listNumberRange(min: 4; max: 10; step: -1)
+```
+
+Результат: [10,9,8,7,6,5]
+
+**Создать список чисел от 0 до 1 с шагом 0.1**
+
+```totum
+=: listNumberRange(min: 0; max: 1.1; step: 0.1)
+```
+
+Результат: [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+
+**Создать список чисел от -5 до 5 с шагом 2**
+
+```totum
+=: listNumberRange(min: -5; max: 6; step: 2)
+```
+
+Результат: [-5,-3,-1,1,3,5]
 
 ### <a name="fn-listCheck"></a>listCheck
 
@@ -2587,10 +5092,61 @@ example2: listNumberRange(min: 1; max: 3; step: -0.5)
 ```
 Возвращает `true` если в `list` передан список или row или rowlist. Возвращает false только в случае если передано одно значение!
 
-
 **Обязательные параметры**
 
 + **list** — значение для проверки
+
+#### <a name="fn-listCheck-examples"></a>Примеры
+
+**Проверить, является ли переданное значение списком**
+
+```totum
+=: listCheck(list: $value)
+
+value: json`[1,2,3]`
+```
+
+Результат: true
+
+**Использовать функцию listCheck для проверки списка в секции Код**
+
+```totum
+=: listCheck(list: $value)
+
+value: json`[1,2,3]`
+```
+
+Результат: true
+
+**Проверить, является ли переданный массив списком**
+
+```totum
+=: listCheck(list: $value)
+
+value: rowListCreate(field: "key_a" = json`[1,2,3]`; field: "key_b" = json`["a","b","c"]`)
+```
+
+Результат: true
+
+**Проверить, является ли переданный элемент, одним значением**
+
+```totum
+=: listCheck(list: $value)
+
+value: 5
+```
+
+Результат: false
+
+**Проверить, является ли переданный элемент ассоциативным массивом row**
+
+```totum
+= : listCheck(list: $value)
+
+value: rowCreate(field: "key_a" = 1; field: "key_b" = 2)
+```
+
+Результат: true
 
 ### <a name="fn-listReplace"></a>listReplace
 
@@ -2608,7 +5164,6 @@ example2: listNumberRange(min: 1; max: 3; step: -0.5)
 
 > ВНИМАНИЕ! Функция не использует рекурсию и вы можете воспользоваться ею при получении ошибки переполнения стека.
 
-
 **Обязательные параметры**
 
 + **list** — [список][14], [список][14] [ассоциативных массивов][30] или [ассоциативный массив][30].
@@ -2623,13 +5178,11 @@ example2: listNumberRange(min: 1; max: 3; step: -0.5)
 	+ `action: "key" = $act` — 
 		+ во вложенном [ассоциативном массиве][30] добавит или перезапишет значения с "key" ключом.
 
-
 **Необязательные параметры**
 
 + **value** — [строка][6], переменная в которую будет передано значение в случае [списка][14] и row в [списка][14] [ассоциативных массивов][30].
 
 + **key** — [строка][6], переменная в которую будет передан порядковый номер обрабатываемого элемента — значения или row.
-
 
 ```totum
 replace: listReplace(list: $rowlist; action: "date" = $weekDay; action: "max_temp" = $max_temp; value: "val")
@@ -2718,6 +5271,124 @@ listReplace проще чем все думают. Он обрабатывает
 
 Вот и все!
 
+#### <a name="fn-listReplace-examples"></a>Примеры
+
+**Заменить значения в списке на другие, вычислив каждое новое значение на основе предыдущего. Например у нас есть список id и нам надо заменить его на sku добавив сразу к каждому значению префикс 'm-'**
+
+```totum
+=: listReplace(list: $id_list; action: $sku; value: "id")
+	
+	id_list: listCreate(item: 1; item: 2; item: 3)
+	
+	sku: str`"m-" + $select`
+		select: select(table: 'products'; field: 'sku'; where: 'id' = $#id)
+```
+
+Результат: ["m-123","m-456","m-789"]
+
+**Добавить новый ключ в список ассоциативных массивов на основе значений из имеющегося в этом rowlist ключа. Например есть id, надо добавить колонку с соответсвующими значениями sku из другой таблицы**
+
+```totum
+=: listReplace(list: $rowlist; action: "sku" = $sku; value: "row")
+
+rowlist: rowListCreate(field: "id" = $id_list)
+
+	id_list: listCreate(item: 1; item: 2; item: 3)
+
+sku: select(table: 'products'; field: 'sku'; where: 'id' = $#row[id])
+```
+
+Результат: [{"id":1,"sku":"m-1"},{"id":2,"sku":"m-2"},{"id":3,"sku":"m-3"}]
+
+**Обработать список, взяв значение из поля в таблице other_table из последней строки на основе списка номеров, те нам нужно брать последнее значение sum из таблицы other_table с условием, что значение в поле num, совпадает со значением в списке**
+
+```totum
+=: listReplace(list: $num_list; action: $sum; value: "num")
+
+		num_list: selectList(table: $#ntn; field: 'num')
+
+	sum: select(table: 'other_table'; field: 'sum'; where: 'num' = $#num; order: 'id' desc)
+```
+
+Результат: [100, 400, 200]
+
+**Заменить значения ключа в списке ассоциативных массивов на основе значений из имеющегося в этом rowlist ключа. Например есть id, надо изменить колонку с соответсвующими значениями sum из другой таблицы, сложив все значения полученные из поля cost с ограничением по текущей дате**
+
+```totum
+=: listReplace(list: $rowlist; action: "sum" = $new_sum; value: "row")
+
+		rowlist: rowListCreate(field: "id" = json`[1,2,3]`; field: "sum" = json`[100,400,200]`)
+
+	new_sum: listSum(list: $list)
+		list: selectList(table: 'other_table'; field: 'cost'; where: 'id' = $#row[id]; where: 'date' = $#nd)
+```
+
+Результат: [{"id":1,"sum":100},{"id":2,"sum":500},{"id":3,"sum":300}]
+
+**Добавить новые колонки в rowlist на основе значений из других таблиц**
+
+```totum
+=: listReplace(list: $rowlist; action: "new_column1" = $value1; action: "new_column2" = $value2; value: "row")
+
+		rowlist: rowListCreate(field: "id" = $id_list)
+			id_list: listCreate(item: 1; item: 2; item: 3)
+
+	value1: select(table: 'other_table_1'; field: 'field1'; where: 'id' = $#row[id])
+
+	value2: select(table: 'other_table_2'; field: 'field2'; where: 'id' = $#row[id])
+```
+
+Результат: [{"id":1,"new_column1":"value1_for_id_1","new_column2":"value2_for_id_1"},{"id":2,"new_column1":"value1_for_id_2","new_column2":"value2_for_id_2"},{"id":3,"new_column1":"value1_for_id_3","new_column2":"value2_for_id_3"}]
+
+**Заменить значения в row в зависимости от ключа**
+
+```totum
+=: listReplace(list: $row; action: $new_value; key: "key"; value: "value")
+
+		row: rowCreate(field: "key_1" = 100; field: "key_2" = 200; field: "key_3" = 300)
+
+	new_value: $#value + $key_index[1]
+			key_index: strSplit(str: $#key; separator: "_")
+```
+
+Результат: {"key_1": 101, "key_2": 202, "key_3": 303}
+
+**Обработать rowlist в котором в ключе 'inner_list' находится список сумм, которые необходимо сложить и записать в ключ sum**
+
+```totum
+=: listReplace(list: $rowlist; action: "sum" = $sum; value: "row")
+
+rowlist: rowListCreate(field: "inner_list" = json`[[100, 200, 300], [50, 100, 200], [1, 2, 3]]`)
+
+sum: listSum(list: $#row[inner_list])
+```
+
+Результат: [{"inner_list":[100,200,300],"sum":"600"},{"inner_list":[50,100,200],"sum":"350"},{"inner_list":[1,2,3],"sum":"6"}]
+
+**Обработать список id, вызывая на каждый id функцию отправки нотификации для пользователя** *(код действия)*
+
+```totum
+=: listReplace(list: $id_list; action: $send_notification; value: "id")
+
+	id_list: listCreate(item: 10; item: 12; item: 23)
+
+send_notification: notificationSend(users: $#id; title: "Some notification"; ntf: "Some text")
+```
+
+Результат: отправлено 3 нотификации
+
+**Обработать rowlist выполняя действие установки значения в стороннюю таблицу в поле count, взяв его из ключа count, в строке где sku равно значению из ключа connect** *(код действия)*
+
+```totum
+=: listReplace(list: $rowlist; action: $set_value; value: "row")
+
+	rowlist: rowListCreate(field: "connect" = json`["sku1", "sku2", "sku3"]`; field: "count" = json`[100, 200, 300]`)
+
+set_value: set(table: 'other_table'; field: 'count' = $#row[count]; where: 'sku' = $#row[connect])
+```
+
+Результат: установлены значения [100, 200, 300]
+
 ## <a name="part-7"></a>Строки
 
 ### <a name="fn-rowCreate"></a>rowCreate
@@ -2728,7 +5399,6 @@ listReplace проще чем все думают. Он обрабатывает
 ```
 Возвращает [ассоциативный массив][30] с основаниями в виде [name][18] полей, указанных в `field:` и значениями указанными после `=`.
 
-
 **Необязательный множественный параметр**
 
 + **field** — множественный параметр, элементы, из которых создается массив. Количество параметров `field` определяет количество элементов в [массиве][30].
@@ -2737,12 +5407,89 @@ listReplace проще чем все думают. Он обрабатывает
 	+ Порядок элементов в массиве будет соответствовать тому порядку, в котором они указаны в функции.
 	+ При отсутствии будет создан [пустой список][17].
 
+#### <a name="fn-rowCreate-examples"></a>Примеры
+
+**Создать ассоциативный массив (row) с именем и возрастом пользователя**
 
 ```totum
-example: rowCreate(field: 'name' = "Alexey"; field: 'age' = 35)
-
-//Результат: {"name": "Alexey", "age": 35}
+=: rowCreate(field: "name" = "Alexey"; field: "age" = 35)
 ```
+
+Результат: {"name": "Alexey", "age": 35}
+
+**Создать ассоциативный массив (row) с полем 'city' и значением 'Moscow'**
+
+```totum
+=: rowCreate(field: "city" = "Moscow")
+```
+
+Результат: {"city": "Moscow"}
+
+**Создать ассоциативный массив (row) с полем 'is_active' и значением true**
+
+```totum
+=: rowCreate(field: "is_active" = true)
+```
+
+Результат: {"is_active": true}
+
+**Создать ассоциативный массив (row) с полем 'salary' и значением 50000**
+
+```totum
+=: rowCreate(field: "salary" = 50000)
+```
+
+Результат: {"salary": 50000}
+
+**Создать ассоциативный массив (row) с полями 'first_name' и 'last_name' и значениями 'John' и 'Doe'**
+
+```totum
+=: rowCreate(field: "first_name" = "John"; field: "last_name" = "Doe")
+```
+
+Результат: {"first_name": "John", "last_name": "Doe"}
+
+**Создать ассоциативный массив с полем 'birth_date' и значением '1990-01-01'**
+
+```totum
+=: rowCreate(field: "birth_date" = "1990-01-01")
+```
+
+Результат: {"birth_date": "1990-01-01"}
+
+**Создать ассоциативный массив с полем 'is_admin' и значением false**
+
+```totum
+=: rowCreate(field: "is_admin" = false)
+```
+
+Результат: {"is_admin": false}
+
+**Создать ассоциативный массив (row) с полем (ключем) 'department' и значением 'HR' и ключем results в котором будет список из трех чисел**
+
+```totum
+=: rowCreate(field: "department" = 'HR'; field: "results" = json`[1, 2, 3]`)
+```
+
+Результат: {"department": "HR", "results": [1, 2, 3]}
+
+**Создать ассоциативный массив (row) с полем 'project' и значением в виде вложенного row с ключами name равное 'Apollo' и stage равное 6**
+
+```totum
+=: rowCreate(field: "project" = $row)
+	
+	row: rowCreate(field: "name" = "Apollo"; field: "stage" = 6)
+```
+
+Результат: {"project": {"name": "Apollo", "stage": 6}}
+
+**Создать ассоциативный массив с полем 'scores' и значением в виде списка значений 95, 100, 56**
+
+```totum
+=: rowCreate(field: "scores" = json`[95, 100, 56]`)
+```
+
+Результат: {"scores": [95, 100, 56]}
 
 ### <a name="fn-rowListCreate"></a>rowListCreate
 
@@ -2751,7 +5498,6 @@ example: rowCreate(field: 'name' = "Alexey"; field: 'age' = 35)
 =: rowListCreate(field: "" = $list)
 ```
 Возвращает [список][14] [ассоциативных массивов][30] с ключами в виде [name][18] полей указанных в `field` значениями указанными после `=`. Строки создаются в порядке сортировки [списков][14] передаваемых в `field`.
-
 
 **Обязательные параметры**
 
@@ -2762,18 +5508,59 @@ example: rowCreate(field: 'name' = "Alexey"; field: 'age' = 35)
 	+ Порядок элементов в списке будет соответствовать сортировке в списках.
 	+ При отсутствии будет создан [пустой список][17].
 
+#### <a name="fn-rowListCreate-examples"></a>Примеры
+
+**Создать список ассоциативных массивов с полями 'product' и 'price'**
 
 ```totum
-example: rowlistCreate(field: 'name' = $names; field: 'age' = $ages)
-	names: listCreate(item: "Alexey"; item: "Pavel")
-	ages: listCreate(item: 32; item: 35)
+=: rowListCreate(field: "product" = $products; field: "price" = $prices)
 
-// Результат: 
-// [
-// {"name": "Alexey", "age": 32},
-// {"name": "Pavel", "age": 35}
-// ]
+	products: listCreate(item: "Product1"; item: "Product2")
+	prices: listCreate(item: 100; item: 200)
 ```
+
+Результат: [{"product": "Product1", "price": 100}, {"product": "Product2", "price": 200}]
+
+**Создать список ассоциативных массивов с полями 'city' и 'population'**
+
+```totum
+=: rowListCreate(field: "city" = $cities; field: "population" = $populations)
+
+	cities: listCreate(item: "City1"; item: "City2")
+	populations: listCreate(item: 1000000; item: 2000000)
+```
+
+Результат: [{"city": "City1", "population": 1000000}, {"city": "City2", "population": 2000000}]
+
+**Создать список ассоциативных массивов с полями 'student' и 'grade' если мы берем их из rowlist рассчитанного в другой строке кода**
+
+```totum
+=: rowListCreate(field: "student" = $rowlist[[student]]; field: "grade" = $rowlist[[grade]])
+
+	~rowlist: rowListCreate(field: "student" = json`["Student1","Student2"]`; field: "grade" = json`["A","B"]`)
+```
+
+Результат: [{"student": "Student1", "grade": "A"}, {"student": "Student2", "grade": "B"}]
+
+**Создать список ассоциативных массивов с полями 'employee' и 'salary' если мы берем их из rowlist рассчитанного в другой строке кода**
+
+```totum
+=: rowListCreate(field: "employee" = $rowlist[[employee]]; field: "salary" = $rowlist[[salary]])
+
+	~rowlist: rowListCreate(field: "employee" = json`["Employee1","Employee2"]`; field: "salary" = json`[1000,2000]`)
+```
+
+Результат: [{"employee": "Employee1", "salary": 1000}, {"employee": "Employee2", "salary": 2000}]
+
+**Создать список ассоциативных массивов с полями 'employee' и 'salary' если мы берем их из rowlist запрошенного из поля в другой таблице**
+
+```totum
+=: rowListCreate(field: "employee" = $rowlist[[employee]]; field: "salary" = $rowlist[[salary]])
+
+	~rowlist: select(table: 'other_table'; field: 'rowlist_field')
+```
+
+Результат: [{"employee": "Employee1", "salary": 1000}, {"employee": "Employee2", "salary": 2000}]
 
 ### <a name="fn-rowCreateByLists"></a>rowCreateByLists
 
@@ -2783,7 +5570,6 @@ example: rowlistCreate(field: 'name' = $names; field: 'age' = $ages)
 ```
 Возвращает [ассоциативный массив][30] или `false`.
 
-
 **Обязательные параметры**
 
 + **keys** — [список][14], содержащий [строки][6] или [числа][5], которые станут ключами для [массива][30].
@@ -2792,15 +5578,39 @@ example: rowlistCreate(field: 'name' = $names; field: 'age' = $ages)
 
 **Размеры листов `keys` и `values` должны совпадать.**
 
+#### <a name="fn-rowCreateByLists-examples"></a>Примеры
 
+**Создать ассоциативный массив (row) с ключами 'name', 'age' и 'city' и значениями 'John', 30 и 'New York' на основе двух списков, списка ключей и списка значений**
 
 ```totum
-example: rowCreateByLists(keys: $keysList; values: $valuesList)
-	keysList: listCreate(item: "min"; item: "middle"; item: "max")
-	valuesList: listCreate(item: "cherry"; item: "apple"; item: "watermellon")
+=: rowCreateByLists(keys: $keysList; values: $valuesList)
 
-// Результат: {"min":"cherry", "middle": "apple", "max": "watermellon"}
+keysList: listCreate(item: "name"; item: "age"; item: "city")
+valuesList: listCreate(item: "John"; item: 30; item: "New York")
 ```
+
+Результат: {"name":"John", "age":30, "city":"New York"}
+
+**Создать ассоциативный массив с ключами 'id', 'status' и 'priority' и значениями 101, 'active' и 'high' на основе двух списков, списка ключей и списка значений**
+
+```totum
+=: rowCreateByLists(keys: $keysList; values: $valuesList)
+
+keysList: listCreate(item: "id"; item: "status"; item: "priority")
+valuesList: listCreate(item: 101; item: "active"; item: "high")
+```
+
+Результат: {"id":101,"status":"active","priority":"high"}
+
+**Создать ассоциативный массив с ключами 'product', 'price' и 'quantity' и значениями 'Laptop', 1500 и 3 на основе rowlist в котором ключи лежат в колонке keys а значения в колонке values**
+
+```totum
+=: rowCreateByLists(keys: $rowlist[[keys]]; values: $rowlist[[values]])
+
+~rowlist: rowListCreate(field: "keys" = json`["product", "price", "quantity"]`; field: "values" = json`["Laptop", 1500, 3]`)
+```
+
+Результат: {"product":"Laptop", "price":1500, "quantity":3}
 
 ### <a name="fn-rowAdd"></a>rowAdd
 
@@ -2810,13 +5620,11 @@ example: rowCreateByLists(keys: $keysList; values: $valuesList)
 ```
 Возвращает [ассоциативный массив][30], дополненный и исправленный последующими `row` и `field`.
 
-
 **Обязательные параметры**
 
 + **row** — [ассоциативный массив][30], который будет дополняться или изменяться.
 
 	+ Множественный параметр, если указано несколько, то массивы будут сложены в указанном порядке.
-
 
 **Необязательные параметры**
 
@@ -2830,59 +5638,86 @@ example: rowCreateByLists(keys: $keysList; values: $valuesList)
 
 + **replace** — `true`. Используется только совместно с `path`, для того чтобы заменить значение ключа полностью, а не добавлять значения.
 
+#### <a name="fn-rowAdd-examples"></a>Примеры
+
+**Добавить новый элемент в ассоциативный массив**
 
 ```totum
-example: rowAdd(row: $row1; field: "test2" = "2"; field: "test3" = "3")
-	row1: rowCreate(field: "test1" = "1"; field: "test2"="1")
-	
-// Результат: 
-// {
-//  "test1": "1",
-//  "test2": "2",
-//  "test3": "3"
-// }
+=: rowAdd(row: $row1; field: "new_key" = "new_value")
+
+row1: rowCreate(field: "existing_key" = "existing_value")
 ```
+
+Результат: {"existing_key":"existing_value","new_key":"new_value"}
+
+**Объединить несколько ассоциативных массивов**
 
 ```totum
+=: rowAdd(row: $row1; row: $row2)
 
-// example_data
-// {
-//  "data": [
-//    {
-//      "num": "some num 1",
-//      "value": "some value 1",
-//      "product": {}
-//    },
-//    {
-//      "num": "some num 1",
-//      "value": "some value 1",
-//      "product": {}
-//    }
-//  ]
-// }
-
-example2: rowAdd(row: #example_data; field: "test2" = "2"; field: "test3" = "3"; path: $list)
-
-	list: listCreate(item: "data"; item: 0; item: "product")
-	
-// {
-//   "data": [
-//     {
-//       "num": "some num 1",
-//       "value": "some value 1",
-//       "product": {
-//       	"test2": "2",
-//       	"test3": "3"
-//        }
-//     },
-//     {
-//       "num": "some num 1",
-//       "value": "some value 1",
-//       "product": {}
-//     }
-//   ]
-// }
+row1: rowCreate(field: "key1" = "value1")
+row2: rowCreate(field: "key2" = "value2")
 ```
+
+Результат: {"key1":"value1","key2":"value2"}
+
+**Изменить значение существующего ключа в ассоциативном массиве**
+
+```totum
+=: rowAdd(row: $row1; field: "existing_key" = "new_value")
+
+row1: rowCreate(field: "existing_key" = "old_value")
+```
+
+Результат: {"existing_key":"new_value"}
+
+**Добавить несколько новых элементов в ассоциативный массив**
+
+```totum
+=: rowAdd(row: $row1; field: "new_key1" = "new_value1"; field: "new_key2" = "new_value2")
+
+row1: rowCreate(field: "existing_key" = "existing_value")
+```
+
+Результат: {"existing_key":"existing_value","new_key1":"new_value1","new_key2":"new_value2"}
+
+**Вставить данные в определенное место структуры массива**
+
+```totum
+=: rowAdd(row: $row1; field: "new_key" = "new_value"; path: $path)
+
+row1: rowCreate(field: "data" = $data; field: "some_key" = "some_value")
+	data: listCreate(item: $nest_row_1; item: $nest_row_2)
+		nest_row_1: rowCreate(field: "v1" = "v1_nr_1"; field: "v2" = "v2_nr_1")
+		nest_row_2: rowCreate(field: "v1" = "v1_nr_2"; field: "v2" = "v2_nr_2")
+
+path: listCreate(item: "data"; item: 0)
+```
+
+Результат: {"data":[{"v1":"v1_nr_1","v2":"v2_nr_1","new_key":"new_value"},{"v1":"v1_nr_2","v2":"v2_nr_2"}],"some_key":"some_value"}
+
+**Заменить значение ключа в ассоциативном массиве, используя путь**
+
+```totum
+=: rowAdd(row: $row1; field: "nested_key" = "new_value"; path: $path)
+
+row1: rowCreate(field: "data" = $data)
+	data: rowCreate(field: "nested_key" = "old_value")
+
+path: listCreate(item: "data")
+```
+
+Результат: {"data":{"nested_key":"new_value"}}
+
+**Добавить элементы в массив в определенном порядке**
+
+```totum
+=: rowAdd(row: $row1; field: "new_key1" = "new_value1"; field: "new_key2" = "new_value2")
+
+row1: rowCreate(field: "existing_key" = "existing_value")
+```
+
+Результат: {"existing_key":"existing_value","new_key1":"new_value1","new_key2":"new_value2"}
 
 ### <a name="fn-rowListAdd"></a>rowListAdd
 
@@ -2891,7 +5726,6 @@ example2: rowAdd(row: #example_data; field: "test2" = "2"; field: "test3" = "3";
 =: rowListAdd(rowlist: ; rowlist: ; field: "" = ; field: "" = )
 ```
 Возвращает [список][14] [ассоциативных массивов][30], дополненный и исправленный последующими `rowList` и `field`.
-
 
 **Обязательные параметры**
 
@@ -2910,36 +5744,75 @@ example2: rowAdd(row: #example_data; field: "test2" = "2"; field: "test3" = "3";
 	+ Если правым параметром является не [список][14] — добавляется одинаковое значение во все строки списка.
 	
 
-```totum
-example: rowListAdd(rowlist: $rowList1; rowlist: $rowList2; field: "test" = 1; field: "testlist" = $valListl; field: "test2" = 0)
-	rowList1: jsonExtract(text: '[{"test1":1,"test2":1}, {"test1":2,"test2":2}, {"test1":3,"test2":3}]')
-	rowList2: jsonExtract(text: '[{"test10":10}, {"test10":20}, {"test10":30}]')
-	valListl: jsonExtract(text: '[5, 6, 7]')
+#### <a name="fn-rowListAdd-examples"></a>Примеры
 
-// Результат: [
-//  {
-//    "test": 1,
-//    "test1": 1,
-//    "test2": 0,
-//    "test10": 10,
-//    "testlist": 5
-//  },
-//  {
-//    "test": 1,
-//    "test1": 2,
-//    "test2": 0,
-//    "test10": 20,
-//    "testlist": 6
-//  },
-//  {
-//    "test": 1,
-//    "test1": 3,
-//    "test2": 0,
-//    "test10": 30,
-//    "testlist": 7
-//  }
-// ]
+**Объединить два списка ассоциативных массивов (rowlist) с добавлением новых колонок**
+
+```totum
+=: rowListAdd(rowlist: $rowList1; rowlist: $rowList2; field: "new_field1" = 1; field: "new_field2" = $valList)
+
+rowList1: json`[{"key1":1,"key2":2}, {"key1":3,"key2":4}]'`
+rowList2: json`[{"key3":5}, {"key3":6}]`
+
+valList: json`[7, 8]`
 ```
+
+Результат: [{"key1":1,"key2":2,"key3":5,"new_field1":"1","new_field2":7},{"key1":3,"key2":4,"key3":6,"new_field1":"1","new_field2":8}]
+
+**Добавить одинаковое значение в каждую строку списка ассоциативных массивов (rowlist)**
+
+```totum
+=: rowListAdd(rowlist: $rowList; field: "new_field" = 1)
+
+rowList: json`[{"key1":1,"key2":2}, {"key1":3,"key2":4}]`
+```
+
+Результат: [{"key1":1,"key2":2,"new_field":1},{"key1":3,"key2":4,"new_field":1}]
+
+**Добавить еще один ключ в существующий список ассоциативных массивов (rowlist) в каждой строке существующего, должно быть свое значение**
+
+```totum
+=: rowListAdd(rowlist: $rowList; field: "new_field" = $values)
+
+rowList: json`[{"key1":1,"key2":2}, {"key1":3,"key2":4}]`
+values: json`[5, 6]`
+```
+
+Результат: [{"key1":1,"key2":2,"new_field":5},{"key1":3,"key2":4,"new_field":6}]
+
+**Объединить два списка ассоциативных массивов rowlist если они имеют разную длину**
+
+```totum
+=: rowListAdd(rowlist: $rowList1; rowlist: $rowList2)
+
+rowList1: json`[{"key1":1,"key2":2}, {"key1":3,"key2":4}]`
+rowList2: json`[{"key3":5}]`
+```
+
+Результат: [{"key1":1,"key2":2,"key3":5,"new_field1":"1","new_field2":7},{"key1":3,"key2":4,"new_field1":"1","new_field2":null}]
+
+**Заменить существующие колонки при объединении списков ассоциативных массивов (rowlist)**
+
+```totum
+=: rowListAdd(rowlist: $rowList1; rowlist: $rowList2; field: "key1" = $newValues)
+
+rowList1: json`[{"key1":1,"key2":2}, {"key1":3,"key2":4}]`
+rowList2: json`[{"key3":5}, {"key3":6}]`
+
+newValues: json`[10, 20]`
+```
+
+Результат: [{"key1":10,"key2":2,"key3":5},{"key1":20,"key2":4,"key3":6}]
+
+**Добавить еще один ключ в существующий список ассоциативных массивов (rowlist) в каждой строке существующего, должно быть одно и тоже добавленное значение**
+
+```totum
+=: rowListAdd(rowlist: $rowList; field: "new_field" = 1)
+
+rowList: json`[{"key1":1,"key2":2}, {"key1":3,"key2":4}]`
+```
+
+Результат: [{"key1":1,"key2":2,"new_field":1},{"key1":3,"key2":4,"new_field":1}]
 
 ### <a name="fn-rowKeys"></a>rowKeys
 
@@ -2949,22 +5822,41 @@ example: rowListAdd(rowlist: $rowList1; rowlist: $rowList2; field: "test" = 1; f
 ```
 Возвращает [список][14] из ключей [ассоциативного массива][30].
 
-
 **Обязательные параметры**
 
 + **row** — [ассоциативный массив][30], по которому будут взяты ключи.
 
+#### <a name="fn-rowKeys-examples"></a>Примеры
 
+**Получить список ключей из ассоциативного массива**
 
 ```totum
-example: rowKeys(row: $row)
-	row: rowCreate(field: "test1" = "1"; field: "test2" = "1")
+=: rowKeys(row: $row)
 
-// Результат: [
-//  "test1",
-//  "test2"
-// ]
+row: rowCreate(field: "test1" = "1"; field: "test2" = "2")
 ```
+
+Результат: ["test1", "test2"]
+
+**Извлечь ключи из row**
+
+```totum
+=: rowKeys(row: $row)
+
+row: rowCreate(field: "test1" = "1"; field: "test2" = "2")
+```
+
+Результат: ["test1", "test2"]
+
+**Вернуть ключи из ассоциативного массива (row)**
+
+```totum
+=: rowKeys(row: $row)
+
+row: rowCreate(field: "test1" = "1"; field: "test2" = "2")
+```
+
+Результат: ["test1", "test2"]
 
 ### <a name="fn-rowValues"></a>rowValues
 
@@ -2974,23 +5866,31 @@ example: rowKeys(row: $row)
 ```
 Возвращает значения переданного [ассоциативного массива][30].
 
-
 **Обязательные параметры**
 
 + **row** — [ассоциативный массив][30] по которому будут взяты значения.
 
+#### <a name="fn-rowValues-examples"></a>Примеры
 
+**Получить значения из ассоциативного массива**
 
 ```totum
-example: rowValues(row: $row)
-	row: rowCreate(field: "test1" = "1"; field: "test2" = "1")
+=: rowValues(row: $row)
 
-// Результат: 
-// [
-//  "1",
-//  "1"
-// ]
+row: rowCreate(field: "test1" = "1"; field: "test2" = "2")
 ```
+
+Результат: ["1", "2"]
+
+**Извлечь значения из строки таблицы взятой функцией selectRow**
+
+```totum
+=: rowValues(row: $row)
+
+row: selectRow(table: 'table_name'; fields: "*ALL*";  where: 'id' = 1)
+```
+
+Результат: ["some_data","some_data","some_data"]
 
 ### <a name="fn-rowKeysReplace"></a>rowKeysReplace
 
@@ -2999,7 +5899,6 @@ example: rowValues(row: $row)
 =: rowKeysReplace(row: ; from: ; to: ; recursive: false)
 ```
 Возвращает [ассоциативный массив][30] c ключами замененными с `from` на `to`.
-
 
 **Обязательные параметры**
 
@@ -3011,8 +5910,6 @@ example: rowValues(row: $row)
 
 + Если во `from` и `to` передаются списки, то замены будут произведены попарно.
 
-
-
 **Необязательные параметры**
 
 + **recursive** — проверять вложенные ключи для [списков][14] [ассоциированных массивов][30].
@@ -3021,13 +5918,92 @@ example: rowValues(row: $row)
 	+ `false` — не искать (по умолчанию).
 	+ `"3"` — искать внутри на указанном уровне. В том числе можно передать как `список`. Уровни нумеруются от `0` — верхний, первое вложение — `1` итд.
 
+#### <a name="fn-rowKeysReplace-examples"></a>Примеры
+
+**Заменить ключи в списке ассоциативных массивов (rowlist)**
 
 ```totum
-example: rowKeysReplace(row: $rowList; from: "a"; to: "c"; recursive: true)
-	rowList: jsonExtract(text: '[{"a": 1, "b": 2}, {"a": 4, "d": 4}]')
-	
-// Результат: [{"c": 1,"b": 2},{"c": 4,"d": 4}]
+=: rowKeysReplace(row: $rowList; from: "a"; to: "c"; recursive: true)
+
+rowList: json`[{"a": 1, "b": 2}, {"a": 3, "d": 4}]`
 ```
+
+Результат: [{"c": 1, "b": 2}, {"c": 3, "d": 4}]
+
+**Заменить несколько ключей в списке ассоциативных массивов rowlist**
+
+```totum
+=: rowKeysReplace(row: $rowList; from: json`["a", "b"]`; to: json`["c", "d"]`; recursive: true)
+
+rowList: json`[{"a": 1, "b": 2}, {"a": 3, "d": 4}]`
+```
+
+Результат: [{"c": 1, "d": 2}, {"c": 3, "d": 4}]
+
+**Заменить ключи в ассоциативном массиве row**
+
+```totum
+=: rowKeysReplace(row: $row; from: "some_old_key"; to: "some_new_key")
+
+row: rowCreate(field: "some_old_key" = "val_1"; field: "some_key_2" = "val_2")
+```
+
+Результат: {"some_new_key":"val_1","some_key_2":"val_2"}
+
+**Заменить ключи в row у которого есть вложенные row и нам нужно old_key, который есть на верхнем уровне и на вложенном уровне заменить на new_key**
+
+```totum
+=: rowKeysReplace(row: $row; from: "old_key"; to: "new_key"; recursive: true)
+
+row: rowCreate(field: "old_key" = "val_1"; field: "nested_row" = $nester_row)
+	nester_row: rowCreate(field: "old_key" = "nested_val"; field: "another_key" = "another_val")
+```
+
+Результат: {"new_key":"val_1","nested_row":{"new_key":"nested_val","another_key":"another_val"}}
+
+**Заменить несколько ключей одновременно в ассоциативном массиве row**
+
+```totum
+=: rowKeysReplace(row: $row; from: json`["key1", "key2"]`; to: json`["new_key1", "new_key2"]`)
+
+row: rowCreate(field: "key1" = "value1"; field: "key2" = "value2")
+```
+
+Результат: {"new_key1": "value1", "new_key2": "value2"}
+
+**Заменить ключи в row у которого есть вложенные row и нам нужно old_key, который есть на верхнем уровне и на вложенном уровне заменить на new_key, но сделать это только для верхнего уровня**
+
+```totum
+=: rowKeysReplace(row: $row; from: "old_key"; to: "new_key")
+
+row: rowCreate(field: "old_key" = "val_1"; field: "nested_row" = $nested_row)
+	nested_row: rowCreate(field: "old_key" = "nested_val"; field: "another_key" = "another_val")
+```
+
+Результат: {"new_key":"val_1","nested_row":{"old_key":"nested_val","another_key":"another_val"}}
+
+**Заменить ключи в row у которого есть вложенные row и нам нужно old_key, который есть на верхнем уровне и на вложенном уровне заменить на new_key, но сделать это только для вложенного уровня**
+
+```totum
+=: rowKeysReplace(row: $row; from: "old_key"; to: "new_key"; recursive: 1)
+
+row: rowCreate(field: "old_key" = "val_1"; field: "nested_row" = $nested_row)
+	nested_row: rowCreate(field: "old_key" = "nested_val"; field: "another_key" = "another_val")
+```
+
+Результат: {"old_key":"val_1","nested_row":{"new_key":"nested_val","another_key":"another_val"}}
+
+**Заменить ключи в row у которого есть вложенные row в который вложен еще один row. Нам нужно old_key, который есть на всех уровнях, заменить на new_key. Но сделать это только для вложенных уровней**
+
+```totum
+=: rowKeysReplace(row: $row; from: "old_key"; to: "new_key"; recursive: json`[1,2]`)
+
+row: rowCreate(field: "old_key" = "val_1"; field: "nested_row" = $nested_row)
+	nested_row: rowCreate(field: "old_key" = "nested_val"; field: "another_nested_row" = $another_nested_row)
+		another_nested_row: rowCreate(field: "old_key" = "another_nested_val"; field: "another_key" = "another_val")
+```
+
+Результат: {"old_key":"val_1","nested_row":{"new_key":"nested_val","another_nested_row":{"new_key":"another_nested_val","another_key":"another_val"}}}
 
 ### <a name="fn-rowKeysRemove"></a>rowKeysRemove
 
@@ -3037,12 +6013,9 @@ example: rowKeysReplace(row: $rowList; from: "a"; to: "c"; recursive: true)
 ```
 Возвращает [ассоциированный массив][30] с удаленными ключами (колонками) `key` или `keys`.
 
-
 **Обязательные параметры**
 
 + **row** — исходный [список][14] или [ассоциированный массив][30].
-
-
 
 **Необязательные параметры**
 
@@ -3056,14 +6029,67 @@ example: rowKeysReplace(row: $rowList; from: "a"; to: "c"; recursive: true)
 	+ `false` — не искать (по умолчанию).
 	+ `"3"` — искать внутри на указанном уровне. В том числе можно передать как `список`. Уровни нумеруются от `0` — верхний, первое вложение — `1` итд.
 
+#### <a name="fn-rowKeysRemove-examples"></a>Примеры
 
+**Удалить ключ 'name' из ассоциированного массива**
 
 ```totum
-example: rowKeysRemove(row: $rowList; key: "a"; recursive: true)
-	rowList: jsonExtract(text: '[{"a": 1, "b": 2}, {"a": 4, "d": 4}]')
+=: rowKeysRemove(row: $rowList; key: "name")
 	
-// Результат: [{"b": 2},{"d": 4}]
+	rowList: json`{"name": "John", "age": 30, "city": "New York"}`
 ```
+
+Результат: {"age": 30, "city": "New York"}
+
+**Удалить несколько ключей 'name' и 'age' из списка ассоциированных массивов**
+
+```totum
+=: rowKeysRemove(row: $rowList; keys: json`["name", "age"]`; recursive: true)
+	
+	rowList: json`[{"name": "John", "age": 30, "city": "New York"}, {"name": "Jane", "age": 25, "city": "Los Angeles"}]`
+```
+
+Результат: [{"city":"New York"}, {"city":"Los Angeles"}]
+
+**Удалить ключ 'address' из ассоциированного массива (row) у которого в один из ключей вложен еще один row и ключ 'address' есть на первом и втором уровне. Как его удалить только на втором уровне вложенности**
+
+```totum
+=: rowKeysRemove(row: $rowList; key: "address"; recursive: 1)
+	
+	rowList: json`{"name": "John", "address": "123 Main St", "details": {"age": 30, "address": "456 Elm St"}}`
+```
+
+Результат: {"name":"John","address":"123 Main St","details":{"age":30}}
+
+**Удалить ключ 'id' вложенного rowlist, если у нас есть row с ключами id и details и в ключ details вложен rowlist, строки которого тоже имеют ключ id и нам нужно удалить этот ключ только из строк rowlist**
+
+```totum
+=: rowKeysRemove(row: $rowList; key: "id"; recursive: "2")
+	
+	rowList: json`{"id": 1, "details": [{"id": 2, "name": "Item 1"}, {"id": 3, "name": "Item 2"}]}`
+```
+
+Результат: {"id":1,"details":[{"name":"Item 1"},{"name":"Item 2"}]}
+
+**Удалить ключ 'address' из ассоциированного массива (row) у которого в один из ключей вложен еще один row и ключ 'address' есть на первом и втором уровне. Как его удалить со всех уровней вложенности**
+
+```totum
+=: rowKeysRemove(row: $rowList; key: "address"; recursive: true)
+	
+	rowList: json`{"name": "John", "address": "123 Main St", "details": {"age": 30, "address": "456 Elm St"}}`
+```
+
+Результат: {"name": "John", "details": {"age": 30}}
+
+**Удалить ключ 'address' из ассоциированного массива (row) у которого в один из ключей вложен еще один row и ключ 'address' есть на первом и втором уровне. Как его удалить только с верхнего уровня вложенности**
+
+```totum
+=: rowKeysRemove(row: $rowList; key: "address"; recursive: 0)
+	
+	rowList: json`{"name": "John", "address": "123 Main St", "details": {"age": 30, "address": "456 Elm St"}}`
+```
+
+Результат: {"name": "John", "details": {"age": 30, "address": "456 Elm St"}}
 
 ## <a name="part-8"></a>Логика
 
@@ -3074,7 +6100,6 @@ example: rowKeysRemove(row: $rowList; key: "a"; recursive: true)
 =: if(condition: ; then: ; else: )
 ```
 Возвращает при верном условии `condition` значение секции `then`, в противном случае — значение секции `else` либо `null`, если она не задана.
-
 
 **Обязательные параметры**
 
@@ -3095,32 +6120,183 @@ example: rowKeysRemove(row: $rowList; key: "a"; recursive: true)
 
 + **else** — значение, либо ссылка на строку или параметр, которые будут рассчитаны в случае, если хотя бы один `condition` выполнился в `false`.
 
+#### <a name="fn-if-examples"></a>Примеры
+
+**Проверить, что значение одного поля больше значения другого и вернуть true или false**
 
 ```totum
-example1: if(condition: $test1 = 1; condition: $test11 = 2; then: true; else: false)
-	test1: 1
-	test11: 3
-// Результат: false 
+=: if(condition: #field1 > #field2; then: true; else: false)
 ```
 
+Результат: false
+
+**Сравнить значение поля с числом 100 и вернуть 0, если оно меньше или равно 100 и вернуть само число, если больше**
 
 ```totum
-example2: if(condition: $p1_2 < $p2_2; condition: $p2_2 < $p3_2; then: "Start"; else: "Stop")
-p1_2: 10
-p2_2: 20
-p3_2: 30
-
-// Результат: "Start"
+=: if(condition: #field > 100; then: #field; else: 0)
 ```
 
+Результат: 0
+
+**Задать несколько условий и вернуть значение, если все условия выполнены и пустоту, если не выполнено хотя бы одно**
 
 ```totum
-example3: if(condition: $p1_3 > $p2_3; then: true)
-p1_3: 10
-p2_3: 20
+=: if(condition: #field1 > 10; condition: #field2 < 20; then: $value; else: "")
 
-// Результат: ""
+value: "All conditions met"
 ```
+
+Результат: All conditions met
+
+**Задать условие и вернуть значение, если условие не выполнено**
+
+```totum
+=: if(condition: #field1 > 10; then: ""; else: "Condition not met")
+```
+
+Результат: Condition not met
+
+**Использовать несколько условий и вернуть значение, если хотя бы одно из условий не выполнено**
+
+```totum
+=: if(condition: #field1 > 10; condition: #field2 < 20; then: ""; else: "Condition not met")
+```
+
+Результат: Condition not met
+
+**Оптимизировать сравнения, если у нас есть несколько условий, одно из условий требует вычисления в отдельной строке кода, а в другом сравнивается с числом значение поля из текущей таблицы**
+
+```totum
+=: if(condition: #field < 100; condition: $calc > 50; then: "Conditions met"; else: "Conditions not met")
+
+calc: 10 * 5
+```
+
+Результат: Conditions not met
+
+**Оптимизировать сравнения, если у нас есть несколько условий, одно из условий требует запроса к данным из другой таблицы в отдельной строке кода, а в другом сравнивается с числом значение поля из текущей таблицы**
+
+```totum
+=: if(condition: #field < 100; condition: $external_data > 50; then: "Conditions met"; else: "Conditions not met")
+
+external_data: select(table: 'other_table'; field: 'data_field'; where: 'id' = 1)
+```
+
+Результат: Conditions not met
+
+**Оптимизировать сравнения, если у нас есть несколько условий, одно из условий требует запроса к данным из другой таблицы в отдельной строке кода, а в другом для сравнения требуется умножить поле из текущей таблицы на число**
+
+```totum
+=: if(condition: math`#field * 2` < 100; condition: $external_data > 50; then: "Conditions met"; else: "Conditions not met")
+
+external_data: select(table: 'other_table'; field: 'data_field'; where: 'id' = 1)
+```
+
+Результат: Conditions not met
+
+**Проверить условие, что список значений, содержит в себе число и вернуть этот список если да и пустоту, если нет**
+
+```totum
+=: if(condition: $list = 5; then: $list; else: "")
+
+~list: json`[1,2,3,4,5]`
+```
+
+Результат: [1,2,3,4,5]
+
+**Проверить условие, что список значений, содержит в себе число и вернуть этот список если да и пустой список, если нет**
+
+```totum
+=: if(condition: $list = 5; then: $list; else: $#lc)
+
+~list: json`[1,2,3,4,5]`
+```
+
+Результат: [1,2,3,4,5]
+
+**Проверить условие, что список взятый из поля в другой таблице, содержит в себе число и вернуть этот список если да и пустой список, если нет**
+
+```totum
+=: if(condition: $external_list = 5; then: $external_list; else: $#lc)
+
+~external_list: selectList(table: 'other_table'; field: 'list_field'; where: 'order_num' = 129)
+```
+
+Результат: []
+
+**Проверить условие, что список взятый из поля в другой таблице, содержит в себе пустое значение и вернуть пустой список если да и строку "checked" если не содержит**
+
+```totum
+=: if(condition: $external_list = ""; then: $#lc; else: "checked")
+
+external_list: selectList(table: 'other_table'; field: 'list_field'; where: 'order_num' = 129)
+```
+
+Результат: checked
+
+**Проверить условие, что список взятый из поля в другой таблице, является пустым списком и если является то вернуть 0, а если нет, то вычислить сумму значений этого списка**
+
+```totum
+=: if(condition: $external_list = $#lc; then: 0; else: $list_sum)
+
+~external_list: selectList(table: 'other_table'; field: 'list_field'; where: 'order_num' = 129)
+
+list_sum: listSum(list: $external_list)
+```
+
+Результат: 0
+
+**Проверить условие, что список значений, содержит в себе хотя бы одно значение из списка сравнения и вернуть этот список если да и пустой список, если нет**
+
+```totum
+=: if(condition: $list = json`[2,3]`; then: $list; else: $#lc)
+
+~list: json`[1,2,3,4,5]`
+```
+
+Результат: [1,2,3,4,5]
+
+**Проверить условие, что список значений, полностью совпадает со списком сравнения и вернуть этот список если да и пустой список, если нет**
+
+```totum
+=: if(condition: $list == json`[1,2,3,4,5]`; then: $list; else: $#lc)
+
+~list: json`[1,2,3,4,5]`
+```
+
+Результат: [1,2,3,4,5]
+
+**Проверить условие, что список строковых статусов, содержит в себе хотя бы один статус из списка сравнения и выполнить действие установки значения в поле текущей таблицы и ничего не делать если условие не выполняется**
+
+```totum
+=: if(condition: $status_list = json`["active", "pending"]`; then: $set_field)
+
+status_list: json`["active", "inactive", "completed"]`
+
+set_field: set(table: $#ntn; field: 'h_checked' = true)
+```
+
+Результат: set(table: $#ntn; field: 'h_checked' = true)
+
+**Проверить условие, что список строковых статусов, содержит в себе хотя бы один статус из списка сравнения и выполнить действие установки значения в поле текущей таблицы в текущую строку и ничего не делать если условие не выполняется**
+
+```totum
+=: if(condition: $status_list = json`["active", "pending"]`; then: $set_field)
+
+status_list: json`["active", "inactive", "completed"]`
+
+set_field: set(table: $#ntn; field: 'checked' = true; where: 'id' = #id)
+```
+
+Результат: set(table: $#ntn; field: 'checked' = true; where: 'id' = #id)
+
+**Сравнить две даты и вернуть true если вторая дата позже первой и false если нет**
+
+```totum
+=: if(condition: #date1 < #date2; then: true; else: false)
+```
+
+Результат: false
 
 ### <a name="fn-while"></a>while
 
@@ -3129,7 +6305,6 @@ p2_3: 20
 =: while(preaction: ; condition: ; limit: ; action: ; postaction: ; iterator: )
 ```
 Выполняет действия `action`, если выполняются условия `condition` с количеством повторений `limit`, изменяя `iterator` на +1 в каждой итерации. Возвращает значение последнего `preaction|action|postaction` в зависимости от их наличия в функции.
-
 
 **Необязательные параметры**
 
@@ -3165,15 +6340,74 @@ p2_3: 20
 	+ Задается как [одна][14] [строка][6] и обозначает название итератора для возможности обращения к нему как к [переменной внутри кода][11]. Назначайте разные переменные если используете несколько `while` с итераторами в одной секции кода.
 	+ При отсутствии нет возможности обращения к значению итератора.
 
+#### <a name="fn-while-examples"></a>Примеры
 
+**Выполнить несколько действий в одной строке кода** *(код действия)*
 
 ```totum
-example: while(action: $set1; action: $set2)
-	set1: set(table: 'table1'; field: 'field1' = 1)
-	set2: set(table: 'table2'; field: 'field2' = 2)
+=: while(action: $set1; action: $set2)
 
-// Результат: Присвоит полям field1 и field2 в таблицах table1 и table2 значения 1 и 2 соответственно.
+set1: set(table: 'table1'; field: 'field1' = 1; where: 'order' = #id)
+set2: set(table: 'table2'; field: 'field2' = 2; where: 'order' = #id)
 ```
+
+Результат: выполняться два действия последовательно
+
+**Задать условие для выполнения нескольких действий** *(код действия)*
+
+```totum
+=: while(condition: #condition_field = true; action: $set1; action: $set2)
+
+set1: set(table: 'table1'; field: 'field1' = 1; where: 'order' = #id)
+set2: set(table: 'table2'; field: 'field2' = 2; where: 'order' = #id)
+```
+
+Результат: если значение в condition_field = true то выполняться два действия последовательно
+
+**Несколько раз выполнить одно и то-же действие, до получения необходимого результата. Например нам нужно сгенерировать уникальный ключ и проверить его отсутсвие в базе, если есть повторение, сгенерировать новый, но не более 10 раз**
+
+```totum
+=: while(preaction: $create_uniq_num; condition: $exist != ""; action: $create_uniq_num; limit: 10)
+
+	create_uniq_num: var(name: "uniq_num"; value: $generate)
+		generate: strRandom(length: 10; numbers: "true"; letters: "true"; symbols: "false")
+	
+	exist: select(table: 'sku_list'; field: 'id'; where: 'uniq_num' = $#uniq_num)
+```
+
+Результат: $create_uniq_num
+
+**Выполнить несколько запросов к стороннему серверу с интервалом 10 секунд и записать в поле в текущей таблице ответ, если код заголовка ответа равен 200. Но сделать не более 10 попыток и если ответ 200 не будет получен, записать в поле пустое значение** *(код действия)*
+
+```totum
+=: while(preaction: $create_zero_var; condition: $check_200 = false; action: $sleep; action: $request; iterator: "iterator"; limit: 10; postaction: $set)
+
+		create_zero_var: var(name: "answer"; value: "")
+
+		check_200: strRegMatches(str: $#answer; template: "HTTP/1\.1 200 OK")
+
+	sleep: if(condition: $#iterator != 0; then: $not_skip)
+		not_skip: sleep(sec: 10)
+	
+	request: var(name: "answer"; value: $get_status)
+  		get_status: getFromScript(uri: "https://some-api-url"; posts: "request_key" = "some_key_value"; header: true; timeout: 5)
+
+set: if(condition: $check_200 = true; then: $set_response; else: "")
+	set_response: set(field: $#ntn; field: 'response_field' = $#answer)
+```
+
+Результат: в зависимости от ответа внешнего сервера
+
+**Задать несколько условий для выполнения действий и потом выполнить несколько действий** *(код действия)*
+
+```totum
+=: while(condition: #condition_field1 = true; condition: #condition_field2 = false; action: $set1; action: $set2)
+
+set1: set(table: 'table1'; field: 'field1' = 1; where: 'order' = #id)
+set2: set(table: 'table2'; field: 'field2' = 2; where: 'order' = #id)
+```
+
+Результат: если значение в condition_field1 = true и в condition_field2 = false то выполняться два действия последовательно
 
 ### <a name="fn-var"></a>var
 
@@ -3183,13 +6417,11 @@ example: while(action: $set1; action: $set2)
 ```
 Сохраняет и отдает значение переменной внутри секции кода конкретного поля.
 
-
 **Обязательные параметры**
 
 + **name** — [одна][14] [строка][5], имя переменной по которому идет обращение к данным.
 
 	+ Необходимо следить, чтобы в пределах одной секции кода `name` не повторялись и не пересекались со значениями других [переменных внутри кода][11]. 
-
 
 **Необязательные параметры**
 
@@ -3205,37 +6437,61 @@ example: while(action: $set1; action: $set2)
 	+ Может быть как [одним значением][14], так и [списком][14].
 	+ В коде [пользовательской функции][657] параметры функции определены всегда (непереданный — `null`), поэтому `default` для них не срабатывает — [проверяйте на пустое][658].
 
-
-
-```totum
-example1: while(action: $set; limit: 30; iterator: "iter1")
-set: var(name: "count"; value: $plus)
-plus: listAdd(list: $var; item: $i)
-var: var(name: "count"; default: $#lc)
-i: dateAdd(date: $#nd; days: $days)
-days: $#iter1 * -1
-
-```
-
-```totum
-example2: while(preaction: $zero2; action: $set2; limit: 30; iterator: "iter2")
-zero2: var(name: "count"; value: $#lc)
-set2: var(name: "count"; value: $plus2)
-plus2: listAdd(list: $#count; item: $i2)
-i2: dateAdd(date: $#nd; days: $days2)
-days2: $#iter2 * -1
-```
-
-```totum
-example3: $while{var: "count" = $#lc}
-while: while(action: $set3; limit: 30; iterator: "iter3")
-set3: var(name: "count"; value: $plus3)
-plus3: listAdd(list: $#count; item: $i3)
-i3: dateAdd(date: $#nd; days: $days3)
-days3: $#iter3 * -1
-```
-
 > В логике Тотума вместо циклов существенно более эффективно использовать [рекурсии][214] или функцию [listReplace][486], обрабатывающую списки построчно.
+
+#### <a name="fn-var-examples"></a>Примеры
+
+**Сохранить значение переменной внутри секции кода**
+
+```totum
+=: var(name: "variable_name"; value: 10)
+```
+
+Результат: 10
+
+**Вызвать переменную внутри кода так, что бы присвоить ей значение в случае, если она не определена**
+
+```totum
+=: var(name: "variable_name"; default: 10)
+```
+
+Результат: 10
+
+**Присвоить значение переменной и получить его в коде не вызывая отдельную строку**
+
+```totum
+=: while(preaction: $create; action: $#variable_name)
+
+create: var(name: "variable_name"; value: 10)
+```
+
+Результат: 10
+
+**Перезаписать значение существующей переменной**
+
+```totum
+=: while(preaction: $create; action: $set_new_value)
+
+create: var(name: "variable_name"; value: 10)
+
+set_new_value: var(name: "variable_name"; value: 30)
+```
+
+Результат: 30
+
+**Внутри секции кода создать несколько переменных**
+
+```totum
+=: while(preaction: $var1; preaction: $var2; preaction: $var3; action: $list)
+
+var1: var(name: "variable1"; value: 10)
+var2: var(name: "variable2"; value: 20)
+var3: var(name: "variable3"; value: 30)
+
+list: listCreate(item: $#variable1; item: $#variable2; item: $#variable3)
+```
+
+Результат: [10,20,30]
 
 ### <a name="fn-globVar"></a>globVar
 
@@ -3247,7 +6503,6 @@ days3: $#iter3 * -1
 Сохраняет и отдает значение переменной глобально независимо от транзакций. Короткое обращение `@$name_glob_var`
 
 > Запись происходит вне транзакционной модели, в тот момент, когда вызывается функция с передачей `name` и `value`. 
-
 
 **Обязательные параметры**
 
@@ -3280,6 +6535,56 @@ days3: $#iter3 * -1
 
 Рекомендуется использовать вместе с [tryCatch][288] — в этом случае в `catch` записывается обнуление переменной или установку ее в стартовое значение, которое произойдет если транзакция будет отменена.
 
+#### <a name="fn-globVar-examples"></a>Примеры
+
+**Сохранить значение переменной вне транзакции, что бы ее могли получить другие процессы**
+
+```totum
+=: globVar(name: "variable_name"; value: 10)
+```
+
+Результат: 10
+
+**Получить значение глобальной переменной через функцию, если оно было установлено ранее**
+
+```totum
+=: globVar(name: "variable_name")
+```
+
+Результат: 10
+
+**Задать значение по умолчанию для глобальной переменной, если она не определена**
+
+```totum
+=: globVar(name: "variable_name"; default: 10)
+```
+
+Результат: 10
+
+**Получить глобальную переменную быстрым способом**
+
+```totum
+=: @$variable_name
+```
+
+Результат: 10
+
+**Установить блокировку на чтение глобальной переменной на 5 секунд, для ее проверки и записи нового значения**
+
+```totum
+=: globVar(name: "variable_name"; block: 5)
+```
+
+Результат: 10
+
+**Как в система Totum запросить глобальную переменную вместе с датой и временем ее установки, что бы понять, валидна она или нет?**
+
+```totum
+=: globVar(name: "variable_name"; date: true)
+```
+
+Результат: {"date": "2024-07-19 13:19:47","secpart": "303308","value": "some value"}
+
 ### <a name="fn-procVar"></a>procVar
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
@@ -3298,6 +6603,51 @@ days3: $#iter3 * -1
 
 + **default** — работает только при отсутствии параметра `value`, присваивает значение переменной в том случае если при обращении к ней она не определена. Вычисляется при старте функции в любом случае.
 
+#### <a name="fn-procVar-examples"></a>Примеры
+
+**Сохранить значение переменной, существующей пока идет процесс цепочки вычислений и через которую можно передать значение между кодами**
+
+```totum
+=: procVar(name: "my_var"; value: 100)
+```
+
+Результат: 100
+
+**Вызвать переменную которая сохраняет свое значение, пока идет процесс цепочки вычислений, так, что бы присвоить ей значение в случае, если она не определена**
+
+```totum
+=: procVar(name: "my_var"; default: 100)
+```
+
+Результат: 100
+
+**Получить значение процессной переменной, сохраняющей свое значение между различными кодами пока идет процесс цепочки вычислений, не вызывая отдельную строку кода**
+
+```totum
+=: $@my_var
+```
+
+Результат: будет возвращено значение процессной переменной
+
+**Перезаписать значение существующей процессной переменной**
+
+```totum
+=: procVar(name: "my_var"; value: 200)
+```
+
+Результат: 200
+
+**Внутри секции кода создать несколько процессных переменных**
+
+```totum
+=: while(action: $proc_var_1; action: $proc_var_2)
+
+proc_var_1: procVar(name: "var1"; value: 100)
+proc_var_2: procVar(name: "var2"; value: 200)
+```
+
+Результат: будет создано две процессные переменные var1 и va2 со значениями 100 и 200 соответственно
+
 ### <a name="fn-exec"></a>exec
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
@@ -3305,7 +6655,6 @@ days3: $#iter3 * -1
 =: exec(code: ; var: "" = ; var: "" = ; ssh: )
 ```
 Запускает выполнение кода, переданного в параметре `code`. Вызванный код будет выполняться по правилам той [секции][381], из которой был вызван.
-
 
 **Обязательные параметры**
 
@@ -3346,14 +6695,99 @@ days3: $#iter3 * -1
 	+ Отделенные процессы не перезапускаются по ошибке одновременного доступа.
 	+ Все отделенные процессы будут выполнятся параллельно, что ведет к одновременной загрузке всех доступных процессорных ядер.
 
+#### <a name="fn-exec-examples"></a>Примеры
+
+**Выполнить код, который хранится в другой таблице, передав в него переменные**
+
 ```totum
-example: exec(code: @table.h_code_text.name[some_code]; var: "varname" = 10)
+=: exec(code: $select_code; var: "varname" = 10)
 
-// h_code_text 
-// "=: 10 + $#varname"
-
-// Результат: 20
+select_code: select(table: 'table'; field: 'code_text'; where: 'name' = "some_code")
 ```
+
+Результат: будет выполнен код взятый в строке select_code с передачей в него переменной varname
+
+**Передать переменные во вложенный код, выполняемый через exec**
+
+```totum
+=: exec(code: $select_code; var: "varname" = 10; var: "second_var" = "some value")
+
+select_code: select(table: 'table'; field: 'code_text'; where: 'name' = "some_code")
+```
+
+Результат: будет выполнен код взятый в строке select_code с передачей в него переменных varname и second_var
+
+**Отделить выполняемый через exec код в отдельный процесс на сервере, что бы текущий код не ожидал результата его работы**
+
+```totum
+=: exec(code: $select_code; var: "varname" = 10; ssh: true)
+
+select_code: select(table: 'table'; field: 'code_text'; where: 'name' = "some_code")
+```
+
+Результат: будет выполнен код взятый в строке select_code с передачей в него переменной varname и это действие будет выделено в отдельный процесс на сервере.
+
+**Передать код из другого поля текущей таблицы в функцию exec**
+
+```totum
+=: exec(code: #field_name)
+```
+
+Результат: будет выполнен код из поля field_name
+
+**Передать код из поля в хедере другой таблицы так, что бы его можно было открыть в функции exec**
+
+```totum
+=: exec(code: @table.h_code_text)
+```
+
+Результат: будет выполнен код взятый из таблицы table поля хедера h_code_text
+
+**В функцию exec передать вложенный код, указанный в этом же коде**
+
+```totum
+=: exec(code: $code)
+
+```code:totum
+=: select(table: 'table'; field: 'id'; where: 'field' = $value)
+
+value: "some_value"
+```
+```
+
+Результат: будет выполнен код из строки code
+
+**Передать код из поля в строчной части другой таблицы так, что бы его можно было открыть в функции exec**
+
+```totum
+=: exec(code: @table.field_name.key_field[key])
+```
+
+Результат: будет выполнен код взятый из таблицы table поля строчной части field_name, где key_field равен строке 'key'
+
+**Вызвать две разные функции exec и передать в них два рфзных вложенных кода, указанных в этом же коде**
+
+```totum
+=: while(action: $exec_1; action: $exec_2)
+
+exec_1: exec(code: $code1)
+
+```code1:totum
+=: select(table: 'table1'; field: 'id'; where: 'field' = $value1)
+
+value1: "some_value1"
+```
+
+exec_2: exec(code: $code2)
+
+```code2:totum
+=: select(table: 'table2'; field: 'id'; where: 'field' = $value2)
+
+value2: "some_value2"
+```
+```
+
+Результат: будут последовательно выполнены два кода, указанные в соответствующих строках кода
 
 ### <a name="fn-errorException"></a>errorException 
 
@@ -3367,20 +6801,71 @@ example: exec(code: @table.h_code_text.name[some_code]; var: "varname" = 10)
 
 Указанное в `text` сообщение попадет в переменную с названием, заданным параметром `error` вызова функции [tryCatch][288]. 
 
-
 **Обязательные параметры**
 
-+ **text** —[число][5] или [строка][6], описание ошибки для пользователя.
++ **text** — [число][5] или [строка][6], описание ошибки для пользователя. Если `text` пустой, исключение не вызывается и выполнение продолжается.
 
+> Старое написание `errorExeption` тоже работает (оставлено для совместимости), но в новых кодах используйте `errorException`.
+
+#### <a name="fn-errorException-examples"></a>Примеры
+
+**Прервать выполнение всей цепочки кодов и экшенов** *(код действия)*
 
 ```totum
-example: if(condition: $#nfv = "Недопустимое значение"; then: $error)
-	error: errorException(text: "Вы ввели недопустимое значение. Ничего не сохранилось.")
-
-// Результат: Если код выполнялся в рамках веб-сессии, пользователю выведется сообщение об ошибке с текстом: "Вы ввели недопустимое значение. Ничего не сохранилось." и указанием названия таблицы, в которой размещался код. 
-// Если код выполнялся  api-скриптом, ему вернется сообщение об ошибке в формате этого api. 
-// Крон получит exeption и может отправить письмо об ошибке администратору. 
+=: errorException(text: "Some error text here")
 ```
+
+Результат: будет показана ошибка "Some error text here"
+
+**Отменить все совершенные изменения при возникновении ошибки** *(код действия)*
+
+```totum
+=: errorException(text: "Some error text here")
+```
+
+Результат: будет показана ошибка "Some error text here"
+
+**Передать сообщение об ошибке в переменную при использовании tryCatch** *(код действия)*
+
+```totum
+=: tryCatch(try: $try_code; catch: $catch_code; error: "error_message")
+
+	try_code: "some code here"
+	
+catch_code: errorException(text: $#error_message)
+```
+
+Результат: будет показана ошибка: "Вы ввели недопустимое значение. Ничего не сохранилось."
+
+**Указать текст ошибки для пользователя** *(код действия)*
+
+```totum
+=: errorException(text: "Some error text here")
+```
+
+Результат: будет показана ошибка "Some error text here"
+
+**Обработать недопустимое значение и прервать выполнение кода** *(код действия)*
+
+```totum
+=: if(condition: $#nfv = "some_stop_value"; then: $error)
+
+error: errorException(text: "This value is not avaliable!")
+```
+
+Результат: будет показана ошибка: "This value is not avaliable!"
+
+**Отправить письмо об ошибке администратору при возникновении исключения в кроне** *(код действия)*
+
+```totum
+=: tryCatch(try: $try_code; catch: $catch_code; error: "error_message")
+
+try_code: "some code here"
+
+catch_code: emailSend(to: 1; title: "Error cron message"; body: str`"Crone X make an error:" ++ $#error_message`)
+```
+
+Результат: в случае ошибки кода будет отправлено письмо на email пользователя id=1 "Crone X make an error: error_text_here"
 
 ### <a name="fn-tryCatch"></a>tryCatch
 
@@ -3390,41 +6875,21 @@ example: if(condition: $#nfv = "Недопустимое значение"; then
 ```
 Выполняет `try`. Если при выполнении `try` произошла ошибка, откатывающая транзакцию, выполняет `catch` и передает в переменную `error` текст ошибки.
 
-
 **Обязательные параметры**
 
 + **try** — [значение строки кода][9], основной код.
 
 + **catch** — [значение строки кода][9], который выполняется в случае возникновения любой ошибки в `try`.
 
-
 **Необязательные параметры**
 
 + **error** — [одна][14] [строка][6] переменная, в которую будет передан текст ошибки в случае ошибки.
 
-
-```totum
-example1: tryCatch(try: $test1; catch: 2; error: "exception")
-	test1: 1
-	
-// Результат: 1
-```
-
-
-```totum
-example: tryCatch(try: $test2; catch: $#exception; error: "exception")
-	test2: errorExeption(text: "test")
-	
-// Результат: test
-```
-
 Имеет сахар вида:
-
 
 	=name_row_for_catch: 
 
 	name_row_for_catch: 
-
 
 Запись такого вида означает, что это `tryCatch` где в `catch` указана строка кода `name_row_for_catch` и `error: "exception"`.
 
@@ -3438,15 +6903,70 @@ catch: 2
 // Результат: 1
 ```
 
-
 ```totum
-=catch: errorExeption(text: "test")
+=catch: errorException(text: "test")
 	catch: $#exception 
 	
 // Результат: test
 ```
 
 > Проброс в `catch` при ошибке [одновременного доступа][104] гарантировано останавливает автоматический перезапуск действия!
+
+#### <a name="fn-tryCatch-examples"></a>Примеры
+
+**Выполнить код c вызовом внешнего сервера или отправки почты или внутреннего дествия totum и обработать ошибку, если она возникнет, задав имя переменной в которую будет передана ошибка** *(код действия)*
+
+```totum
+=: tryCatch(try: $some_code; catch: $catch; error: "error_var")
+
+some_code: "some_code_here"
+
+catch: insert(table: 'error_messages'; field: 'message' = $#error_var; log: true)
+```
+
+Результат: при возникновении ошибки в таблицу error_messages будет добавлена строка и в поле message будет записан текст ошибки.
+
+**Передать текст ошибки в переменную при возникновении ошибки при вызове стороннего сервера, ssh или отправки email или внутреннего дествия totum** *(код действия)*
+
+```totum
+=: tryCatch(try: $some_code; catch: $catch; error: "error_var")
+
+some_code: "some_code_here"
+
+catch: insert(table: 'error_messages'; field: 'message' = $#error_var; log: true)
+```
+
+Результат: при возникновении ошибки в таблицу error_messages будет добавлена строка и в поле message будет записан текст ошибки.
+
+**Гарантировать остановку автоматического перезапуска действия при ошибке одновременного доступа при вызове стороннего сервера или отправки email** *(код действия)*
+
+```totum
+=catch: errorException(text: "test")
+	
+	catch: ""
+```
+
+Результат: при возникновении ошибки не будет блокироваться постановка ошибки, но при ошибке одновременного доступа к таблице — перезапуска транзакции не произойдет.
+
+**Использовать сахар для упрощения записи кода с обработкой ошибок при вызове стороннего сервера или ssh или внутреннего дествия totum** *(код действия)*
+
+```totum
+=catch: "some_code_here"
+
+catch: insert(table: 'error_messages'; field: 'message' = $#exception; log: true)
+```
+
+Результат: если произойдет ошибка в коде, то будет добавлена строка в таблицу error_messages, а в поле message будет записан текст ошибки.
+
+**Не откатывать изменение значения в поле, даже если в вызванной этим изменением цепочке действий, возникла ошибка**
+
+```totum
+=catch: "some_action_here"
+
+catch: ""
+```
+
+Результат: если при изменении поля произойдет ошибка, то значение все равно будет записано.
 
 ## <a name="part-9"></a>Пересчет, вставка и изменение
 
@@ -3463,7 +6983,6 @@ catch: 2
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы для пересчета.
-
 
 **Необязательные параметры**
 
@@ -3483,7 +7002,6 @@ catch: 2
 	+ Если по условиям для таблиц со строчными [единицами пересчета][44] не выбирается ни одной строки, то будет пересчитан только [хедер][26].
 	+ Если в `table` определена таблица с [табличной единицей пересчета][44], то независимо от наличия/отсутствия параметра и результатов его работы будет пересчитана вся таблица.
 
-
 > Если в `where:` передать значение `*ALL*`, то этот `where` будет выключен! Это можно сделать через отдельную строку, например:
 
 ```totum
@@ -3496,53 +7014,87 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 
 	+ Множественный параметр — если указано несколько параметров `field` то коды будут выполнены у нескольких полей. 
 
+#### <a name="fn-reCalculate-examples"></a>Примеры
 
-**Пример 1:**
-
-tablename — таблица со строчной [единицей пересчета][25].
-id | fieldname
--- | ---------
-1 | test1
-2 | test2
-3 | test3
+**Пересчитать в таблице только определенные строки** *(код действия)*
 
 ```totum
-example1: recalculate(table: 'tablename'; where: 'fieldname' = "test3")
-
-// Результат: пересчет строки id = 3 
+=: reCalculate(table: 'tablename'; where: 'fieldname' = "test3")
 ```
 
-**Пример 2:**
+Результат: пересчет строки id = 3
 
-tablename — расчетная таблица являющаяся [единицей пересчета][25].
-id | fieldname
--- | ---------
-1 | test1
-2 | test2
-3 | test3
+**Пересчитать таблицу в цикле, указав конкретный цикл** *(код действия)*
 
 ```totum
-example2: recalculate(table: 'tablename')
-
-// Результат: пересчет всех полей
+=: reCalculate(table: 'tablename'; cycle: 1)
 ```
 
-**Пример 3:**
+Результат: пересчет таблицы 'tablename' в цикле 1
 
-tablename — таблица со строчной [единицей пересчета][25] и полями в [хедере][26].
-
-h_fieldname
-id | fieldname
--- | ---------
-1 | test1
-2 | test2
-3 | test3
+**Пересчитать временную таблицу** *(код действия)*
 
 ```totum
-example3: recalculate(table: 'tablename'; where: 'id' = 0)
-
-// Результат: пересчет только h_fieldname
+=: reCalculate(table: 'tablename'; hash: "hash_value")
 ```
+
+Результат: пересчет таблицы с hash = hash_value
+
+**Пересчитать таблицу, указав несколько условий выбора строки** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename'; where: 'fieldname1' = "value1"; where: 'fieldname2' = "value2")
+```
+
+Результат: пересчет строк, где fieldname1 = "value1" и fieldname2 = "value2"
+
+**Пересчитать все строки простой таблицы** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename'; where: 'id' != 0)
+```
+
+Результат: пересчет всех строк, где id не равно 0 (те всех строк в таблице)
+
+**Пересчитать строку в таблице с повторным выполнением в ней кода, отмеченного как Код только при добавлении в поле field_name** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename'; where: 'id' = 1; field: 'field_name')
+```
+
+Результат: пересчет строки id = 1 и выполнение кода поля field_name
+
+**Пересчитать таблицу, если она является расчетной в цикле** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename'; cycle: 1)
+```
+
+Результат: пересчет таблицы 'tablename' в цикле 1
+
+**Пересчитать строку в простой таблице и пересчитать в нескольких полях коды с признаками Только при добавлении** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename'; where: 'id' = 1; field: 'field_name1'; field: 'field_name2')
+```
+
+Результат: пересчет строки id = 1 с выполнением кода в полях field_name1 и field_name2
+
+**Пересчитать только хедер в простой таблице** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename')
+```
+
+Результат: если tablename является простой таблицей то произойдет пересчет всех полей хедера, строчная часть пересчитываться не будет
+
+**Полностью пересчитать расчетную таблицу, если она расположена в Дереве** *(код действия)*
+
+```totum
+=: reCalculate(table: 'tablename')
+```
+
+Результат: если tablename это расчетная таблице то произойдет пересчет всех ее полей
 
 ### <a name="fn-reCalculateCycle"></a>reCalculateCycle
 
@@ -3552,7 +7104,6 @@ example3: recalculate(table: 'tablename'; where: 'id' = 0)
 ```
 Пересчитывает последовательно таблицы в [циклах][89]. Если в результате пересчета цикла таблица была обновлена, то повторно она не пересчитывается. Работает в кодах аналогично [recalculate][289].
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы циклов, в которой будут пересчитаны циклы.
@@ -3561,30 +7112,58 @@ example3: recalculate(table: 'tablename'; where: 'id' = 0)
 	
 	+ Может передаваться только как [одно или список][14] [чисел][5].
 	
-**Пример:**
 
-*cycles_table*
-	*calcs_table_1* (вызывает пересчет *calcs_table_3*)
-	*calcs_table_2*
-	*calcs_table_3*
 	
 
-```totum
-example: reCalculateCycle(table: 'cycles_table'; cycle: 3)
+#### <a name="fn-reCalculateCycle-examples"></a>Примеры
 
-// Результат: Будет пересчитана *calcs_table_1*, пересчет которой вызовет пересчет *calcs_table_3*, затем пересчитается *calcs_table_2*
+**Пересчитать все таблицы в цикле** *(код действия)*
+
+```totum
+=: reCalculateCycle(table: 'cycles_table'; cycle: $list)
+
+list: listCreate(item: 1; item: 2; item: 3)
 ```
+
+Результат: Будут пересчитаны циклы 1, 2 и 3 в таблице 'cycles_table'
+
+**Пересчитать цикл** *(код действия)*
+
+```totum
+=: reCalculateCycle(table: 'cycles_table'; cycle: 3)
+```
+
+Результат: Будет последовательно по их sort пересчитаны все таблицы в цикле 1 в таблице cycles_table
+
+**Определить список циклов для пересчета и использовать его для пересчета циклов** *(код действия)*
+
+```totum
+=: reCalculateCycle(table: 'cycles_table'; cycle: $list)
+
+list: selectList(table: 'cycles_table'; field: 'id'; where: 'recalc' = true)
+```
+
+Результат: Будет последовательно по их sort пересчитаны все таблицы в циклах с id, где 'recalc' равно true
+
+**Пересчитать несколько циклов** *(код действия)*
+
+```totum
+=: reCalculateCycle(table: 'cycles_table'; cycle: $list)
+
+list: listCreate(item: 1; item: 2; item: 3)
+```
+
+Результат: Будут пересчитаны циклы 1, 2 и 3 в таблице 'cycles_table'
 
 ### <a name="fn-set"></a>set
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: set(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; log: true)
+=: set(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; log: true; exclude: ; silent: )
 ```
 + Изменяет значения в полях `field` в таблице `table` вне [строчной части][13]. 
 
 + Изменяет значения в одной строке в полях `field` в таблице `table`.
-
 
 **Обязательные параметры**
 
@@ -3631,56 +7210,271 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-**Пример 1:**
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
+#### <a name="fn-set-exclude-silent"></a>Параметры exclude и silent
+
+Есть в функциях [set][294], [setList][295], [setListExtended][302], [insert][292], [insertList][293], [delete][300], [deleteList][301]. Управляют тем, как при сохранении проверяется и записывается [актуальность][104] таблиц.
+
++ Значение — name таблицы или [список][14] name таблиц.
+
+	Одна таблица:
+
+	```totum
+	=: set(table: 'table_1'; field: 'f' = 1; where: 'id' = 5; exclude: "table_1")
+	```
+
+	Несколько таблиц:
+
+	```totum
+	=: set(table: 'table_1'; field: 'f' = 1; where: 'id' = 5; exclude: json`["table_1","table_2"]`)
+	```
++ Указывать можно любую таблицу, а не только ту, что в `table`: например, таблицу, которая будет изменена дальше по цепочке кодов этого действия.
++ Параметры работают **кумулятивно по всей цепочке действий**, а не только для вызова функции: режим запоминается до конца текущего действия (обработки запроса, крона, процесса), и все последующие сохранения указанных таблиц в нем идут в этом режиме. Например, в цепочке добавляется строка в Таблицу 1, оттуда меняется значение в Таблице 2, а Таблица 2 обратно меняет что-то в Таблице 1. Если в самом первом добавлении строки указан `exclude` для Таблицы 1 — он применится и к последнему изменению Таблицы 1.
++ Если таблица указана и в `exclude`, и в `silent` — действует `silent`.
++ Работают для [простых таблиц][88] и [таблиц циклов][89].
+
+**exclude** — отключает проверку кода изменения таблицы и [перезапуск транзакции][684], если таблица была изменена другим процессом во время выполнения текущего, — даже если у таблицы включено отслеживание (`Нестрогое`, `Строгое` и т.д.).
+
+Отключение проверки не отключает запись кода изменения таблицы: пользователи увидят сообщение о том, что таблица была изменена.
+
+Для чего: например, в таблице одновременно работают и люди, и бот. Бот меняет поле, ставит галочки или перезаписывает поле с балансом, изменение которого пользователям недоступно. Полностью отключать отслеживание для таблицы не хочется — между пользователями нужна консистентность. Тогда `exclude` ставится в тот `set`, которым бот ставит галочку или меняет баланс: его изменения не конфликтуют с работой людей и не перезапускаются.
 
 ```totum
-example1: set(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'fieldname2' = "test22")
+=: set(table: 'clients'; field: 'balance' = $balance; where: 'id' = #client; exclude: 'clients')
 ```
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | ZZZ | test22
-3 | test31 | test23
+**silent** — работает так же, как `exclude`, но еще и отключает запись кода изменения таблицы: пользователям не приходит уведомление об изменении, не срабатывает автообновление. Это аналог [режима актуальности off][683] — только для таблиц, указанных в действии. Если в действии изменился хедер таблицы, код изменения все же записывается (без проверки).
 
-**Пример 2:**
-
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | 10
-2 | test21 | 20
-3 | test31 | 30
+Для чего: например, десяток [демонов][649] на потоке пишут в одну и ту же таблицу — пусть и в разные строки. `silent` снимает с базы нагрузку на разруливание дедлоков при записи кода изменения таблицы.
 
 ```totum
-example2: set(table: 'tablename'; field: 'fieldname2' + 100; where: 'fieldname1' = "test21")
+=: insert(table: 'events_log'; field: 'event' = $event; field: 'payload' = $payload; silent: 'events_log')
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | 10
-2 | test21 | 120
-3 | test31 | 30
+#### <a name="fn-set-examples"></a>Примеры
+
+**Изменить значение поля в таблице на новое значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' = "new_value"; where: 'search_field' = "search_value")
+```
+
+Результат: изменения значения в поле без записи лога
+
+**Добавить значение к числовому полю в таблице** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' + 10; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Изменить значение поля в таблице, если выполняется определенное условие** *(код действия)*
+
+```totum
+=: if(condition: #field_name = "condition_value"; then: $set)
+
+set: set(table: 'table_name'; field: 'field_name' = "new_value"; where: 'search_field' = "search_value")
+```
+
+Результат: изменения значения в поле без записи лога если выполняется условие в if
+
+**Изменить значение нескольких полей в таблице одновременно** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field1' = "new_value1"; field: 'field2' = "new_value2"; where: 'search_field' = "search_value")
+```
+
+Результат: изменения значения в двух полях без записи лога
+
+**Изменить значение поля в таблице, используя относительное значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' - 10; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Изменить значение поля в таблице, если таблица является расчетной в цикле** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; cycle: 1; field: 'field_name' = "new_value"; where: 'search_field' = "search_value")
+```
+
+Результат: изменения значения в поле в таблице в цикле без записи лога
+
+**Изменить значение поля во временной таблице** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; hash: "hash_value"; field: 'field_name' = "new_value"; where: 'search_field' = "search_value")
+```
+
+Результат: изменения значения в поле во временной таблице без записи лога
+
+**Изменить значение поля строке добавления** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; hash: "hash_value_for_add_row"; field: 'field_name' = "new_value")
+```
+
+Результат: изменения значения в поле в строке добавления
+
+**Изменить значение поля в таблице, если поле находится в строчной части таблицы** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' = "new_value"; where: 'search_field' = "search_value")
+```
+
+Результат: изменения значения в поле без записи лога
+
+**При изменении значения поля записать информацию об этом в Лог** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' = "new_value"; where: 'search_field' = "search_value"; log: true)
+```
+
+Результат: изменения значения в поле с записью лога
+
+**При изменении значения поля записать информацию об этом в Лог и указать текст записи, которая будет делаться в Логе** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' = "new_value"; where: 'search_field' = "search_value"; log: "custom_log_message")
+```
+
+Результат: изменения значения в поле с записью кастомного лога
+
+**Изменить значение поля в типе поля Селект, добавив в него значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' + "new_value"; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Изменить значение поля в типе поля Селект, добавив в него несколько значений** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' + json`["value1", "value2"]`; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Изменить значение поля в типе поля Селект, убрав из него значение и записать лог** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' - "value_to_remove"; where: 'search_field' = "search_value"; log: true)
+```
+
+Результат: относительное изменения значения в поле с записью лога
+
+**Изменить значение поля в типе поля Селект, убрав из него несколько значений** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' - json`["value1", "value2"]`; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Записать Файл в тип поля Файл** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'file_field' = $filesData)
+    filesData: listCreate(item: $rowFile)
+        rowFile: rowCreate(field: "name" = "File_name.pdf"; field: "filestring" = "bin_data_for_file")
+```
+
+Результат: запись файла в поле Файл
+
+**Записать добавить Файл в тип поля Файл к уже имеющимся там файлам** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'file_field' + $rowFile; where: 'search_field' = "search_value")
+
+rowFile: rowCreate(field: "name" = "File_name.pdf"; field: "filestring" = "bin_data_for_file")
+```
+
+Результат: добавления файла в поле Файл
+
+**Изменить значение поля в таблице, если поле находится в строчной части таблицы, при этом нам нужно по условию выключить параметр поиска where** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' = "new_value"; where: 'search_field' = $if)
+
+if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
+```
+
+Результат: изменения значения в поле без записи в строке выбранной в зависимости от условия в if
+
+**Изменить значение поля в таблице на новое значение, если мы знаем, что поле расположено в Хедере или Футере** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' = "new_value")
+```
+
+Результат: изменения значения в поле без записи лога
+
+**Записать Файл в тип поля Файл если он передан в base64** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'file_field' = $filesData)
+	filesData: listCreate(item: $rowFile)
+		rowFile: rowCreate(field: 'name' = "File_name.pdf"; field: 'filestringbase64' = "file_data_in_base64")
+```
+
+Результат: запись файла в поле Файл
+
+**Увеличить значение поля в таблице, используя относительное значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' + 10; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Уменьшить значение поля в таблице, используя относительное значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' - 10; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Увеличить значение поля при помощи умножения, используя относительное значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' * 2; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Уменьшить значение поля, поделив его на переданное относительное значение** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field_name' / 2; where: 'search_field' = "search_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога
+
+**Изменить значение нескольких полей в таблице одновременно, но учесть случай при котором одно из полей не будет изменяться в зависимости от условий** *(код действия)*
+
+```totum
+=: set(table: 'table_name'; field: 'field1' = "new_value"; field: 'field2' = $if_field2; where: 'search_field' = "search_value")
+
+if_field2: if(condition: #condition_field = "condition_value"; then: #source_field2; else: "*NONE*")
+```
+
+Результат: изменения значения в двух полях при выполнении условия, или в одном если условие не выполнено, без записи лога
 
 ### <a name="fn-setList"></a>setList
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: setList(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; log: )
+=: setList(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; log: ; exclude: ; silent: )
 ```
 Изменяет значение в нескольких строках в полях `field` в таблице `table`. Ко всем полям, попадающим в диапазон применяется **одинаковое** изменение. Применимо только для изменения полей расположенных в [строчной части][13].
-
 
 **Обязательные параметры**
 
@@ -3724,57 +7518,185 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-**Пример 1:**
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
+#### <a name="fn-setList-examples"></a>Примеры
+
+**Изменить значение поля в таблице на новое значение в несколький строках строчной части** *(код действия)*
 
 ```totum
-example1: setlist(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2)
+=: setList(table: 'table_name'; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value")
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | ZZZ | test22
-3 | ZZZ | test23
+Результат: изменения значения в поле без записи лога в несколький строках строчной части
 
-**Пример 2:**
-
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | 10
-2 | test21 | 20
-3 | test31 | 30
+**Добавить значение к числовому полю в таблице в несколький строках строчной части** *(код действия)*
 
 ```totum
-example2: set(table: 'tablename'; field: 'fieldname2' - 10%; where: 'id' < 3)
+=: setList(table: 'table_name'; field: 'field_name' + 10; where: 'condition_field' = "condition_value")
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | 9
-2 | test21 | 18
-3 | test31 | 30
+Результат: изменения значения в поле без записи лога в несколький строках строчной части
+
+**Изменить значение поля в таблице в несколький строках строчной части, если выполняется определенное условие** *(код действия)*
+
+```totum
+=: if(condition: #condition = true; then: $setlist)
+
+setlist: setList(table: 'table_name'; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value")
+```
+
+Результат: изменения значения в поле без записи лога в несколький строках строчной части при выполнении условия
+
+**Изменить значение нескольких полей в таблице одновременно в несколький строках строчной части** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name1' = "new_value1"; field: 'field_name2' = "new_value2"; where: 'condition_field' = "condition_value")
+```
+
+Результат: изменения значения в нескольких полях без записи лога в несколький строках строчной части
+
+**Изменить значение поля в таблице, используя относительное значение, в несколький строках строчной части** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' + 10; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога в несколький строках строчной части
+
+**Изменить значение поля в таблице в несколький строках строчной части, если таблица является расчетной в цикле** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; cycle: 1; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value")
+```
+
+Результат: изменения значения в поле без записи лога в несколький строках строчной части
+
+**Изменить значение поля в несколький строках строчной части во временной таблице** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; hash: "hash_value"; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value")
+```
+
+Результат: изменения значения в поле без записи лога в несколький строках строчной части во временной таблице
+
+**Изменить значение поля в таблице в несколький строках строчной части** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value")
+```
+
+Результат: изменения значения в поле без записи лога в несколький строках строчной части
+
+**При изменении значения поля в несколький строках строчной части записать информацию об этом в Лог** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value"; log: true)
+```
+
+Результат: изменения значения в поле с записью лога в несколький строках строчной части
+
+**При изменении значения поля в несколький строках строчной части, записать информацию об этом в Лог и указать текст записи, которая будет делаться в Логе** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' = "new_value"; where: 'condition_field' = "condition_value"; log: "Custom log message")
+```
+
+Результат: изменения значения в поле с записью лога в несколький строках строчной части
+
+**Изменить значение поля в типе поля Селект, добавив в него значение в несколький строках строчной части** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' + "10"; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле Селект без записи лога в несколький строках строчной части
+
+**Изменить значение поля в типе поля Селект, добавив в него несколько значений в несколький строках строчной части** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' + json`["value1", "value2"]`; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле Селект без записи лога в несколький строках строчной части
+
+**Изменить значение поля в типе поля Селект, убрав из него значение в несколький строках строчной части и записать изменения в Лог** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' - "value_to_remove"; where: 'condition_field' = "condition_value"; log: true)
+```
+
+Результат: относительное изменения значения в поле с записью лога в несколький строках строчной части
+
+**Изменить значение поля в типе поля Селект в несколький строках строчной части, убрав из него несколько значений** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' - json`["value1", "value2"]`; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле Селект без записи лога в несколький строках строчной части
+
+**Изменить значение поля в таблице во всех строках строчной части, если выполняется определенное условие и только в нескольких, если не выполняется** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' = "new_value"; where: 'condition_field' = $if)
+
+if: if(condition: $#nfv = $#lc; then: "*ALL*"; else: $#nfv)
+```
+
+Результат: если значение текущего поля равно постому списку, то будут изменено поле во всех строках строчной части, если нет, то только в строках по условию выборки в текущем поле
+
+**Увеличить значение поля в нескольких строках в табличной части, используя относительное значение** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' + 10; where: 'condition_field' = "condition_value")
+```
+
+Результат: изменения значения в поле без записи лога в нескольких строках строчной части
+
+**Уменьшить значение поля в нескольких строках в табличной части, используя относительное значение** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' - 10; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога в нескольких строках строчной части
+
+**Увеличить значение поля в нескольких строках в табличной части при помощи умножения, используя относительное значение** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' * 2; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога в нескольких строках строчной части
+
+**Уменьшить значение поля в нескольких строках в табличной части, поделив его на переданное относительное значение** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name' / 2; where: 'condition_field' = "condition_value")
+```
+
+Результат: относительное изменение значения в поле без записи лога в нескольких строках строчной части
+
+**Изменить значение нескольких полей в нескольких строках в табличной части, но учесть случай при котором одно из полей не будет изменяться в зависимости от условий** *(код действия)*
+
+```totum
+=: setList(table: 'table_name'; field: 'field_name1' = "new_value"; field: 'field_name2' = $if_field2; where: 'condition_field' = "condition_value")
+
+if_field2: if(condition: #condition2 = true; then: "new_value2"; else: "*NONE*")
+```
+
+Результат: изменения значения в нескольких полях при условии, что выполняется условие, без записи лога в несколький строках строчной части
 
 ### <a name="fn-setListExtended"></a>setListExtended
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: setListExtended(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; log: true)
+=: setListExtended(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; log: true; exclude: ; silent: )
 ```
 Изменяет значения в нескольких строках и полях таблицы одновременно. К строкам применяются **разные** значения в соответствии со [списками][14] переданными в правую часть `field:`.
-
 
 **Обязательные параметры**
 
@@ -3805,48 +7727,174 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-*test*
-id | a | b | c
--- | - | - | -
-1 | q | 10 | z
-2 | w | 20 | x
-3 | e | 30 | c
-4 | e | 30 | c
-5 | e | 30 | c
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
 
+#### <a name="fn-setListExtended-examples"></a>Примеры
+
+**Изменить значения в одном поле в нескольких строках таблицы, установив в поле новые значения в зависимости от списка условий** *(код действия)*
 
 ```totum
-example: setListExtended(table: 'test'; field: 'a' = $listA; field: 'b' + $listB; field: 'c' = "z"; where: 'id' = $listId)
-	listA: listCreate(item: "r"; item: "t"; item: "y")
-	listB: listCreate(item: 3; item: 2; item: 1)
-	listId: listCreate(item: 1; item: 2; item: 3)
-	
-// Результат:  Таблица изменена.
+=: setListExtended(table: 'table_name'; field: 'field_name' = $new_values; where: 'condition_field' = $conditions)
+new_values: listCreate(item: "value1"; item: "value2"; item: "value3")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
 ```
-*test*
-id | a | b | c
--- | - | - | -
-1 | r | 13 | z
-2 | t | 22 | z
-3 | y | 31 | z
-4 | e | 30 | c
-5 | e | 30 | c
+
+Результат: установка значения значения value1 там, где condition_field равен condition1, установка значения значения value2 там, где condition_field равен condition2, установка значения значения value3 там, где condition_field равен condition3
+
+**Установить разные значения для поля в строках таблицы в зависимости от переданного rowList с соответвиями условия по одному из полей и значениями для другого поля** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' = $rowlist[[value]]; where: 'condition_field' = $rowlist[[condition]])
+
+~rowlist: rowListCreate(field: 'value' = json`["value1","value2","value3"]`; field: 'condition' = json`["condition1","condition2","condition3"]`)
+```
+
+Результат: установка значения значения value1 там, где condition_field равен condition1, установка значения значения value2 там, где condition_field равен condition2, установка значения значения value3 там, где condition_field равен condition3
+
+**Установить разные значения для поля в строках таблицы в зависимости от переданного rowList с соответствиями условий и значениями и во второе поле установить одинаковое значение** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' = $rowlist[[value]]; field: 'second_field' = "same_value"; where: 'condition_field' = $rowlist[[condition]])
+
+~rowlist: rowListCreate(field: 'value' = json`["value1","value2","value3"]`; field: 'condition' = json`["condition1","condition2","condition3"]`)
+```
+
+Результат: установка значения значения value1 там, где condition_field равен condition1, установка значения значения value2 там, где condition_field равен condition2, установка значения значения value3 там, где condition_field равен condition3, установка значения same_value для поля second_field во всех строках
+
+**Изменить значения в нескольких полях в нескольких строках таблицы, установив в поля новые значения в зависимости от построчного списка условий** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field1' = $values1; field: 'field2' = $values2; where: 'condition_field' = $conditions)
+values1: listCreate(item: "value1_1"; item: "value1_2"; item: "value1_3")
+values2: listCreate(item: "value2_1"; item: "value2_2"; item: "value2_3")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+```
+
+Результат: установка значения value1_1 в поле field1 и value2_1 в поле field2 там, где condition_field равен condition1, установка значения value1_2 в поле field1 и value2_2 в поле field2 там, где condition_field равен condition2, установка значения value1_3 в поле field1 и value2_3 в поле field2 там, где condition_field равен condition3
+
+**Изменить значения в поле в нескольких строках таблицы, установив в строки новые значения в зависимости от списка условий и записать изменения в Лог** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' = $new_values; where: 'condition_field' = $conditions; log: true)
+new_values: listCreate(item: "value1"; item: "value2"; item: "value3")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+```
+
+Результат: установка значения значения value1 там, где condition_field равен condition1, установка значения значения value2 там, где condition_field равен condition2, установка значения значения value3 там, где condition_field равен condition3, дополнительно будет сделана запись в Лог
+
+**Изменить значения в поле в нескольких строках таблицы, установив в поле новые значения в зависимости от списка условий и записать в Лог кастомную строку** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' = $new_values; where: 'condition_field' = $conditions; log: "Custom log message")
+new_values: listCreate(item: "value1"; item: "value2"; item: "value3")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+```
+
+Результат: установка значения значения value1 там, где condition_field равен condition1, установка значения значения value2 там, где condition_field равен condition2, установка значения значения value3 там, где condition_field равен condition3, дополнительно будет сделана запись в Лог с сообщением 'Custom log message'
+
+**Изменить значения в нескольких полях в нескольких строках таблицы, установив в поля новые значения в зависимости от построчного списка условий, с учетом того, что изменение проводится в таблице в цикле** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; cycle: $cycle; field: 'field1' = $values1; field: 'field2' = $values2; where: 'condition_field' = $conditions)
+values1: listCreate(item: "value1_1"; item: "value1_2"; item: "value1_3")
+values2: listCreate(item: "value2_1"; item: "value2_2"; item: "value2_3")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+cycle: 1
+```
+
+Результат: установка значения value1_1 в поле field1 и value2_1 в поле field2 там, где condition_field равен condition1, установка значения value1_2 в поле field1 и value2_2 в поле field2 там, где condition_field равен condition2, установка значения value1_3 в поле field1 и value2_3 в поле field2 там, где condition_field равен condition3
+
+**Изменить значения в нескольких полях в нескольких строках таблицы, установив в поля новые значения в зависимости от построчного списка условий, с учетом того, что изменение проводится во временной таблице** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; hash: $hash; field: 'field1' = $values1; field: 'field2' = $values2; where: 'condition_field' = $conditions)
+values1: listCreate(item: "value1_1"; item: "value1_2"; item: "value1_3")
+values2: listCreate(item: "value2_1"; item: "value2_2"; item: "value2_3")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+hash: "temporary_table_hash"
+```
+
+Результат: установка значения value1_1 в поле field1 и value2_1 в поле field2 там, где condition_field равен condition1, установка значения value1_2 в поле field1 и value2_2 в поле field2 там, где condition_field равен condition2, установка значения value1_3 в поле field1 и value2_3 в поле field2 там, где condition_field равен condition3
+
+**Изменить значения в нескольких полях в нескольких строках таблицы, установив в поля новые значения в зависимости от построчного списка условий, с учетом того, что список значений передаваемый во второе поле, короче первого на одно значение** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field1' = $values1; field: 'field2' = $values2; where: 'condition_field' = $conditions)
+values1: listCreate(item: "value1_1"; item: "value1_2"; item: "value1_3")
+values2: listCreate(item: "value2_1"; item: "value2_2")
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+```
+
+Результат: установка значения value1_1 в поле field1 и value2_1 в поле field2 там, где condition_field равен condition1, установка значения value1_2 в поле field1 и value2_2 в поле field2 там, где condition_field равен condition2, установка значения value1_3 в поле field1 и пустоту в поле field2 там, где condition_field равен condition3
+
+**Осуществить относительные изменения, прибавив разные значения для поля в строках таблицы в зависимости от переданного rowList с соответвиями условия по одному из полей и значениями для другого поля** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' + $rowlist[[value]]; where: 'condition_field' = $rowlist[[condition]])
+
+~rowlist: rowListCreate(field: 'value' = json`["value1","value2","value3"]`; field: 'condition' = json`["condition1","condition2","condition3"]`)
+```
+
+Результат: установка значения field_name + value1 там, где condition_field равен condition1, установка значения field_name + value2 там, где condition_field равен condition2, установка значения field_name + value3 там, где condition_field равен condition3
+
+**Осуществить относительные изменения, вычев разные значения для поля в строках таблицы в зависимости от переданного rowList с соответвиями условия по одному из полей и значениями для другого поля** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' - $rowlist[[value]]; where: 'condition_field' = $rowlist[[condition]])
+
+~rowlist: rowListCreate(field: 'value' = json`["value1","value2","value3"]`; field: 'condition' = json`["condition1","condition2","condition3"]`)
+```
+
+Результат: установка значения field_name - value1 там, где condition_field равен condition1, установка значения field_name - value2 там, где condition_field равен condition2, установка значения field_name - value3 там, где condition_field равен condition3
+
+**Осуществить относительные изменения, умножив значения в поле на разные значения в зависимости от переданного rowList с соответвиями условия по одному из полей и значениями для другого поля** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' * $rowlist[[value]]; where: 'condition_field' = $rowlist[[condition]])
+
+~rowlist: rowListCreate(field: 'value' = json`["value1","value2","value3"]`; field: 'condition' = json`["condition1","condition2","condition3"]`)
+```
+
+Результат: установка значения field_name * value1 там, где condition_field равен condition1, установка значения field_name * value2 там, где condition_field равен condition2, установка значения field_name * value3 там, где condition_field равен condition3
+
+**Осуществить относительные изменения, поделив значения в поле на разные значения в зависимости от переданного rowList с соответвиями условия по одному из полей и значениями для другого поля** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field_name' / $rowlist[[value]]; where: 'condition_field' = $rowlist[[condition]])
+
+~rowlist: rowListCreate(field: 'value' = json`["value1","value2","value3"]`; field: 'condition' = json`["condition1","condition2","condition3"]`)
+```
+
+Результат: установка значения field_name / value1 там, где condition_field равен condition1, установка значения field_name / value2 там, где condition_field равен condition2, установка значения field_name / value3 там, где condition_field равен condition3
+
+**Изменить значения в нескольких полях в нескольких строках таблицы, установив в поля новые значения в зависимости от построчного списка условий? Для второго поле есть условие, при котором мы изменяем значения, если оно не исполняется — то не изменяем.** *(код действия)*
+
+```totum
+=: setListExtended(table: 'table_name'; field: 'field1' = $values1; field: 'field2' = $if_field2; where: 'condition_field' = $conditions)
+
+values1: listCreate(item: "value1_1"; item: "value1_2"; item: "value1_3")
+
+if_field2: if(condition: #some_conditions = true; then: $values2; else: "*NONE*")
+	values2: listCreate(item: "value2_1"; item: "value2_2"; item: "value2_3")
+	
+conditions: listCreate(item: "condition1"; item: "condition2"; item: "condition3")
+```
+
+Результат: установка значения value1_1 в поле field1 там, где condition_field равен condition1, установка значения value1_2 в поле field1 там, где condition_field равен condition2, установка значения value1_3 в поле field1 там, где condition_field равен condition3, установка значения value2_1 в поле field2 там, где condition_field равен condition1 и #some_conditions равен true, установка значения value2_2 в поле field2 там, где condition_field равен condition2 и #some_conditions равен true, установка значения value2_3 в поле field2 там, где condition_field равен condition3 и #some_conditions равен true
 
 ### <a name="fn-insert"></a>insert
 
 Доступен в секциях: [Код действия][28]
 ```totum
-=: insert(table: ''; cycle: ; hash: ; field: '' = ; inserts: "inserts"; after: ; log: true)
+=: insert(table: ''; cycle: ; hash: ; field: '' = ; inserts: "inserts"; after: ; log: true; exclude: ; silent: )
 ```
 Функция действия — добавляет одну строку в целевую таблицу.
-
 
 **Обязательные параметры**
 
 + **table** — [name-параметр][3], таблица в которую будет добавляться строка.
-
 
 **Необязательные параметры**
 
@@ -3878,36 +7926,87 @@ id | a | b | c
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
+
+#### <a name="fn-insert-examples"></a>Примеры
+
+**Добавить строку в таблицу с определенными значениями полей** *(код действия)*
 
 ```totum
-example: while(action: $insert; action: $showid)
-	insert: insert(table: 'tablename'; field: 'fieldname1' = "test"; field: 'fieldname2' = "globcalcs"; inserts: "shownewid")
-	showid: $#shownewid
-
-// Результат: Добавлена строка, код возвращает значение [4]
+=: insert(table: 'tablename'; field: 'fieldname1' = "xxx"; field: 'fieldname2' = "yyy")
 ```
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
-4 | xxx | yyy
+Результат: Добавлена строка
+
+**Указать цикл для добавления строки в расчетную таблицу** *(код действия)*
+
+```totum
+=: insert(table: 'tablename'; cycle: 1; field: 'fieldname1' = "xxx"; field: 'fieldname2' = "yyy")
+```
+
+Результат: Добавлена строка в таблицу в цикле
+
+**Добавить строку во временную таблицу указав значение field1 и field2 и записать информацию в Лог** *(код действия)*
+
+```totum
+=: insert(table: 'temporary_table'; hash: "hash_for_tmp_table"; field: 'field1' = "value1"; field: 'field2' = "value2"; log: true)
+```
+
+Результат: Добавлена строка во временную таблицу
+
+**Вставить в поле значение id строки, добавленной в другую таблицу** *(код действия)*
+
+```totum
+a1=: insert(table: 'other_table'; field: 'fieldname' = "value1"; inserts: "new_id")
+
+a2=: set(table: $#ntn; field: 'added_id' = $#new_id[0])
+```
+
+Результат: Выполнено два действия 1. добавлена строка в таблицу other_table 2. Ее id установлен как значение в поле added_id в текущей таблице
+
+**Вставить строку после определенной строки в другой таблице и записать информацию об этом в Лог** *(код действия)*
+
+```totum
+=: insert(table: 'other_table'; field: 'fieldname1' = "value1"; field: 'fieldname2' = "value2"; after: 3; log: true)
+```
+
+Результат: Добавлена строка после строки с id=3
+
+**Отключить заполнение определенного поля при добавлении нескольких строк по условию** *(код действия)*
+
+```totum
+=: insert(table: 'tablename'; field: 'fieldname1' = "value1"; field: 'fieldname2' = $if)
+
+if: if(condition: #some_condition = "value"; then: "value"; else: "*NONE*")
+```
+
+Результат: Добавлена строка, значение второго поля установлено только при условии выполнения if
+
+**Добавить строку в таблицу, передав значения полей при помощи row и записать в Лог** *(код действия)*
+
+```totum
+=: insert(table: 'tablename'; fields: $row; log: true)
+
+row: rowCreate(field: 'fieldname1' = "xxx"; field: 'fieldname2' = "yyy")
+```
+
+Результат: Добавлена строка
+
+**Добавить строку в таблицу с определенными значениями полей. В первое поле надо передать число, а во второе — список из строковых значений** *(код действия)*
+
+```totum
+=: insert(table: 'tablename'; field: 'fieldname1' = 123; field: 'fieldname2' = json`["value1", "value2", "value3"]`)
+```
+
+Результат: Добавлена строка
 
 ### <a name="fn-insertList"></a>insertList
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: insertList(table: ''; cycle: ; hash: ; fields: ; field: '' = ; inserts: "inserts"; after: ; log: true)
+=: insertList(table: ''; cycle: ; hash: ; fields: ; field: '' = ; inserts: "inserts"; after: ; log: true; exclude: ; silent: )
 ```
 Добавляет несколько строк в таблицу `table` с указанием значений полей `field`
 
@@ -3937,7 +8036,6 @@ id | fieldname1 | fieldname2
 
 	**Или [список][14] [ассоциативных массивов][30]. Любой из вариантов.**
 
-
 + **inserts** — имя переменной, в которую будет добавлен [список][14] с id добавленных в результате операции строк.
 
 	+ Задается как [одна][14] [строка][6] и обозначает название переменной для возможности обращения к ней как к [переменной внутри кода][11].
@@ -3950,54 +8048,121 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
 
-```totum
-example: while(action: $insert; action: $showid)
-	insert: insertList(table: 'tablename'; fields: $row1; field: 'fieldname2' = $list2; inserts: "shownewid")
-		row1: rowCreate(field: "fieldname1" = $list1)
-		list1: listCreate(item: "XX"; item: "XXX")
-		list2: listCreate(item: "YY"; item: "YYY")
+#### <a name="fn-insertList-examples"></a>Примеры
 
-	showid: $#shownewid
-
-// Результат: Добавлены строки, код возвращает значение [4,5]
-```
+**Добавить несколько строк в таблицу с определенными значениями полей** *(код действия)*
 
 ```totum
-example2: while(action: $insert2; action: $showid2)
-	insert2: insertList(table: 'tablename'; fields: $selectRowList; inserts: "shownewid2")
-		selectRowList: selectRowList(table: 'table_xy'; field: 'xxx'; field: 'yyy')
-
-	showid2: $#shownewid2
-
-// Результат: Добавлены строки, код возвращает значение [4,5]
+=: insertList(table: 'tablename'; field: 'fieldname1' = $list1; field: 'fieldname2' = $list2)
+	
+	list1: listCreate(item: "XX"; item: "XXX")
+	list2: listCreate(item: "YY"; item: "YYY")
 ```
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
-4 | XX | YY
-5 | XXX | YYY
+Результат: Добавлены несколько строк
+
+**Указать цикл для добавлении несколько строк в расчетную таблицу** *(код действия)*
+
+```totum
+=: insertList(table: 'tablename'; cycle: 1; field: 'fieldname1' = $list1; field: 'fieldname2' = $list2)
+
+list1: listCreate(item: "XX"; item: "XXX")
+list2: listCreate(item: "YY"; item: "YYY")
+```
+
+Результат: Добавлены несколько строк в таблицу в цикле
+
+**Добавить несколько строк во временную таблицу указав значение field1 и field2 и записать информацию в Лог** *(код действия)*
+
+```totum
+=: insertList(table: 'temp_table'; hash: "hash_tmp_table"; field: 'field1' = $list1; field: 'field2' = $list2; log: true)
+
+list1: listCreate(item: "value1"; item: "value2")
+list2: listCreate(item: "value3"; item: "value4")
+```
+
+Результат: Добавлены несколько строк во временную таблицу
+
+**Вставить в поле значение id строк, добавленных в другую таблицу** *(код действия)*
+
+```totum
+a1=: insertList(table: 'target_table'; field: 'fieldname1' = $list1; field: 'fieldname2' = $list2; inserts: "inserted_ids_list"; log: true)
+
+	list1: listCreate(item: "value1"; item: "value2")
+	list2: listCreate(item: "value3"; item: "value4")
+	
+a2=: set(table: $#ntn; field: 'some_field' = $#inserted_ids_list; log: true)
+```
+
+Результат: Выполнено два действия 1. добавлены строки в таблицу target_table 2. Их список id установлен как значение в поле some_field в текущей таблице
+
+**Вставить несколько строк после определенной строки в другой таблице и записать информацию об этом в Лог** *(код действия)*
+
+```totum
+=: insertList(table: 'target_table'; field: 'fieldname1' = $list1; field: 'fieldname2' = $list2; after: 3; log: true)
+
+list1: listCreate(item: "value1"; item: "value2")
+list2: listCreate(item: "value3"; item: "value4")
+```
+
+Результат: Добавлены несколько строк после строки с id=3
+
+**Отключить заполнение определенного поля по условию при добавлении нескольких строк** *(код действия)*
+
+```totum
+=: insertList(table: 'tablename'; field: 'fieldname1' = $list1; field: 'fieldname2' = $field2)
+
+list1: listCreate(item: "value1"; item: "value2")
+field2: if(condition: #some_condition; then: json`["value3","value4"]`; else: "*NONE*")
+```
+
+Результат: Добавлены несколько строк, значение второго поля установлено только при условии выполнения if
+
+**Добавить несколько строк в таблицу, передав значения полей при помощи row и записать в Лог** *(код действия)*
+
+```totum
+=: insertList(table: 'tablename'; fields: $row; log: true)
+
+row: rowCreate(field: 'fieldname1' = $list1; field: 'fieldname2' = $list2)
+	list1: listCreate(item: "value1"; item: "value2")
+	list2: listCreate(item: "value3"; item: "value4")
+```
+
+Результат: Добавлены несколько строк
+
+**Добавить несколько строк в таблицу с определенными значениями полей. В первое поле надо передать число, а во второе — список из строковых значений** *(код действия)*
+
+```totum
+=: insertList(table: 'tablename'; field: 'fieldname1' = 10; field: 'fieldname2' = $list2)
+
+list2: listCreate(item: "value1"; item: "value2")
+```
+
+Результат: Добавлены несколько строк
+
+**Добавить несколько строк в таблицу, передав значения полей при помощи row и записать в Лог** *(код действия)*
+
+```totum
+=: insertList(table: 'tablename'; fields: $rowlist; log: true)
+
+rowlist: rowListCreate(field: 'fieldname1' = $list1; field: 'fieldname2' = $list2)
+	list1: listCreate(item: "value1"; item: "value2")
+	list2: listCreate(item: "value3"; item: "value4")
+```
+
+Результат: Добавлены несколько строк
 
 ### <a name="fn-delete"></a>delete
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: delete(table: ''; cycle: ; hash: ; where: '' = ; log: true)
+=: delete(table: ''; cycle: ; hash: ; where: '' = ; log: true; exclude: ; silent: )
 ```
 Удаляет строку в таблице `table:` соответствующую условиям `where:`.
-
 
 **Обязательные параметры**
 
@@ -4033,34 +8198,111 @@ if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
 
 + **force** — `true`. Позволяет удалить строку, даже в том случае если у таблицы установлен параметр удаления Скрывать.
 
-**Пример:**
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 |  20
-2 | 10 |  20
-3 | 10 |  20
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
+
+#### <a name="fn-delete-examples"></a>Примеры
+
+**Удалить строку из таблицы по определенному условию** *(код действия)*
 
 ```totum
-example: delete(table: 'tablename'; where: 'id' = 2)
+=: delete(table: 'tablename'; where: 'id' = 2)
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-3 | 10 | 20
+Результат: строка удалена
+
+**Удалить строку из таблицы, используя несколько условий** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'field1' = "value1"; where: 'field2' = "value2")
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если условие выбора строки включает оператор сравнения** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'field1' > 10)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если условие выбора строки включает число** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'field1' = 10)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если условие выбора строки включает сортировку** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'id' = $sel)
+
+sel: select(table: 'tablename'; field: 'id'; where: 'field1' = "value"; order: 'sort_field' asc)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если условие выбора строки включает несколько условий и одно из них может применятся, а может и нет в зависимости от поля в текущей таблице** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'field1' = #field1; where: 'field2' = $if)
+
+if: if(condition: #connected_field = ""; then: "*ALL*"; else: #connected_field)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если таблица является расчетной в цикле** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; cycle: 1; where: 'id' = 2)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если действие выполняется во временной таблице** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; hash: "temporary_hash"; where: 'id' = 2)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если необходимо добавить операцию в лог** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'id' = 2; log: true)
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если необходимо добавить операцию в лог с определенной строкой** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'id' = 2; log: "Deleted row with id 2")
+```
+
+Результат: строка удалена
+
+**Удалить строку из таблицы, если у таблицы установлен параметр удаления Скрывать** *(код действия)*
+
+```totum
+=: delete(table: 'tablename'; where: 'id' = 2; force: true)
+```
+
+Результат: строка удалена
 
 ### <a name="fn-deleteList"></a>deleteList
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: deleteList(table: ''; cycle: ; hash: ; where: '' = ; log: true)
+=: deleteList(table: ''; cycle: ; hash: ; where: '' = ; log: true; exclude: ; silent: )
 ```
 Удаляет несколько строк в таблице `table` соответствующие условиям `where`.
-
 
 **Обязательные параметры**
 
@@ -4091,24 +8333,103 @@ id | fieldname1 | fieldname2
 
 + **force** — `true`. Позволяет удалить строку, даже в том случае если у таблицы установлен параметр удаления Скрывать.
 
-**Пример:**
++ **exclude** — name таблицы или [список][14] name таблиц: до конца действия для них отключается проверка [актуальности][104] и перезапуск транзакции, если таблицу параллельно изменил другой процесс, — даже если у таблицы включено отслеживание. Код изменения таблицы при этом записывается. Подробнее — [exclude и silent][682].
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 | 20
-3 | 10 | 20
++ **silent** — name таблицы или [список][14] name таблиц: как `exclude`, но еще и без записи кода изменения таблицы — аналог режима актуальности `off`. Перекрывает `exclude`. Подробнее — [exclude и silent][682].
+
+#### <a name="fn-deleteList-examples"></a>Примеры
+
+**Удалить несколько строк из таблицы по определенному условию** *(код действия)*
 
 ```totum
-example: deleteList(table: 'tablename'; where: 'id' >= 2)
+=: deleteList(table: 'tablename'; where: 'id' >= 2)
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, используя несколько условий** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'field1' = "value1"; where: 'field2' = "value2")
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если условие выбора строк включает оператор сравнения** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'fieldname' >= 10)
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если условие выбора строк включает число** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'fieldname' = 10)
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если условие выбора строк включает сортировку** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'id' = $id)
+
+id: selectList(table: 'tablename'; field: 'id'; where: 'fieldname' = json`[1,2,3]`; order: 'id' asc)
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если условие выбора строк включает несколько условий, и одно из них может применяться, а может и нет в зависимости от поля в текущей таблице** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'field1' = "value1"; where: 'field2' = $if)
+
+if: if(condition: #field != ""; then: #field; else: "*ALL*")
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если таблица является расчетной в цикле** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; cycle: 1; where: 'fieldname' = 10)
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если действие выполняется во временной таблице** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; hash: "temporary_hash"; where: 'fieldname' = 10)
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если необходимо добавить операцию в лог** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'fieldname' = 10; log: true)
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если необходимо добавить операцию в лог с определенной строкой** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'fieldname' = 10; log: "Custom log message")
+```
+
+Результат: удаление всех строк соответствующих условию
+
+**Удалить несколько строк из таблицы, если у таблицы установлен параметр удаления 'Скрывать'** *(код действия)*
+
+```totum
+=: deleteList(table: 'tablename'; where: 'fieldname' = 10; force: true)
+```
+
+Результат: удаление всех строк соответствующих условию
 
 ### <a name="fn-duplicate"></a>duplicate
 
@@ -4117,7 +8438,6 @@ id | fieldname1 | fieldname2
 =: duplicate(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; after: ; log: true)
 ```
 Дублирует одну строку в таблице `table`. Применим только в [строчной части][13].
-
 
 **Обязательные параметры**
 
@@ -4157,28 +8477,89 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-duplicate-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
+**Дублировать строку в таблице с изменением значения поля** *(код действия)*
 
 ```totum
-example: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3)
-
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3)
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
-4 | ZZZ | test23
+Результат: дублирование строки
+
+**Дублировать строку в таблице с использованием условия выбора строки** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3)
+```
+
+Результат: дублирование строки
+
+**Дублировать строку в таблице и вставить её после определённой строки** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3; after: 2)
+```
+
+Результат: дублирование строки
+
+**Дублировать строку в таблице и записать результат в лог** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3; log: true)
+```
+
+Результат: дублирование строки и запись лога
+
+**Дублировать строку во временной таблице с использованием хеша таблицы** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; hash: "temporary_hash"; field: 'fieldname1' = 'ZZZ'; where: 'id' = 3)
+```
+
+Результат: дублирование строки
+
+**Дублировать строку в таблице и сохранить id новой строки в переменную и вторым действием записать этот id в поле в текущей таблице** *(код действия)*
+
+```totum
+a1=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3; inserts: "new_ids")
+
+a2=: set(table: $#ntn; field: 'new_id_field' = $#new_ids[0])
+```
+
+Результат: дублирование строки и запись значения id новой строки в поле в текущей таблице
+
+**Дублировать строку в таблице с использованием нескольких условий выбора строки** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'field1' = "value1"; where: 'field2' = "value2")
+```
+
+Результат: дублирование строки
+
+**Дублировать строку в таблице и изменить значения нескольких полей** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; field: 'fieldname2' = "YYY"; where: 'id' = 3)
+```
+
+Результат: дублирование строки
+
+**Дублировать строку в таблице и отключить логирование** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' = 3; log: false)
+```
+
+Результат: дублирование строки
+
+**Дублировать строку в таблице без изменения значений полей и включить логирование** *(код действия)*
+
+```totum
+=: duplicate(table: 'tablename'; where: 'id' = 3; log: true)
+```
+
+Результат: дублирование строки
 
 ### <a name="fn-duplicateList"></a>duplicateList
 
@@ -4187,7 +8568,6 @@ id | fieldname1 | fieldname2
 =: duplicateList(table: ''; cycle: ; hash: ; field: '' = ; where: '' = ; after: ; log: true)
 ```
 Дублирует несколько строк в таблице `table:`. Применим только в [строчной части][13].
-
 
 **Обязательные параметры**
 
@@ -4226,29 +8606,81 @@ id | fieldname1 | fieldname2
 
 > Если в `log:` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-duplicateList-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
+**Дублировать несколько строк в таблице с изменением значений полей** *(код действия)*
 
 ```totum
-example: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2)
-
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2)
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | test11 | test12
-2 | test21 | test22
-3 | test31 | test23
-4 | ZZZ | test22
-5 | ZZZ | test23
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице с использованием условия выбора строк** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' <= 2)
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице и вставить их после определённых строк** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2; after: 15)
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице и записать результат в лог** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' != 2; log: true)
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк во временной таблице с использованием хеша таблицы** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; hash: "temporary_hash"; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2)
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице и сохранить id новых строк в переменные и вторым действием записать эти id в поля в текущей таблице** *(код действия)*
+
+```totum
+a1=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2; inserts: "new_ids")
+
+a2=: set(table: $#ntn; field: 'new_field' = $#new_ids)
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице с использованием нескольких условий выбора строк** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= json`[1,2,3]`; where: 'fieldname2' = "test23")
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице и изменить значения нескольких полей** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; field: 'fieldname2' = "new_value"; where: 'id' = json`[20,30,40]`)
+```
+
+Результат: дублирование нескольких строк
+
+**Дублировать несколько строк в таблице и отключить логирование** *(код действия)*
+
+```totum
+=: duplicateList(table: 'tablename'; field: 'fieldname1' = "ZZZ"; where: 'id' >= 2; log: false)
+```
+
+Результат: дублирование нескольких строк
 
 ### <a name="fn-pin"></a>pin
 
@@ -4257,7 +8689,6 @@ id | fieldname1 | fieldname2
 =: pin(table: ''; cycle: ; hash: ; field: ''; where: '' = ; log: true)
 ```
 Устанавливает фиксацию значения для одного поля с активной секцией [кода][27].
-
 
 **Обязательные параметры**
 
@@ -4291,26 +8722,79 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-pin-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 | 20
-3 | 10 | 20
+**Зафиксировать значение поля в таблице** *(код действия)*
 
 ```totum
-example: pin(table: 'tablename'; field: 'fieldname1'; where: 'id' = 2)
+=: pin(table: 'tablename'; field: 'fieldname1')
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 [HAND] | 20
-3 | 10 | 20
+Результат: фиксация значения в поле
+
+**Выбрать строку для фиксации значения по условию** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; field: 'fieldname1'; where: 'id' = 2)
+```
+
+Результат: фиксация значения в поле
+
+**Использовать множественные условия для выбора строки для фиксирования значения** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; field: 'fieldname1'; where: 'id' = 2; where: 'status' = "active")
+```
+
+Результат: фиксация значения в поле
+
+**Зафиксировать значение поля в расчетной таблице в цикле** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; cycle: 1; field: 'fieldname1')
+```
+
+Результат: фиксация значения в поле
+
+**Использовать hash временной таблицы для фиксации значения в поле в хедере в этой таблице** *(код действия)*
+
+```totum
+=: pin(table: 'temporary_table'; hash: "hash_for_tmp_table"; field: 'fieldname')
+```
+
+Результат: фиксация значения в поле
+
+**Зафиксировать значение в поле футере** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; field: 'fieldname'; log: true)
+```
+
+Результат: фиксация значения в поле
+
+**Добавить операцию фиксации значения в лог** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; field: 'fieldname1'; where: 'id' = 2; log: true)
+```
+
+Результат: фиксация значения в поле
+
+**Зафиксировать значение нескольких полей в хедере таблицы одновременно** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2'; log: true)
+```
+
+Результат: фиксация значения в поле
+
+**Зафиксировать значение нескольких полей в хедере таблицы одновременно** *(код действия)*
+
+```totum
+=: pin(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2'; log: true)
+```
+
+Результат: фиксация значения в поле
 
 ### <a name="fn-pinList"></a>pinList
 
@@ -4320,7 +8804,6 @@ id | fieldname1 | fieldname2
 ```
 Устанавливает фиксацию значения для поля с активной секцией [кода][27] в нескольких строках. Вне строчной части не применяется.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, в которой производится действие.
@@ -4328,7 +8811,6 @@ id | fieldname1 | fieldname2
 + **field** — [name-параметр][3] поле в таблице `table`.
 
 	+ Множественный параметр, можно указать несколько полей.
-
 
 **Необязательные параметры**
 
@@ -4354,26 +8836,79 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-pinList-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 | 20
-3 | 10 | 20
+**Зафиксировать значения полей в таблице** *(код действия)*
 
 ```totum
-example: pinList(table: 'tablename'; field: 'fieldname1'; where: 'id' >= 2)
+=: pinList(table: 'tablename'; field: 'fieldname1'; where: 'id' != 2)
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 [HAND] | 20
-3 | 10 [HAND] | 20
+Результат: фиксация значения в нескольких строках
+
+**Выбрать строки для фиксации значений по условию** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; field: 'fieldname1'; where: 'id' >= 2)
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Использовать множественные условия для выбора строк для фиксирования значений** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; field: 'fieldname1'; where: 'id' >= 2; where: 'fieldname2' = 20)
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Зафиксировать значения полей в расчетной таблице в цикле** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; cycle: 1; field: 'fieldname1'; where: 'id' = json`[2,4,5]`)
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Использовать hash временной таблицы для фиксации значений в полях в хедере в этой таблице** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; hash: "temporary_hash"; field: 'fieldname1'; where: 'id' != json`[2,4,6]`)
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Зафиксировать значения в полях футера** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; field: 'fieldname1'; where: 'id' < 20)
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Добавить операцию фиксации значений в лог** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; field: 'fieldname1'; where: 'id' > 2; log: true)
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Зафиксировать значения нескольких полей в хедере таблицы одновременно** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2'; where: 'field' > "H")
+```
+
+Результат: фиксация значения в нескольких строках
+
+**Зафиксировать значения нескольких полей в хедере таблицы одновременно** *(код действия)*
+
+```totum
+=: pinList(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2'; where: 'field' < "H")
+```
+
+Результат: фиксация значения в нескольких строках
 
 ### <a name="fn-clear"></a>clear
 
@@ -4383,7 +8918,6 @@ id | fieldname1 | fieldname2
 ```
 Сбрасывает фиксацию значение для полей с активной секцией [кода][27] к расчетным значениям.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, в которой производится действие.
@@ -4391,7 +8925,6 @@ id | fieldname1 | fieldname2
 + **field** — [name-параметр][3] поле в таблице `table`.
 
 	+ Множественный параметр, можно указать несколько полей.
-
 
 **Необязательные параметры**
 
@@ -4417,26 +8950,87 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-clear-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 12 [HAND] | 20
-3 | 10 |  20
+**Сбросить значение поля к рассчетному в таблице** *(код действия)*
 
 ```totum
-example: clear(table: 'tablename'; field: 'fieldname1'; where: 'id' = 2)
+=: clear(table: 'tablename'; field: 'fieldname1'; where: 'id' = 2)
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 | 20
-3 | 10 | 20
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение нескольких полей в таблице** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2'; where: 'field' != json`["A","B",""]`)
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение поля в таблице с учетом цикла** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname1'; cycle: 1; where: 'id' > 20)
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение поля в таблице во временной таблице** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname1'; hash: 'hash_value'; where: 'field' = "stop")
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение поля в таблице с условием выбора конкретной строки в строчной части** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname'; where: 'field' >= "M")
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение поля в таблице с несколькими условиями выбора строки в строчной части** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname'; where: 'id' = 1; where: 'status' = "active")
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение поля в таблице с логированием операции** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname'; where: 'status' = json`[1,""]`; log: true)
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение поля в таблице с кастомным сообщением в логе** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname'; where: 'mode' = "run"; log: "Custom log message")
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение нескольких полей в хедере таблицы** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2')
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
+
+**Сбросить значение нескольких полей в футере таблицы** *(код действия)*
+
+```totum
+=: clear(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2')
+```
+
+Результат: снятие зафиксированного значения и возврат поля к значению вычесленному кодом в этом поле
 
 ### <a name="fn-clearList"></a>clearList
 
@@ -4446,7 +9040,6 @@ id | fieldname1 | fieldname2
 ```
 Сбрасывает фиксацию значение для полей с активной секцией [кода][27] к расчетным значениям в нескольких строках.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, в которой производится действие.
@@ -4454,7 +9047,6 @@ id | fieldname1 | fieldname2
 + **field** — [name-параметр][3] поле в таблице `table`.
 
 	+ Множественный параметр, можно указать несколько полей.
-
 
 **Необязательные параметры**
 
@@ -4480,26 +9072,87 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true` то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-clearList-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 12 [HAND] | 20
-3 | 12 [HAND] | 20
+**Сбросить значение поля к расчетному в нескольких строках таблицы** *(код действия)*
 
 ```totum
-example: clearList(table: 'tablename'; field: 'fieldname1'; where: 'id' >= 2)
+=: clearList(table: 'tablename'; field: 'fieldname'; where: 'condition_field' = "condition_value")
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 | 20
-3 | 10 | 20
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значения нескольких полей в нескольких строках таблицы** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2'; where: 'condition_field' > 100)
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение поля в нескольких строках таблицы с учетом цикла** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname'; cycle: 1; where: 'condition_field' = json`[1,2,3]`)
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение поля в нескольких строках во временной таблице** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname'; hash: "hash_value"; where: 'condition_field' != json`["A",""]`)
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение поля в нескольких строках таблицы с условием выбора конкретных строк в строчной части** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname'; where: 'condition_field' > "M")
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение поля в нескольких строках таблицы с несколькими условиями выбора строк в строчной части** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname'; where: 'condition_field1' = "value1"; where: 'condition_field2' != 200)
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение поля в нескольких строках таблицы с логированием операции** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname'; where: 'condition_field' = "condition_value"; log: true)
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение поля в нескольких строках таблицы с кастомным сообщением в логе** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname'; where: 'condition_field' == json`[1,2,3]`; log: "Custom log message")
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение нескольких полей в нескольких строках хедера таблицы** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2')
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
+
+**Сбросить значение нескольких полей в нескольких строках футера таблицы** *(код действия)*
+
+```totum
+=: clearList(table: 'tablename'; field: 'fieldname1'; field: 'fieldname2')
+```
+
+Результат: возврат полей в нескольких строках к рассчетному значению
 
 ### <a name="fn-restore"></a>restore
 
@@ -4508,7 +9161,6 @@ id | fieldname1 | fieldname2
 =: restore(table: ''; cycle: ; hash: ; where: '' = ; log: true)
 ```
 Восстанавливает строку в таблице `table:` соответствующую условиям `where:` осуществляя поиск среди [скрытых][108].
-
 
 **Обязательные параметры**
 
@@ -4535,6 +9187,74 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка.
 
+#### <a name="fn-restore-examples"></a>Примеры
+
+**Восстановить строку в таблице по определенному условию** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; where: 'field_name' = "value")
+```
+
+Результат: восстановление одной скрытой строки
+
+**Вернуть строку из скрытых данных таблицы** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; where: 'field_name' > 100)
+```
+
+Результат: восстановление одной скрытой строки
+
+**Использовать множественные условия для выбора строки для восстановления из скрытых** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; where: 'field1' = "value1"; where: 'field2' = json`["value2","value3"]`)
+```
+
+Результат: восстановление одной скрытой строки
+
+**Восстановить строку в расчетной таблицы в цикле** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; cycle: 1; where: 'field_name' <= "M")
+```
+
+Результат: восстановление одной скрытой строки
+
+**Использовать хэш для выполнения действия в временной таблице для восстановления скрытой строки** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; hash: "hash_value"; where: 'field_name' = "")
+```
+
+Результат: восстановление одной скрытой строки
+
+**Добавить операцию восстановления строки в лог** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; where: 'field_name' != "value"; log: true)
+```
+
+Результат: восстановление одной скрытой строки
+
+**Восстановить одну случайную строку из нескольких, попадающих в выборку** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; where: 'field_name' == json`[3]`)
+```
+
+Результат: восстановление одной скрытой строки
+
+**Отключить одно из условий выбора строки для восстановления** *(код действия)*
+
+```totum
+=: restore(table: 'table_name'; where: 'field_name' = $if)
+
+if: if(condition: #condition_field = ""; then: "*ALL*"; else: #condition_field)
+```
+
+Результат: восстановление одной скрытой строки
+
 ### <a name="fn-restoreList"></a>restoreList
 
 Доступен в секциях: [Код действия][28].
@@ -4542,7 +9262,6 @@ id | fieldname1 | fieldname2
 =: restoreList(table: ''; cycle: ; hash: ; where: '' = ; log: true)
 ```
 Восстанавливает несколько строк в таблице `table` соответствующие условиям `where` среди [скрытых строк][108].
-
 
 **Обязательные параметры**
 
@@ -4569,25 +9288,73 @@ id | fieldname1 | fieldname2
 
 > Если в `log` передать `"строку"` вместо `true`, то в логе вместо `Скрипт` будет записана переданная строка. 
 
-**Пример:**
+#### <a name="fn-restoreList-examples"></a>Примеры
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-
+**Восстановить несколько строк в таблице по определенному условию** *(код действия)*
 
 ```totum
-example: restoreList(table: 'tablename'; where: 'id' >= 2)
+=: restoreList(table: 'tablename'; where: 'condition_field' = "condition_value")
 ```
-Результат:
 
-tablename
-id | fieldname1 | fieldname2
--- | ---------- | ----------
-1 | 10 | 20
-2 | 10 | 20
-3 | 10 | 20
+Результат: восстановление нескольких строк
+
+**Вернуть несколько строк из скрытых данных таблицы** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; where: 'condition_field' >= 100)
+```
+
+Результат: восстановление нескольких строк
+
+**Использовать множественные условия для выбора строк для восстановления из скрытых** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; where: 'condition_field1' = "value1"; where: 'condition_field2' != 200)
+```
+
+Результат: восстановление нескольких строк
+
+**Восстановить несколько строк в расчетной таблице в цикле** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; cycle: 1; where: 'condition_field' = json`[1,2,3]`)
+```
+
+Результат: восстановление нескольких строк
+
+**Использовать хэш для выполнения действия во временной таблице для восстановления скрытых строк** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; hash: "hash_value"; where: 'condition_field' = "condition_value")
+```
+
+Результат: восстановление нескольких строк
+
+**Добавить операцию восстановления нескольких строк в лог** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; where: 'condition_field' = "condition_value"; log: true)
+```
+
+Результат: восстановление нескольких строк
+
+**Восстановить все строки из тех, которые попадают в выборку** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; where: 'id' >= 2)
+```
+
+Результат: восстановление нескольких строк
+
+**Отключить одно из условий выбора строк для восстановления** *(код действия)*
+
+```totum
+=: restoreList(table: 'tablename'; where: 'id' = $if)
+
+if: if(condition: #condition_field != ""; then: #condition_field; else: "*ALL*")
+```
+
+Результат: восстановление нескольких строк
 
 ### <a name="fn-execButton"></a>execButton
 
@@ -4597,14 +9364,11 @@ id | fieldname1 | fieldname2
 ```
 Запускает выполнение кода-действия одной [кнопки][7]. Код выполняется из окружения кнопки, которая его содержит.
 
-
 **Обязательные параметры**
 
 + **field** — [name-параметр][3] поле в таблице `table`.
 
 + **table** — [name-параметр][3] name таблицы, из которой берутся данные.
-
-
 
 **Необязательные параметры**
 
@@ -4632,6 +9396,90 @@ id | fieldname1 | fieldname2
 	
 + **var** — `var: "var_name" = "value"` создание переменой при вызове кода кнопки. Множественный параметр.
 
+#### <a name="fn-execButton-examples"></a>Примеры
+
+**Запустить выполнение кода-действия кнопки из определенной таблицы** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; where: 'condition_field' = "condition_value")
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Задать условие выбора строки для выполнения кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; where: 'condition_field' > 100)
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Указать порядок сортировки строк при выполнении кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; where: 'condition_field' == json`["A"]`; order: 'sort_field' asc)
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Определить цикл для выполнения кода-действия кнопки в расчетной таблице** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; cycle: "cycle_number"; field: 'button_field')
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Использовать хэш для выполнения кода-действия кнопки во временной таблице** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; hash: "hash_value"; field: 'button_field')
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Создать переменную при вызове кода кнопки и передать ее в код кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; var: "var_name" = "value")
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Задать множественные условия выбора строк для выполнения кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; where: 'condition_field1' = "condition_value1"; where: 'condition_field2' = "condition_value2")
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Указать несколько полей для сортировки строк при выполнении кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; order: 'sort_field1' asc; order: 'sort_field2' desc)
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Отключить условие выбора строк для выполнения кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; where: 'sort_field' = $if)
+
+if: if(condition: #condition_field != 1; then: #condition_field; else: "*ALL*")
+```
+
+Результат: выполнение кода-действия одной кнопки
+
+**Задать значение для сортировки строк по убыванию при выполнении кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButton(table: 'table_name'; field: 'button_field'; order: 'sort_field' desc)
+```
+
+Результат: выполнение кода-действия одной кнопки
+
 ### <a name="fn-execButtonList"></a>execButtonList
 
 Доступен в секциях: [Код действия][28].
@@ -4642,13 +9490,11 @@ id | fieldname1 | fieldname2
 
 Последовательно вызывает выполнение кодов [кнопок][7] подходящих по условиям. Коды выполняются из окружения кнопок.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, из которой берутся данные.
 
 + **field** — [name-параметр][3] поле c [кнопками][7] в таблице `table`.
-
 
 **Необязательные параметры**
 
@@ -4680,6 +9526,98 @@ id | fieldname1 | fieldname2
 	
 + **var** — `var: "var_name" = "value"` создание переменой при вызове кода кнопки. Множественный параметр.
 
+#### <a name="fn-execButtonList-examples"></a>Примеры
+
+**Запустить выполнение кода-действия кнопки в нескольких строках из определенной таблицы** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; where: 'condition_field' = "condition_value")
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Задать условие выбора нескольких строк для выполнения кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; where: 'condition_field' >= 90)
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Указать порядок сортировки нескольких строк при выполнении кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; order: 'sort_field1' asc; order: 'sort_field2' desc)
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Определить цикл для выполнения кода-действия кнопки в нескольких строках расчетной таблицы** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; cycle: 1; field: 'button_field')
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Использовать хэш для выполнения кода-действия кнопки в нескольких строках во временной таблице** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; hash: "hash_value"; field: 'button_field')
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Создать переменную при вызове кода кнопки и передать ее в код кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; var: "var1" = "value1")
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Задать множественные условия выбора нескольких строк для выполнения кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; where: 'condition_field1' = "active"; where: 'condition_field2' != 100)
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Указать несколько полей для сортировки нескольких строк при выполнении кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; order: 'sort_field1' asc; order: 'sort_field2' desc)
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Отключить условие выбора нескольких строк для выполнения кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; where: 'field' = $if)
+
+if: if(condition: #condition_field != ""; then: #condition_field; else: "*ALL*")
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Задать значение для сортировки нескольких строк по убыванию при выполнении кода-действия кнопки** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; order: 'sort_field' desc)
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
+**Запустить выполнение кода-действия кнопки в нескольких строках из определенной таблицы, задав лимит количества строк** *(код действия)*
+
+```totum
+=: execButtonList(table: 'table_name'; field: 'button_field'; limit: 10)
+```
+
+Результат: выполнение нескольких кнопок в целевой таблице
+
 ### <a name="fn-reorder"></a>reorder
 
 Доступен в секциях: [Код действия][28].
@@ -4687,7 +9625,6 @@ id | fieldname1 | fieldname2
 =: reorder(table: ; ids: ; after: )
 ```
 Изменяет порядок для n-сортируемых таблиц.
-
 
 **Обязательные параметры**
 
@@ -4702,21 +9639,85 @@ id | fieldname1 | fieldname2
 	+ Если не указан, то произойдет пересортировка id на их текущих позициях.
 	+ Если передать в качестве значение параметра `0`, то это означает, что перед всеми имеющимися строками.
 
+#### <a name="fn-reorder-examples"></a>Примеры
+
+**Изменить порядок строк в таблице** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[1, 2, 3]`; after: 100)
+```
+
+Результат: изменение порядка строк
+
+**Переместить строки в таблице на новые позиции** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[1, 2, 3]`; after: 200)
+```
+
+Результат: изменение порядка строк
+
+**Переставить на новую позицию одну строку строки в таблице** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[1]`; after: 300)
+```
+
+Результат: изменение порядка строк
+
+**Вставить строки после определенной строки в таблице** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[1, 2, 3]`; after: 100)
+```
+
+Результат: изменение порядка строк
+
+**Переместить строки в начало таблицы** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[1, 2, 3]`; after: 0)
+```
+
+Результат: изменение порядка строк
+
+**Указать конкретные строки из текущей таблицы и их порядок для изменения порядка строк** *(код действия)*
+
+```totum
+=: reorder(table: $#ntn; ids: json`[3, 2, 1]`)
+```
+
+Результат: изменение порядка строк
+
+**Задать список id строк для изменения их порядка** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[5, 4, 3]`)
+```
+
+Результат: изменение порядка строк
+
+**Использовать параметр after для вставки строк после определенной строки** *(код действия)*
+
+```totum
+=: reorder(table: 'table_name'; ids: json`[1, 2, 3]`; after: 100)
+```
+
+Результат: изменение порядка строк
+
 ## <a name="part-10"></a>Вызовы окон и скриптов
 
 ### <a name="fn-linkToTable"></a>linkToTable
 
 Доступен в секциях: [Код действия][28].
 ```totum
-=: linkToTable(table: ''; cycle: ; hash: ; title: ; filter: '' = ; field: '' = ; target: "iframe|blank|self|parent"; width: 800; refresh: false; header: true; footer: true)
+=: linkToTable(table: ''; cycle: ; hash: ; title: ; filter: '' = ; field: '' = ; target: "iframe|blank|self|parent"; width: 800; refresh: false; header: true; footer: true; tabs: ; link: )
 ```
 Открывает указанную таблицу способом определенным в `target`.
-
 
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name открываемой таблицы.
-
 
 **Необязательные параметры**
 
@@ -4781,9 +9782,243 @@ id | fieldname1 | fieldname2
 
 + **hidedots** — `false`, если необходимо отменить скрытие кнопки с точками в нижнем правом углу. Принимается равным `true` по умолчанию, при открытии таблицы в iframe.
 
++ <a name="fn-linkToTable-tabs"></a>**tabs** — `true`, для [таблиц в цикле][1]: показать в открытом окне вкладки цикла — другие таблицы этого цикла и `tab_`-кнопки таблицы циклов, как при открытии цикла на странице. По умолчанию в окне `iframe` вкладки цикла не показываются — только сама таблица. Для таблиц других типов не действует.
+
+	```totum
+	=: linkToTable(table: 'cycle_table_1'; cycle: #id; target: "iframe"; tabs: true)
+	```
+
++ <a name="fn-linkToTable-link"></a>**link** — `true`: окно **не открывается**, функция возвращает адрес таблицы [строкой][6] — тот же, что открыло бы окно, вместе с `filter` (в зашифрованном виде), `field`, `cycle`, `hash`. Адрес относительный, без хоста: `/Table/<раздел>/<id таблицы>?…`, для таблицы в цикле — `/Table/<раздел>/<id таблицы циклов>/<id цикла>/<id таблицы>?…`.
+
+	`filter` в адресе зашифрован ключом **текущей сессии** пользователя: ссылка с фильтрами работает только в этой сессии. В другой сессии (другой пользователь, другой браузер, истекшая сессия) фильтр не расшифруется — таблица откроется без него. Поэтому в письма, уведомления и сохраняемые поля такую ссылку не вставляют. Она нужна для html, который показывается в текущей сессии сразу, — например, ссылки `<a>` в окне [linkToDataHtml][309]. Адрес без `filter` и `hash` (временная таблица доступна только своему пользователю и хранится ограниченное время) от сессии не зависит — его можно отправить и в письме, добавив хост (`"https://" + $#nh + $link`).
+
+	```totum
+	=: linkToDataHtml(title: "Заказы"; html: $html)
+
+	html: str`"<a href='" + $new + "' target='_blank'>Новые заказы</a><br><a href='" + $done + "' target='_blank'>Выполненные заказы</a>"`
+	new: linkToTable(table: 'orders'; filter: 'f_status' = "new"; link: true)
+	done: linkToTable(table: 'orders'; filter: 'f_status' = "done"; link: true)
+	```
+
+	Параметры отображения окна (`title`, `width`, `refresh`, `header`, `footer`, `topbuttons`, `bottombuttons`, `hidedots`, `pointing`, `tabs`) в адрес не попадают — они передаются окну при открытии, а не адресом. `target: "iframe"` добавляет к адресу `iframe=1`.
+
+#### <a name="fn-linkToTable-examples"></a>Примеры
+
+**Открыть таблицу в новом окне** *(код действия)*
+
 ```totum
-example: linkToTable(table: 'tablename'; title: "Открываемая таблица"; filter: 'fl_id' = 10; field: 'fieldname' = "Данные передаваемые в поле"; target: "iframe"; width: "80vw"; refresh: true)
+=: linkToTable(table: 'tablename'; target: "blank")
 ```
+
+Результат: открытие окна
+
+**Задать заголовок для открываемой таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; title: "Table title")
+```
+
+Результат: открытие окна
+
+**Применить фильтр к открываемой таблице** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; filter: 'fl_fieldname' = "value")
+```
+
+Результат: открытие окна
+
+**Передать значение в поле строки при открытии таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; field: 'fieldname' = "value")
+```
+
+Результат: открытие окна
+
+**Указать ширину окна для открываемой таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; width: 800)
+```
+
+Результат: открытие окна
+
+**Обновить родительскую таблицу при закрытии окна** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; refresh: true)
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в iframe** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe")
+```
+
+Результат: открытие окна
+
+**Скрыть хедер в открываемом окне** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; header: false)
+```
+
+Результат: открытие окна
+
+**Скрыть футер в открываемом окне** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; footer: false)
+```
+
+Результат: открытие окна
+
+**Задать поле для указателя при открытии таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; pointing: 'fieldname')
+```
+
+Результат: открытие окна
+
+**Указать относительную ширину окна для открываемой таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; width: "80vw")
+```
+
+Результат: открытие окна
+
+**Пересчитать родительскую таблицу при закрытии окна, независимо от того, было ли в ней изменение в результате действий в окне или нет** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; refresh: "recalculate")
+```
+
+Результат: открытие окна
+
+**Перезагрузить родительскую таблицу при закрытии окна, независимо от того, было ли в ней изменение в результате действий в окне или нет** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; refresh: "reload")
+```
+
+Результат: открытие окна
+
+**Применить несколько фильтров к открываемой таблице** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; filter: 'fl_field1' = "value1"; filter: 'fl_field2' = "value2")
+```
+
+Результат: открытие окна
+
+**Передать значения в несколько полей строки при открытии таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; field: 'field1' = "value1"; field: 'field2' = "value2")
+```
+
+Результат: открытие окна
+
+**Скрыть верхние кнопки управления таблице в открываемом окне** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; topbuttons: false)
+```
+
+Результат: открытие окна
+
+**Скрыть кнопки управления таблицей внизу окна iframe при открытии таблицы в окне** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; bottombuttons: false)
+```
+
+Результат: открытие окна
+
+**Скрыть кнопки дополнительных действий строчной части (с тремя точками) внизу окна iframe при открытии таблицы в окне** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe")
+```
+
+Результат: открытие окна
+
+**Отменить скрытие кнопок дополнительных действий строчной части (с тремя точками) внизу окна iframe при открытии таблицы в окне** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; hidedots: false)
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в том же окне, что и текущую** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "self")
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в самом нижнем окне, закрыв все промежуточные в случае если она открывается из iframe** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "parent")
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в окне, задав заголовок окна, относительную ширину окна, передать значения двух префильтров, скрыть верхние и нижние кнопки управления и пересчитать текущую таблицу при закрытии этого окна только при наличии в ней изменений** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; title: "Some title"; filter: 'fl_filter1' = "value1"; filter: 'fl_filter2' = "value2"; target: "iframe"; width: "80vw"; refresh: true; topbuttons: false; bottombuttons: false)
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в окне, задав заголовок окна, жесткую ширину окна, передать значение поля префильтра, скрыть верхние и пересчитать текущую таблицу при закрытии этого окна только при наличии в ней изменений и сразу открыть строку добавления, поставив число 100 как значение одного из полей** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; title: "Some title"; filter: 'fl_filter1' = "value1"; field: 'fieldname' = 100; target: "iframe"; width: 800; refresh: true; topbuttons: false)
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в окне, задав заголовок окна, скрыть верхние и нижние кнопки управления и пересчитать в любом случае пересчитать текущую таблицу при закрытии этого окна с учетом того, что открываемая таблицы находится в цикле** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; cycle: 1; title: "Table title"; target: "iframe"; refresh: "recalculate"; topbuttons: false; bottombuttons: false)
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в окне, задав заголовок окна, скрыть верхние и нижние кнопки управления и пересчитать в любом случае пересчитать текущую таблицу при закрытии этого окна с учетом того, что открываемая таблица — это созданная ранее временная таблица** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; hash: "temporary_table_hash"; title: "Table title"; target: "iframe"; refresh: "recalculate"; topbuttons: false; bottombuttons: false)
+```
+
+Результат: открытие окна
+
+**Открыть таблицу в окне, задав заголовок окна, скрыть верхние и нижние кнопки управления и пересчитать в любом случае пересчитать текущую таблицу при закрытии этого окна с учетом того, что при открытии мы создадим экземляр временной таблицы** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; title: "Table title"; target: "iframe"; refresh: "recalculate"; topbuttons: false; bottombuttons: false)
+```
+
+Результат: открытие окна
+
+**Закрыть родительскую таблицу при закрытии вызванного окна, независимо от того, было ли в ней изменение в результате действий в окне или нет** *(код действия)*
+
+```totum
+=: linkToTable(table: 'tablename'; target: "iframe"; refresh: "close")
+```
+
+Результат: открытие окна
 
 ### <a name="fn-linkToScript"></a>linkToScript
 
@@ -4795,11 +10030,9 @@ example: linkToTable(table: 'tablename'; title: "Открываемая табл
 
 > НЕ ИСПОЛЬЗОВАТЬ В CRON!
 
-
 **Обязательные параметры**
 
 + **uri** — [строка][6], адрес по которому открывается скрипт.
-
 
 **Необязательные параметры**
 
@@ -4825,7 +10058,6 @@ example: linkToTable(table: 'tablename'; title: "Открываемая табл
 	+ Передается как [число][5] если требуется указать конкретный размер.
 	+ Передается как [строка][6] формата `"80vw"` если требуется указать размер относительно окна браузера в процентах.
 
-
 + **refresh** — определяет, будет ли обновляться таблица-родитель при закрытии окна для варианта `iframe` параметра `target`.
 	
 	+ `true` при необходимости обновить данные.
@@ -4833,11 +10065,87 @@ example: linkToTable(table: 'tablename'; title: "Открываемая табл
 	+ `"reload"` — при возврате таблица источник будет перезагружена, как буд-то пользователь нажал обновить в браузере.
 	+  При отсутствии принимается равным `false`.
 
+#### <a name="fn-linkToScript-examples"></a>Примеры
 
+**Открыть web-страницу по указанному URL в новом окне** *(код действия)*
 
 ```totum
-example: linkToScript(uri: "https://host.com"; title: "host.com"; target: "iframe"; width: 800; refresh: false)
+=: linkToScript(uri: "https://example.com"; target: "blank")
 ```
+
+Результат: открытие web-адреса
+
+**Передать параметры через POST при открытии web-страницы из кода-действия** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; post: "param1" = "value1"; post: "param2" = "value2"; target: "blank")
+```
+
+Результат: открытие web-адреса
+
+**Задать заголовок для окна с iframe при открытии web-страницы из кода-действия** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; title: "Example Title"; target: "iframe")
+```
+
+Результат: открытие web-адреса
+
+**Открыть стороннюю web-страницу в текущем окне** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "self")
+```
+
+Результат: открытие web-адреса
+
+**Задать ширину окна в пикселях для iframe при открытии web-страницы из кода действия** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "iframe"; width: 800)
+```
+
+Результат: открытие web-адреса
+
+**Обновить таблицу-родитель при закрытии окна со сторонней web-страницей** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "iframe"; refresh: true)
+```
+
+Результат: открытие web-адреса
+
+**Пересчитать таблицу источник при закрытии окна с web-страницей, открытой из кода-действия** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "iframe"; refresh: "recalculate")
+```
+
+Результат: открытие web-адреса
+
+**Перезагрузить таблицу источник при закрытии окна с web-страницей, открытой из кода-действия** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "iframe"; refresh: "reload")
+```
+
+Результат: открытие web-адреса
+
+**Открыть скрипт в базовом нижнем окне, закрыв все вложенные окна, когда мы открываем окно с web-страницей из кода-действия** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "parent")
+```
+
+Результат: открытие web-адреса
+
+**Задать ширину окна относительно окна браузера в процентах при окрытии из кода-действия окна с web-страницей** *(код действия)*
+
+```totum
+=: linkToScript(uri: "https://example.com"; target: "iframe"; width: "80vw")
+```
+
+Результат: открытие web-адреса
 
 ### <a name="fn-linkToDataTable"></a>linkToDataTable
 
@@ -4848,7 +10156,6 @@ example: linkToScript(uri: "https://host.com"; title: "host.com"; target: "ifram
 Вызывает в веб-интерфейсе пользователя окно с временной таблицей и при необходимости передает в нее подготовленные данные.
 
 Функция может быть вызвана из [кода][513] с параметром `hide: true` для расчета через [временную таблицу][34].
-
 
 **Обязательные параметры**
 
@@ -4915,27 +10222,206 @@ example: linkToScript(uri: "https://host.com"; title: "host.com"; target: "ifram
 + **hidedots** — `false`, если необходимо отменить скрытие кнопки с точками в нижнем правом углу.  Принимается равным `false` по умолчанию, при открытии таблицы в iframe.
 
 ```totum
-example: linkToDataTable(table: 'tmp_test'; title: "Окно временного расчета"; width: 800; height: "80vh"; data: $rowList; params: $row; refresh: false; header: true; footer: true)
-	rowList: jsonExtract(text: '[{"field1":1, "field2":2},{"field1":3, "field2":4}]')
-	row: jsonExtract(text: '{"f_summ_1":4, "f_summ_2":6}')
-
-// Результат: 
-```
-
-**Окно временного расчета**
-
-id | field1 | field2
--- | ------ | ------
-1 | 1 | 2
-2 | 3 | 4
-f | 4 | 6
-
-
-```totum
 sel: selectRowList(table: 'tmp_table'; hash: $hash; field: 'data'; field: 'summ'; order: 'id' asc)
 	~hash: linkToDataTable(table: 'tmp_table'; params: $row_hide; hide: true)
 		row_hide: "здесь параметры передаваемые в tmp_table"
 ```
+
+#### <a name="fn-linkToDataTable-examples"></a>Примеры
+
+**Открыть временную таблицу во всплывающем окне с заголовком окна** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; data: $rowList; params: $row; refresh: true)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, задать ширину окна в пикселях** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; width: 800; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, задать высоту окна в процентах от высоты браузера** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; height: "80vh"; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы, передать данные для заполнения строчной части таблицы** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; data: $rowList; refresh: true)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы, передать параметры для заполнения нестрочных частей таблицы** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; params: $row; refresh: true)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы указать поле, в которое будет поставлен указатель при открытии таблицы** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; pointing: 'field_name'; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, обновить таблицу-родитель при закрытии окна** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; data: $rowList; params: $row; refresh: true)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, скрыть поля хедера целиком в открытом окне** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; header: false; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, скрыть поля футера целиком в открытом окне** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; footer: false; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы, открыть таблицу в новом окне** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; target: "blank"; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, скрыть кнопки управления внизу окна** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; bottombuttons: false; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы скрыть ее показ для пользователя и получить только ее хэш** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_table'; params: $row_hide; hide: true)
+
+row_hide: "row_with_params_here"
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, отменить скрытие кнопки с точками в нижнем правом углу** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; hidedots: false; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,3]`; field: "field2" = json`[2,4]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, задать ширину окна в пикселя, передать значение двух полей в хедере и таблицу из 2-х полей и 3-х строк в строчную часть** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; width: 800; data: $rowList; params: $row; refresh: false)
+
+rowList: rowListCreate(field: "field1" = json`[1,2,3]`; field: "field2" = json`[4,5,6]`)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, передать значение двух полей в хедере и передать команду обновить данные в родительской таблице (если были изменения) при закрытии окна** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; params: $row; refresh: true)
+
+row: rowCreate(field: "h_field1" = 40; field: "h_field_2" = 50)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, передать значение двух полей в строчной части и передать команду пересчитать в любом случае родительскую таблицу при закрытии окна** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; data: $rowList; refresh: "recalculate")
+
+rowList: rowListCreate(field: "field1" = json`[1,2]`; field: "field2" = json`[3,4]`)
+```
+
+Результат: открытие временной таблицы
+
+**При открытии временной таблицы во всплывающем окне, закрыть таблицу-родитель также открытую в окне при закрытии окна** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_test'; title: "Title for tmp window"; data: $rowList; params: $row; refresh: "close")
+
+rowList: rowListCreate(field: 'field1' = json`[1,3]`; field: 'field2' = json`[2,4]`)
+
+row: rowCreate(field: 'h_field1' = 40; field: 'h_field_2' = 50)
+```
+
+Результат: открытие временной таблицы
 
 ### <a name="fn-linkToDataText"></a>linkToDataText
 
@@ -4944,7 +10430,6 @@ sel: selectRowList(table: 'tmp_table'; hash: $hash; field: 'data'; field: 'summ'
 =: linkToDataText(title: ; text: )
 ```
 Вызывает в веб-интерфейсе окно сообщения с текстовым содержимым.
-
 
 **Обязательные параметры**
 
@@ -4960,11 +10445,55 @@ sel: selectRowList(table: 'tmp_table'; hash: $hash; field: 'data'; field: 'summ'
 
 + **height** — высота всплывающего окна в пикселях или относительная.
 
+#### <a name="fn-linkToDataText-examples"></a>Примеры
+
+**Создать окно сообщения с заголовком и текстом** *(код действия)*
 
 ```totum
-example: linkToDataText(title: "Внимание"; text: "Ваше изменение принято")
-
+=: linkToDataText(title: "Some title"; text: "Some text")
 ```
+
+Результат: открытие окна с текстом
+
+**Как задать ширину всплывающего окна c текстом в пикселях в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataText(title: "Some title here"; text: "Some text here"; width: 500)
+```
+
+Результат: открытие окна с текстом
+
+**Как сделать так, чтобы всплывающее окно с текстом закрывало родительское окно после закрытия в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataText(title: "Some title here"; text: "Some text here"; close: true)
+```
+
+Результат: открытие окна с текстом
+
+**Как задать высоту всплывающего окна с текстом в относительных единицах в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataText(title: "Some title here"; text: "Some text here"; height: "50vw")
+```
+
+Результат: открытие окна с текстом
+
+**Создать окно с текстом и заголовком, которое закрывает родительское окно после закрытия** *(код действия)*
+
+```totum
+=: linkToDataText(title: "Title for window"; text: "Some text here"; close: true)
+```
+
+Результат: открытие окна с текстом
+
+**Создать окно c текстом передав текст и заголовок с заданной шириной и высотой** *(код действия)*
+
+```totum
+=: linkToDataText(title: "Some title"; text: "Some text"; width: 400; height: "50vh")
+```
+
+Результат: открытие окна с текстом
 
 ### <a name="fn-linkToDataHtml"></a>linkToDataHtml
 
@@ -4973,7 +10502,6 @@ example: linkToDataText(title: "Внимание"; text: "Ваше измене�
 =: linkToDataHtml(title: ; html: )
 ```
 Вызывает в веб-интерфейсе окно с html содержимым.
-
 
 **Обязательные параметры**
 
@@ -4991,6 +10519,87 @@ example: linkToDataText(title: "Внимание"; text: "Ваше измене�
 
 + **scripts** — (только в PRO!) `list` url js-скриптов, подключаемых с автоматической поверкой до загрузки указанного `html` на страницу.
 
+#### <a name="fn-linkToDataHtml-examples"></a>Примеры
+
+**Создать окно с заголовком и HTML содержимым** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>")
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Как задать ширину и высоту всплывающего окна с HTML в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>"; width: 800; height: 600)
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Как закрыть родительские окна после закрытия всплывающего окна c HTML в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>"; close: true)
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Как подключить дополнительные JS-скрипты при создании окна с HTML-содержимым в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>"; scripts: $list)
+
+list: listCreate(item: "https://example.com/script1.js"; item: "https://example.com/script2.js")
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Как задать заголовок для всплывающего окна с HTML-содержимым в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>")
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Как использовать относительные размеры для высоты и ширины окна в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>"; width: "80vw"; height: "60vh")
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Как проверить загрузку JS-скриптов перед отображением HTML содержимого в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: "<p>Some HTML</p>"; scripts: $list)
+
+list: listCreate(item: "https://example.com/script1.js"; item: "https://example.com/script2.js")
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
+**Создать окно с заголовком и HTML содержимым, передав в него многострочной содержимое HTML из этого-же кода** *(код действия)*
+
+```totum
+=: linkToDataHtml(title: "Some Title"; html: $html)
+
+```html:html
+<html>
+<head>
+<title>Example</title>
+</head>
+<body>
+<p>Some HTML content</p>
+</body>
+</html>
+```
+```
+
+Результат: открытие всплывающего окна с HTML-содержимым
+
 ### <a name="fn-linkToPanel"></a>linkToPanel
 
 Доступен в секциях: [Код действия][28].
@@ -4999,11 +10608,9 @@ example: linkToDataText(title: "Внимание"; text: "Ваше измене�
 ```
 Открывает строку таблицы в виде [панели][66].
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, из которой будет открываться строка.
-
 
 **Необязательные параметры**
 
@@ -5053,12 +10660,133 @@ example: linkToDataText(title: "Внимание"; text: "Ваше измене�
 + **columns** — `1` или `2` (по умолчанию). Изменяет отображение количества колонок при открытии панели.
 	
 
+#### <a name="fn-linkToPanel-examples"></a>Примеры
+
+**Открыть строку таблицы в виде панели** *(код действия)*
+
 ```totum
-example: linkToPanel(table: 'tablename'; id: $num; refresh: true)
-	num: 10
-	
-// Результат: открывает строку id=10 таблицы tablename в панели.
+=: linkToPanel(table: 'tablename'; id: 10; refresh: true)
 ```
+
+Результат: открытие панели
+
+**Задать id открываемой строки при открытии строки как панели** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 100; refresh: true)
+```
+
+Результат: открытие панели
+
+**Подставить значение в поле при открытии панели** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 30; field: 'fieldname' = "value"; refresh: true)
+```
+
+Результат: открытие панели
+
+**Определить, будет ли обновляться таблица-родитель при закрытии окна панели в случае, если в ней были изменения** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 10; refresh: true)
+```
+
+Результат: открытие панели
+
+**Задать, что необходимо пересчитать таблицу-родитель при закрытии окна панели даже в случае, если в ней небыло изменений** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 500; refresh: "recalculate")
+```
+
+Результат: открытие панели
+
+**Открыть строку как панель с указанием строки, но с учетом того, что поле привязки отлично от id** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; bfield: 'field_name' = "value"; refresh: true)
+```
+
+Результат: открытие панели
+
+**Открыть строку как панель, если эта строка находится во временной таблице** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 10; hash: "some_hash"; refresh: true)
+```
+
+Результат: открытие панели
+
+**Ограничить загрузку полей в панель при ее открытии** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 10; fields: json`["field1", "field2"]`)
+```
+
+Результат: открытие панели
+
+**Задать кастомные заголовки полей при открытии панели** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; titles: $rowList; id: 400; refresh: false)
+
+rowList: rowListCreate(field: "name" = $listOfNames; field: "title" = $listOfTitles)
+
+listOfNames: listCreate(item: "field_1"; item: "field_2")
+listOfTitles: listCreate(item: "Name 1"; item: "Name 2")
+```
+
+Результат: открытие панели
+
+**Задать кастомные заголовки полей при открытии панели, используя row с заголовками** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; titles: $row; id: 400; refresh: false)
+
+row: rowCreate(field: 'field_1' = "Name 1"; field: 'field_2' = "Name 2")
+```
+
+Результат: открытие панели
+
+**Задать кастомные заголовки полей при открытии панели, используя rowlist с заголовками** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; titles: $rowList; id: 400; refresh: false)
+
+rowList: rowListCreate(field: "name" = $listOfNames; field: "title" = $listOfTitles)
+
+listOfNames: listCreate(item: "field_1"; item: "field_2")
+listOfTitles: listCreate(item: "Name 1"; item: "Name 2")
+```
+
+Результат: открытие панели
+
+**Изменить отображение количества колонок при открытии панели** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 10; columns: 1)
+```
+
+Результат: открытие панели
+
+**Открыть строку как панель, если эта строка находится во временной таблице, нужно пересчитать таблицу источник при закрытии если в нем будут изменения, в поле field_1 передать значение value и отобразить в одну колонку с ограничением вывода полей — показать только field_1, field_2 и field_3** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 10; hash: "some_hash"; refresh: true; field: 'field_1' = "value"; columns: 1; fields: json`["field_1", "field_2", "field_3"]`)
+```
+
+Результат: открытие панели
+
+**Открыть строку как панель, нужно пересчитать таблицу источник при закрытии если в ней будут изменения, в поле field_1 установить заголовок title_1, а в поле field_2 установить заголовок title_2** *(код действия)*
+
+```totum
+=: linkToPanel(table: 'tablename'; id: 10; refresh: true; titles: $row)
+
+row: rowCreate(field: 'field_1' = "title_1"; field: 'field_2' = "title_2")
+```
+
+Результат: открытие панели
 
 ### <a name="fn-linkToEdit"></a>linkToEdit
 
@@ -5068,7 +10796,6 @@ example: linkToPanel(table: 'tablename'; id: $num; refresh: true)
 ```
 Открывает всплывающее окно редактирования содержимого поля.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы, из которой берутся данные.
@@ -5076,8 +10803,6 @@ example: linkToPanel(table: 'tablename'; id: $num; refresh: true)
 + **field** — [name-параметр][3] поле в таблице `table`.
 
 + **title** — заголовок окна.
-
-
 
 **Необязательные параметры**
 
@@ -5094,6 +10819,64 @@ example: linkToPanel(table: 'tablename'; id: $num; refresh: true)
 	+ `"reload"` — при возврате таблица источник будет перезагружена, как буд-то пользователь нажал обновить в браузере.
 	+ `"recalculate"` — пересчитать таблицу источник, даже если в ней небыло изменений.
 	+ `"close"` — в момент закрытия вызываемого окна поля будет закрыто окно родитель, если вызов идет из iframe.
+
+#### <a name="fn-linkToEdit-examples"></a>Примеры
+
+**Открыть всплывающее окно редактирования содержимого поля, которое находится в хедере или футере в другой таблице** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edite field"; table: 'target_table'; field: 'target_field')
+```
+
+Результат: редактирование другого поля в окне
+
+**Указать таблицу, поле и строку, которое открывается на редактирование в другой таблице** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edit field"; table: 'target_table'; field: 'target_field'; id: 599)
+```
+
+Результат: редактирование другого поля в окне
+
+**Определить цикл, таблицу, поле и строку для открытия поля на редактирование, находящегося в другой таблице в цикле** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edit field"; table: 'target_table'; cycle: 3; field: 'target_field'; id: 599)
+```
+
+Результат: редактирование другого поля в окне
+
+**Использовать hash для временных таблиц** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edit field"; table: 'target_table'; hash: "temporary_hash"; field: 'target_field')
+```
+
+Результат: редактирование другого поля в окне
+
+**Настроить обновление таблицы-родителя при закрытии окна редактирования** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edit field"; table: 'target_table'; field: 'target_field'; refresh: true)
+```
+
+Результат: редактирование другого поля в окне
+
+**Задать обновление таблицы-родителя при закрытии окна редактирования, даже если в ней небыло изменений** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edit field"; table: 'target_table'; field: 'target_field'; refresh: "recalculate")
+```
+
+Результат: редактирование другого поля в окне
+
+**Задать браузерное обновление таблицы-родителя при закрытии окна редактирования** *(код действия)*
+
+```totum
+=: linkToEdit(title: "Edit field"; table: 'target_table'; field: 'target_field'; refresh: "reload")
+```
+
+Результат: редактирование другого поля в окне
 
 ### <a name="fn-linkToPrint"></a>linkToPrint
 
@@ -5115,7 +10898,6 @@ example: linkToPanel(table: 'tablename'; id: $num; refresh: true)
 ```
 
 Вызывает панель с кнопками. При нажатии на кнопку выполняется соответствующий ей [код-действия][28].
-
 
 **Обязательные параметры**
 
@@ -5147,25 +10929,207 @@ example: linkToPanel(table: 'tablename'; id: $num; refresh: true)
 
 + **close** — `true` позволяет закрыть таблицу источник если она открыта в iframe после выполнения кнопки. Необходим так как [закрыть окно после выполнения][192] в настройках кнопки вызывающей `linkToButtons` или [linkToInput][459] приводит к их неработоспособности! 
 
+#### <a name="fn-linkToButtons-examples"></a>Примеры
 
+**Создать всплывающее окно с кнопками, где каждая кнопка выполняет определенный код** *(код действия)*
 
 ```totum
-=: linkToButtons(title: "Красная или синяя"; buttons: $buttons; width: 400; html: "ТЫ — НЕО")
- 
+=: linkToButtons(title: "Some title"; buttons: $buttons; html: "Some html for button window")
+
 buttons: listCreate(item: $btn1; item: $btn2)
 
-btn1: rowCreate(field: "text" = "Красная"; field: "code" = $code1; field: "icon" = "link"; field: "background" = "seashell"; field: "color"="red"; field: "vars" = $vars1; field: "refresh" = false)
-	vars1: rowCreate(field: "var1" = "Вы выбрали красную таблетку")
-	code1: strAdd(str: '=: linkToDataText(title: "ИИИ"; text: $#var1)')
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1)
 
-btn2: rowCreate(field: "text" = "Синяя"; field: "code" = "name_field_in_table"; field: "icon" = "link"; field: "background" = "eliceblue"; field: "vars" = $vars2;  field: "refresh" = true)
-	vars2: rowCreate(field: "var1" = "Вы выбрали синюю таблетку")
-
-// text и code — обязательные параметры в row, остальные нет.
-
-// Результат: Активная панель с двумя кнопками, нажатие на каждой из которых открывает панель с текстом.
-
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
 ```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2)
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как задать заголовок окна для всплывающего окна с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some custom title here"; buttons: $buttons; html: "Some html for button window")
+
+buttons: listCreate(item: $btn1; item: $btn2)
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2)
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как добавить HTML-контент в всплывающее окно с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: $buttons; html: "<p>Custom HTML content here</p>")
+
+buttons: listCreate(item: $btn1; item: $btn2)
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2)
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как сделать так, чтобы таблица источник обновлялась после нажатия кнопки во всплывающем окне с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: json`[$btn1,$btn2]`; refresh: true)
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2)
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как закрыть таблицу источник после выполнения кнопки в всплывающем окне с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: json`[$btn1,$btn2]`; close: true)
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2)
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как задать иконку для кнопки во всплывающем окне с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: json`[$btn1,$btn2]`; html: "Some html for button window")
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1; field: "icon" = "link")
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2; field: "icon" = "link")
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как задать цвет фона для кнопки во всплывающем окне с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: json`[$btn1,$btn2]`; html: "Some html for button window")
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1; field: "background" = "#ff0000")
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2; field: "background" = "whitesmoke")
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как передать переменные в код, выполняемый при нажатии кнопки в системе Totum в всплывающем окне с кнопками?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: json`[$btn1,$btn2]`)
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1; field: "vars" = $vars1)
+
+vars1: rowCreate(field: "var1" = "Value 1"; field: "var2" = "Value 2")
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: str`"You choosed action 1 with var1 = " + $#var1 + " and var2 = " + $#var2`)
+```
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2; field: "vars" = $vars2)
+
+vars2: rowCreate(field: "var1" = "Another Value 1"; field: "var2" = "Another Value 2")
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: str`"You choosed action 2 with var1 = " + $#var1 + " and var2 = " + $#var2`)
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
+
+**Как создать ассоциативный массив из двух кнопок для открытия всплывающего окна с кнопками в системе Totum?** *(код действия)*
+
+```totum
+=: linkToButtons(title: "Some title"; buttons: $buttons; html: "Some html for button window")
+
+buttons: listCreate(item: $btn1; item: $btn2)
+
+btn1: rowCreate(field: "text" = "Action 1"; field: "code" = $code1)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You choosed action 1")
+```
+
+
+btn2: rowCreate(field: "text" = "Action 2"; field: "code" = $code2)
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You choosed action 2")
+```
+```
+
+Результат: открытие всплывающего окна с кнопками
 
 ### <a name="fn-linkToInput"></a>linkToInput
 
@@ -5178,7 +11142,6 @@ btn2: rowCreate(field: "text" = "Синяя"; field: "code" = "name_field_in_tab
 Вызывает панель с полем ввода. При нажатии на кнопку подтверждения выполняет код переданный в **code** как [код-действия][28].
 
 Введенное в поле ввода значение будет передано в переменную `input`.
-
 
 **Обязательные параметры**
 
@@ -5218,7 +11181,6 @@ btn2: rowCreate(field: "text" = "Синяя"; field: "code" = "name_field_in_tab
 	+ `week` — номер недели (добавляет элементы управления и календарь).
 	+ `time` — время, часы и минуты (добавляет элементы управления).
 
-
 + **button** — [строка][6], надпись на кнопке с подтверждением ввода.
 
 + **var** — множественный параметр, передается как `var: "var_name" = "var_value"`. Параметры, которые могут быть использованы в **code.**
@@ -5236,14 +11198,108 @@ btn2: rowCreate(field: "text" = "Синяя"; field: "code" = "name_field_in_tab
 	```
 + **height** — высота всплывающего окна в пикселях или относительная.
 
+#### <a name="fn-linkToInput-examples"></a>Примеры
+
+**Создать всплывающее окно с полем ввода и выполнить код-действия используя данные, введенные в это поле** *(код действия)*
+
 ```totum
-example: linkToInput(html: "Введите номер заказа"; title: "Открыть заказ по номеру"; code: $stradd; refresh: false; button: "Открыть")
+=: linkToInput(title: "Some title"; code: $execute_code; button: "Save")
 
-stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; target: "top")'; str: $#nl; str: 'number: select(table: "novye_zakazy"; field: "id"; where: "nomer" = $#input)')
-		
-// Результат: Окошко с пустым полем для ввода, надписью Введите номер заказа и кнопками «Отмена» и «Открыть».
-
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
 ```
+```
+
+Результат: открытие окна с полем ввода
+
+**Установить значение по умолчанию для поля ввода при открытии всплывающего окна с полем-ввода тип число** *(код действия)*
+
+```totum
+=: linkToInput(title: "Some title"; type: "number"; value: "10"; code: $execute_code; button: "Save")
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
+```
+```
+
+Результат: открытие окна с полем ввода
+
+**Задать тип поля ввода как пароль при открытии всплывающего окна с полем ввода и передать в него html-содержимое, задав фиксированную высоту в пикселях** *(код действия)*
+
+```totum
+=: linkToInput(title: "Some title"; type: "password"; html: "<p>Some html here</p>"; height: 200; code: $execute_code; button: "Action")
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
+```
+```
+
+Результат: открытие окна с полем ввода
+
+**Обновить таблицу источник, если в ней были изменения, после выполнения кода-действия во всплывающем окне с полем ввода** *(код действия)*
+
+```totum
+=: linkToInput(title: "Some title"; code: $execute_code; button: "Save"; refresh: true)
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
+```
+```
+
+Результат: открытие окна с полем ввода
+
+**Задать заголовок всплывающего окна с полем ввода и задат текст кнопки выполняющей код-действия в этом окне** *(код действия)*
+
+```totum
+=: linkToInput(title: "Your Title"; button: "Your Button Text"; code: $execute_code)
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
+```
+```
+
+Результат: открытие окна с полем ввода
+
+**Задать надпись на кнопке подтверждения ввода при открытии окна с полем ввода и передать в этот код две быстрые переменные** *(код действия)*
+
+```totum
+=: linkToInput(title: "Your Title"; button: "Confirm"; code: $execute_code; var: "in_var1" = "some_value_1"; var: "iv_var2" = "some_value_2")
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input; where: 'field_1' = $#in_var1; where: 'field_1' = $#in_var2)
+```
+```
+
+Результат: открытие окна с полем ввода
+
+**Обновить таблицу источник, даже если в ней небыло изменений, после выполнения кода-действия во всплывающем окне с полем ввода с типом время** *(код действия)*
+
+```totum
+=: linkToInput(title: "Some title"; type: "datetime-local"; code: $execute_code; button: "Save"; refresh: "recalculate")
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
+```
+```
+
+Результат: открытие окна с полем ввода
+
+**При открытии окна с полем ввода использовать свою кастомную html-форму и получить из нее данные, скрыв при этом стандартное поле ввода** *(код действия)*
+
+```totum
+=: linkToInput(title: "Custom Form"; html: $html; code: $execute_code; button: "Submit")
+
+```html:html
+<textarea id="ttmInput">{"key_1":"some key 1", "key_2":"some key 2"}</textarea>
+```
+
+
+```execute_code:totum
+=: set(table: 'table_name'; field: 'field_name' = $#input)
+```
+```
+
+Результат: открытие окна с полем ввода
 
 ### <a name="fn-linkToInputSelect"></a>linkToInputSelect
 
@@ -5256,7 +11312,6 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 Вызывает панель с полем ввода в виде выпадающего списка. При нажатии на кнопку подтверждения выполняет код переданный в **code** как [код-действия][28].
 
 Введенное в поле ввода значение будет передано в переменную `input`.
-
 
 **Обязательные параметры**
 
@@ -5306,6 +11361,120 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 
 	+ `"force"` — в этом случае для одинарного селекта при выборе значения сразу будет выполнен `code`.
 
+#### <a name="fn-linkToInputSelect-examples"></a>Примеры
+
+**Создать всплывающее окно с выпадающим списком и выполнить код-действия используя данные, выбранные в этом выпадающем списке** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Select an option"; code: $execute_code; codeselect: $select_code; button: "Submit")
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
+**Установить значение по умолчанию для выпадающего списка при открытии всплывающего окна с ним** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Select an option"; code: $execute_code; codeselect: $select_code; value: "default_value"; button: "Submit")
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
+**При открытии всплывающего окна с выпадающим списком, дать возможность выбирать в нем несколько значений одновременно** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Select multiple options"; code: $execute_code; codeselect: $select_code; button: "Submit"; multiple: true)
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
+**Обновить таблицу источник, если в ней были изменения, после выполнения кода-действия во всплывающем окне с выпадающим списком** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Select an option"; code: $execute_code; codeselect: $select_code; button: "Submit"; refresh: true)
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
+**Задать заголовок всплывающего окна с выпадающим списком и задать текст кнопки выполняющей код-действия в этом окне** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Your Title"; code: $execute_code; codeselect: $select_code; button: "Your Button Text")
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
+**Задать надпись на кнопке подтверждения ввода при открытии окна с выпадающим списком и передать в этот код-действия две быстрые переменные** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Select an option"; code: $execute_code; codeselect: $select_code; button: "Confirm"; var: "var1" = "value1"; var: "var2" = "value2")
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input; where: 'some_field_1' = $#var1; where: 'some_field_2' = $#var2)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
+**Обновить таблицу источник, даже если в ней небыло изменений, после выполнения кода-действия во всплывающем окне с выпадающим списком** *(код действия)*
+
+```totum
+=: linkToInputSelect(title: "Select an option"; code: $execute_code; codeselect: $select_code; button: "Submit"; refresh: "recalculate")
+
+```select_code:totum
+=: selectRowListForSelect(table: 'options_table'; field: 'option_name'; order: 'id' asc)
+```
+
+```execute_code:totum
+=: set(table: 'target_table'; field: 'target_field' = $#input)
+```
+```
+
+Результат: открытие окна с выпадающим списком
+
 ### <a name="fn-linkToDataJson"></a>linkToDataJson
 
 Доступен в секциях: [Код действия][28].
@@ -5313,7 +11482,6 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 =: linkToDataJson(title: ; data: )
 ```
 Открывает окно `json-editor` с передачей в него содержимого из `data`.
-
 
 **Обязательные параметры**
 
@@ -5349,6 +11517,88 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 
 + **refresh** — `true` обновить таблицу по закрытию окна. Также возможно `"recalculate"` и `"reload".`
 
+#### <a name="fn-linkToDataJson-examples"></a>Примеры
+
+**Открыть всплывающее окно с редактором JSON и передать в него данные** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`)
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
+**Как задать заголовок всплывающего окна при открытии редактора JSON в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`)
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
+**Как определить ширину всплывающего окна при открытии редактора JSON в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`; width: 800)
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
+**Как выполнить код-действия при нажатии кнопки в всплывающем окне редактора JSON в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`; code: $code)
+
+```code:totum
+
+=: set(table: 'table'; field: 'field' = $#value[key])
+
+```
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
+**Как передать переменные в код-действия при открытии всплывающего окна редактора JSON в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`; code: $code; var: "var" = "value")
+
+```code:totum
+
+=: set(table: 'table'; field: 'field' = $#value[key]; where: 'field' = $#var)
+
+```
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
+**Как обновить таблицу после закрытия всплывающего окна редактора JSON в системе Totum, но только в случае если в ней были изменения?** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`; code: $code; refresh: true)
+
+```code:totum
+
+=: set(table: 'table'; field: 'field' = $#value[key])
+
+```
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
+**Как задать текст на кнопке в всплывающем окне редактора JSON в системе Totum?** *(код действия)*
+
+```totum
+=: linkToDataJson(title: "JSON Editor"; data: json`{"key": "value"}`; code: $code; buttontext: "Click Me")
+
+```code:totum
+
+=: set(table: 'table'; field: 'field' = $#value[key])
+
+```
+```
+
+Результат: открытие всплывающего окна с JSON-редактором
+
 ### <a name="fn-linkToFileUpload"></a>linkToFileUpload
 
 Доступен в секциях: [Код действия][28].
@@ -5356,7 +11606,6 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 =: linkToFileUpload(title: ; code: ; limit: ; type: "*"; var: ; refresh: false)
 ```
 Открывает системное окно выбора файлов.
-
 
 **Обязательные параметры**
 
@@ -5401,13 +11650,93 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 	+ `"reload"` — при возврате таблица источник будет перезагружена, как буд-то пользователь нажал обновить в браузере.
 	+ `"recalculate"` — таблица источник будет пересчитана, даже если в ней небыло изменений.
 
-**Пример:**
+#### <a name="fn-linkToFileUpload-examples"></a>Примеры
+
+**Задать заголовок всплывающего окна выбора файлов** *(код действия)*
 
 ```totum
-= : linkToFileUpload(title: "Закачка файлов"; code: "=: set(table: $#ntn; field: 'h_files' = $#input)"; limit: 2; type: "image/*"; refresh: true)
+=: linkToFileUpload(title: "Some title"; code: $code)
 
-//Результат: в поле h_files будут добавлены 2 выбранных файла, таблица будет обновлена.
+```code:totum
+=: set(table: 'table'; field: 'file_field' = $#input)
 ```
+```
+
+Результат: открытие окна для загрузки файлов
+
+**Ограничить количество загружаемых файлов при открытии всплывающего окна загрузки файлов** *(код действия)*
+
+```totum
+=: linkToFileUpload(title: "Upload Files"; code: $code; limit: 3)
+
+```code:totum
+=: set(table: 'table'; field: 'file_field' = $#input)
+```
+```
+
+Результат: открытие окна для загрузки файлов
+
+**Указать ограничение по типу загружаемых файлов** *(код действия)*
+
+```totum
+=: linkToFileUpload(title: "Upload Files"; code: $code; type: "image/*")
+
+```code:totum
+=: set(table: 'table'; field: 'file_field' = $#input)
+```
+```
+
+Результат: открытие окна для загрузки файлов
+
+**Передать переменные в код-действия при загрузке файлов через всплывающее окно** *(код действия)*
+
+```totum
+=: linkToFileUpload(title: "Upload Files"; code: $code; var: "var_name" = "var_value")
+
+```code:totum
+
+=: set(table: 'table'; field: 'file_field' = $#input; where: 'field' = $#var_name)
+
+```
+```
+
+Результат: открытие окна для загрузки файлов
+
+**Настроить обновление таблицы после закрытия всплывающего окна для загрузки файлов файлов, в случае если в ней были изменения** *(код действия)*
+
+```totum
+=: linkToFileUpload(title: "Upload Files"; code: $code; refresh: true)
+
+```code:totum
+
+=: set(table: 'table'; field: 'file_field' = $#input)
+
+```
+```
+
+Результат: открытие окна для загрузки файлов
+
+**Использовать код из другого поля текущей таблицы при загрузке файлов** *(код действия)*
+
+```totum
+=: linkToFileUpload(title: "Upload Files"; code: "name_field_with_code")
+```
+
+Результат: открытие окна для загрузки файлов
+
+**Задать код-действия для выполнения при открытия окна для загрузки файлов** *(код действия)*
+
+```totum
+=: linkToFileUpload(title: "Upload Files"; code: $code)
+
+```code:totum
+
+=: set(table: 'table'; field: 'file_field' = $#input)
+
+```
+```
+
+Результат: открытие окна для загрузки файлов
 
 ### <a name="fn-linkToFileDownload"></a>linkToFileDownload
 
@@ -5427,27 +11756,71 @@ stradd: strAdd(str: '=: linkToTable(table: "sostav_zakaza"; cycle: $number; targ
 
 **ПРИМЕРЫ**
 
-```totum
-example: linkToFileDownload(file: $file)
-file: rowCreate(field: "name" = "file.jpg"; field: "type" = "image/jpeg"; field: "filestring" = $img)
-img: fileGetContent(file: #h_files[0]["file"])
+#### <a name="fn-linkToFileDownload-examples"></a>Примеры
 
-//Результат: Инициация скачивания на компьютер клиента jpeg-картинки и сохранение ее с именем "file.jpg"
-```
+**Запустить скачивание одного файла с указанным именем и типом** *(код действия)*
 
 ```totum
-example2: linkToFileDownload(file: $file1; file: $file2)
-file1: rowCreate(field: "name" = "file.txt"; field: "type" = "text/plain"; field: "filestring" = "Содержимое файла")
-file2: rowCreate(field: "name" = "file2.txt"; field: "type" = "text/plain"; field: "filestring" = "Содержимое файла2")
-
-//Результат: Инициация скачивания на компьютер клиента двух текстовых файлов и сохранение их с указанными именами
+=: linkToFileDownload(file: $file)
+	file: rowCreate(field: "name" = "file.jpg"; field: "type" = "image/jpeg"; field: "filestring" = $filestring)
+		filestring: fileGetContent(file: #h_files[0][file])
 ```
+
+Результат: запуск скачивания файлов
+
+**Скачать несколько файлов одновременно, взяв их из поля типа Файл** *(код действия)*
+
+```totum
+=: linkToFileDownload(files: $files)
+
+	files: listCreate(item: $file_1; item: $file_2)
+		file_1: rowCreate(field: "name" = "file.jpg"; field: "type" = "image/jpeg"; field: "filestring" = $filestring_1)
+			filestring_1: fileGetContent(file: #h_files[0][file])
+		file_2: rowCreate(field: "name" = "file.jpg"; field: "type" = "image/jpeg"; field: "filestring" = $filestring_2)
+			filestring_2: fileGetContent(file: #h_files[1][file])
+```
+
+Результат: запуск скачивания файлов
+
+**Упаковать несколько файлов в один zip-архив и скачать его, указав файлы раздельно** *(код действия)*
+
+```totum
+=: linkToFileDownload(file: $file1; file: $file2; zip: "archive")
+
+file1: rowCreate(field: "name" = "file1.txt"; field: "type" = "text/plain"; field: "filestring" = $filestring_1)
+	filestring_1: fileGetContent(file: #filefield[0][file])
+	
+file2: rowCreate(field: "name" = "file2.txt"; field: "type" = "text/plain"; field: "filestring" = $filestring_2)
+	filestring_2: fileGetContent(file: #filefield[1][file])
+```
+
+Результат: запуск скачивания файлов
+
+**Задать mime-тип для скачиваемого файла** *(код действия)*
+
+```totum
+=: linkToFileDownload(file: $file)
+	file: rowCreate(field: "name" = "file.jpg"; field: "type" = "image/jpeg"; field: "filestring" = $filestring)
+		filestring: fileGetContent(file: #h_files[0][file])
+```
+
+Результат: запуск скачивания файлов
+
+**Скачать файл с динамически созданным содержимым** *(код действия)*
+
+```totum
+=: linkToFileDownload(file: $file)
+	file: rowCreate(field: "name" = "dynamic_file.txt"; field: "type" = "text/plain"; field: "filestring" = $dynamic_content)
+		dynamic_content: "This is dynamically created content."
+```
+
+Результат: запуск скачивания файлов
 
 ### <a name="fn-getFromScript"></a>getFromScript
 
 Доступен в секциях: [Код][27]; [Код действия][28].
 ```totum
-=: getFromScript(uri: "http://"; post: "" = ; posts: ; gets: ; bfl: ; timeout: ; header: ; headers: ; ssh: ; method: )
+=: getFromScript(uri: "http://"; post: "" = ; posts: ; gets: ; bfl: ; timeout: ; header: ; headers: ; cookie: ; ssh: ; method: ; request: )
 ```
 Вызывает скрипт по указанному пути и передает ему POST или GET запрос.
 
@@ -5456,7 +11829,6 @@ file2: rowCreate(field: "name" = "file2.txt"; field: "type" = "text/plain"; fiel
 **Обязательные параметры**
 
 + **uri** — путь к скрипту.
-
 
 **Необязательные параметры**
 
@@ -5470,43 +11842,286 @@ file2: rowCreate(field: "name" = "file2.txt"; field: "type" = "text/plain"; fiel
 	
 + **timeout** — ограничение времени запроса в секундах.
 
-+ **header** — `true | false` определяет, возвращать ли `header+body` или только `body` ответа.
++ **header** — `true | false | "json"` определяет, возвращать ли заголовки ответа вместе с телом.
+	+ `false` (по умолчанию) — возвращается только `body` ответа ([строка][6]).
+	+ `true` — возвращается [строка][6] `header+body`: заголовки ответа, пустая строка и тело.
 	
-	Если `true` и вам нужно привести в более читаемый вид то можно использовать [strSplit][249]:
-	
-	```totum
-	= : linkToDataHtml(title: "test"; html: $join)
+		Если вам нужно привести ее в более читаемый вид, то можно использовать [strSplit][249]:
+		
+		```totum
+		= : linkToDataHtml(title: "test"; html: $join)
 
-    join: listJoin(list: $split; str: "<br>")
+		join: listJoin(list: $split; str: "<br>")
 
-	split: strSplit(str: $get; separator: str`$#nl`)
+		split: strSplit(str: $get; separator: str`$#nl`)
 
-	get: getFromScript(uri: "..."; header: true)
-	```
+		get: getFromScript(uri: "..."; header: true)
+		```
+	+ <a name="fn-getFromScript-header-json"></a>`"json"` — заголовки сразу разбираются и возвращается [ассоциативный массив][30] (а не текст) с ключами:
+		+ `headers` — [ассоциативный массив][30] заголовков ответа: `"Имя заголовка": "значение"`. Строка статуса (`HTTP/1.1 200 OK`) и другие строки без `:` попадают в числовые ключи (`0`, …). При повторяющихся заголовках (например, несколько `Set-Cookie`) остается последний.
+		+ `body` — тело ответа [строкой][6]. Тело **не** разбирается как json — если ответ в json, примените [jsonExtract][319] к `body`.
+		
+		```totum
+		=: jsonExtract(text: $answer[body])
+
+		answer: getFromScript(uri: "https://example.com/api"; header: "json")
+		```
+		
+		Статус ответа — `$answer[headers][0]`, например `HTTP/2 200 `. Имя заголовка — как его прислал сервер (HTTP/2 присылает имена в нижнем регистре); имя с `-` берется через строку кода:
+
+		```totum
+		=: $answer[headers][$ct]
+
+		ct: "content-type"
+		answer: getFromScript(uri: "https://example.com/"; header: "json")
+		```
+
+		Результат: `text/html; charset=utf-8`
+		
+		> Если сервер отвечает с перенаправлением или промежуточным `100 Continue`, разбирается только первый блок заголовков, остальное попадает в `body`.
 
 + **headers** — [cписок][14] из передаваемых заголовков.
+
++ **cookie** — [строка][6] cookie для запроса, передается заголовком `Cookie: <cookie>`. Например: `cookie: "session=abc; lang=ru"`.
 
 + **ssh** — если передан `true`, то вызов будет отделен в отдельный процесс и будет выполняться параллельно последующему коду. Используется для вызова сторонних сервисов, ответ от которых неважен для последующего кода. Например, вызов сервера отправки смс при изменении статуса заказа. Таким образом сторонний сервер не будет останавливать обработку внутри тотум при своей недоступности или долгом ответе. 
 
 + **method** — `"POST | GET | PUT | DELETE | ..."` используется для жесткого задания http-метода. Автоматически при пустом `POST` отправляется `GET` — этот параметр позволяет переопределить это поведение.
 
-```totum
-example: getFromScript(uri: "https://host.com/"; post:  "method" = "setBids"; post: "bids" = $bids; post: "token" = @some_table.token["access_token"]; post: "feed_id" = @some_table.feed_id;  post: "shop_id" = @some_table.store_number)
-bids: jsonCreate(data: $bidsGet)
-bidsGet: selectRowList(table: 'some_table_with_data'; field: 'price'; field: 'item_name'; where: 'add_to_feed' = true)
++ <a name="fn-getFromScript-request"></a>**request** — если `true`, то запрос **не отправляется**: функция возвращает [ассоциативный массив][30] с тем, что было бы отправлено. Используется для отладки — проверить собранный адрес, тело и заголовки, не обращаясь к внешнему серверу. Ключи:
+	+ `link` — итоговый адрес вместе с `gets`;
+	+ `ref` — referer (`http://<хост Totum>`);
+	+ `header` — значение параметра `header`;
+	+ `post` — тело запроса: [ассоциативный массив][30] параметров (из `post` / `posts`) или [строка][6]; `null`, если тела нет;
+	+ `timeout` — `timeout`, или `"parallel"` при `ssh: true`;
+	+ `headers` — [список][14] заголовков, включая `Cookie: …` из `cookie`;
+	+ `method` — значение `method`; если `method` не указан — `"GET"` (даже при наличии тела, хотя реальный запрос с телом и без `method` уходит как `POST`).
+	
+	В режиме `request` в bfl-лог ничего не пишется.
 
-```
+	```totum
+	=: getFromScript(uri: "https://example.com/api"; gets: $gets; posts: $posts; headers: $headers; method: "POST"; request: true)
 
-```totum
-//Входящиие переменные: $#x_request_id, $#data_for_send
-example2: getFromScript(uri: @some_table.url; posts: $json; headers: $headers)
-	headers: listCreate(item: $auth; item: "Content-type: application/json"; item: $xxx)
-		xxx: strAdd(str: "X-Request-ID: "; str: $#x_request_id)
-		auth: strAdd(str: "Authorization: Basic "; str: @some_table.autorisation)
-	json: jsonCreate(data: $#data_for_send)
-```
+	gets: rowCreate(field: "page" = 1)
+	posts: jsonCreate(data: $data)
+	data: rowCreate(field: "name" = "test")
+	headers: listCreate(item: "Content-Type: application/json")
+	```
+
+	Результат:
+
+	```json
+	{"link": "https://example.com/api?page=1", "ref": "http://totum.example.com", "header": 0, "post": "{\"name\":\"test\"}", "timeout": null, "headers": ["Content-Type: application/json"], "method": "POST"}
+	```
 
 > Если вы в параметр функции `post` или `gets` передаете `true` или `false`, то они должны быть переданы как строка — `"true"` или `"false"`. Иначе при передаче они будут преобразованы в `1` и `""`.
+
+#### <a name="fn-getFromScript-examples"></a>Примеры
+
+**Вызвать сторонний сервер по указанному URL и передать ему GET-параметры** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; gets: $params)
+
+params: rowCreate(field: "param1" = "value1"; field: "param2" = "value2")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по указанному URL и передать несколько POST-параметров в запросе** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; posts: $params)
+
+params: rowCreate(field: "param1" = "value1"; field: "param2" = "value2")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по указанному URL и передать raw-содержимое в запросе, например строку в json** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; posts: $json)
+
+json: jsonCreate(data: $data)
+
+  data: rowCreate(field: "key1" = "value1"; field: "key2" = "value2")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Включить или отключить запись данных вызова стороннего сервера в технический лог** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; bfl: true)
+```
+
+Результат: получение данных от стороннего сервера
+
+**При вызове стороннего сервера, установить ограничение времени запроса в секундах** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; timeout: 30)
+```
+
+Результат: получение данных от стороннего сервера
+
+**При вызове стороннего сервера вернуть не только тело ответа, но и заголовок** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; header: true)
+```
+
+Результат: получение данных от стороннего сервера
+
+**При вызове стороннеко сервера передать список заголовков в запросе, например заголовок с ключем авторизации** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; headers: $headers; posts: $json)
+
+headers: listCreate(item: "Authorization: Bearer your_token_here"; item: "Content-Type: application/json")
+
+json: jsonCreate(data: $data)
+
+  data: rowCreate(field: "key1" = "value1"; field: "key2" = "value2")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Выполнить вызов стороннего сервера в отдельном процессе сервера** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; ssh: true)
+```
+
+Результат: получение данных от стороннего сервера
+
+**Жестко задать задать HTTP-метод при выполнении запроса к стороннему серверу** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; method: "PUT"; post: "param" = "some_data")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по указанному URL и передать один POST-параметр** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; post: "param1" = "value1")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по указанному URL и передать несколько POST-параметров в запросе, задав их через отдельные параметры функции** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; post: "param1" = "value1"; post: "param2" = "value2")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по указанному URL и передать несколько POST-параметров в запросе, один из которых должен содержать текст в формате JSON, который нам необходимо получить из имеющегося rowlist** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; post: "param1" = "value1"; post: "param2" = $json)
+
+json: jsonCreate(data: $rowlist)
+	rowlist: rowListCreate(field: "key1" = json`[1,2,3]`; field: "key2" = json`["a","b","c"]`)
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по указанному URL и передать несколько POST-параметров в запросе при помощи posts, один из которых должен содержать текст в формате JSON, который нам необходимо получить из имеющегося rowlist** *(код действия)*
+
+```totum
+=: getFromScript(uri: "http://example.com"; posts: $params)
+
+params: rowCreate(field: "param1" = "value1"; field: "param2" = $json)
+
+json: jsonCreate(data: $rowlist)
+	rowlist: rowListCreate(field: "key1" = json`[1,2,3]`; field: "key2" = json`["a","b","c"]`)
+```
+
+Результат: получение данных от стороннего сервера
+
+**Выполнить http-запрос к стороннему api по этой инструкции: curl "https://api.openai.com/v1/chat/completions" \ -H "Content-Type: application/json" \ -H "Authorization: Bearer $OPENAI_API_KEY" \ -d '{ "model": "gpt-4o-mini", "messages": [ { "role": "system", "content": "You are a helpful assistant." }, { "role": "user", "content": "Write a haiku that explains the concept of recursion." } ] }'** *(код действия)*
+
+```totum
+=: getFromScript(uri: "https://api.openai.com/v1/chat/completions"; headers: $headers; posts: $json)
+
+headers: listCreate(item: "Content-Type: application/json"; item: str`"Authorization: Bearer" ++ $openai_api_key`)
+
+json: jsonCreate(data: $data)
+	data: rowCreate(field: "model" = "gpt-4o-mini"; field: "messages" = $messages)
+		messages: listCreate(item: $system; item: $user)
+			system: rowCreate(field: "role" = "system"; field: "content" = "You are a helpful assistant.") 
+			user: rowCreate(field: "role" = "user"; field: "content" = "Write a haiku that explains the concept of recursion.")
+			
+openai_api_key: "here_my_key"
+```
+
+Результат: получение данных от стороннего сервера
+
+**Выполнить http-запрос к стороннему api по этой инструкции: curl -X POST \\ -H "Content-Type: application/json" \\ -H "Authorization: Bearer $OPENAI_API_KEY" \\ -d '{ "model": "gpt-4o-mini-2024-07-18", "training_file": "file-ABC123", "validation_file": "file-DEF456", "integrations": [ { "type": "wandb", "wandb": { "project": "custom-wandb-project", "tags": ["project:tag", "lineage"] } } ] }' https://api.openai.com/v1/fine_tuning/jobs** *(код действия)*
+
+```totum
+=: getFromScript(uri: "https://api.openai.com/v1/fine_tuning/jobs"; headers: $headers; posts: $json)
+
+headers: listCreate(item: "Content-Type: application/json"; item: str`"Authorization: Bearer" ++ $openai_api_key`)
+
+json: jsonCreate(data: $data)
+	data: rowCreate(field: "model" = "gpt-4o-mini-2024-07-18"; field: "training_file" = "file-ABC123"; field: "validation_file" = "file-DEF456"; field: "integrations" = $integrations)
+		integrations: listCreate(item: $integration)
+			integration: rowCreate(field: "type" = "wandb"; field: "wandb" = $wandb)
+				wandb: rowCreate(field: "project" = "custom-wandb-project"; field: "tags" = json`["project:tag", "lineage"]`)
+
+openai_api_key: "your_openai_api_key_here"
+```
+
+Результат: получение данных от стороннего сервера
+
+**Выполнить http-запрос к стороннему api по этой инструкции: curl -X POST https://api.example.com/login \ -H "Content-Type: application/x-www-form-urlencoded" \ -d "username=myusername" \ -d "password=mypassword"** *(код действия)*
+
+```totum
+=: getFromScript(uri: "https://api.example.com/login"; posts: $params)
+
+params: rowCreate(field: "username" = "myusername"; field: "password" = "mypassword")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонний сервер по этому запросу: curl -s --user 'api:YOUR_API_KEY' \ https://api.mailgun.net/v3/YOUR_DOMAIN_NAME/messages \ -H "Content-Type: application/x-www-form-urlencoded" \ -d from='Excited User <mailgun@YOUR_DOMAIN_NAME>' \ -d to='recipient@example.com' \ -d subject='Hello' \ -d text='Testing some Mailgun awesomeness!'** *(код действия)*
+
+```totum
+=: getFromScript(uri: str`"https://api:" + $your_api_key + "@api.mailgun.net/v3/YOUR_DOMAIN_NAME/messages"`; posts: $params)
+
+		your_api_key: "some_key"
+
+params: rowCreate(field: "from" = "Excited User <mailgun@YOUR_DOMAIN_NAME>"; field: "to" = "recipient@example.com"; field: "subject" = "Hello"; field: "text" = "Testing some Mailgun awesomeness!")
+```
+
+Результат: получение данных от стороннего сервера
+
+**Вызвать сторонный сервер по таким параметрам: curl https://api.yookassa.ru/v3/refunds \ -X POST \ -u <store_id>:<secret_key> \ -H 'Idempotence-Key: <some_random_key>' \ -H 'Content-Type: application/json' \ -d '{ "amount": { "value": "2.00", "currency": "CAD" }, "payment_id": "215d8da0-000f-50be-b000-0003308c89be" }'** *(код действия)*
+
+```totum
+=: getFromScript(uri: "https://api.yookassa.ru/v3/refunds"; headers: $headers; posts: $json)
+
+headers: listCreate(item: str`"Idempotence-Key: " ++ $some_random_key`; item: "Content-Type: application/json"; item: str`"Authorization: Basic " ++ $base`)
+
+base: strBaseEncode(str: $auth)
+	auth: str`$store_id + ":" + $secret_key`
+
+json: jsonCreate(data: $data)
+	data: rowCreate(field: "amount" = $amount; field: "payment_id" = "215d8da0-000f-50be-b000-0003308c89be")
+		amount: rowCreate(field: "value" = "2.00"; field: "currency" = "CAD")
+
+some_random_key: strRandom(length: 5; numbers: "true"; letters: "true"; symbols: "false")
+store_id: "<store_id>"
+secret_key: "<secret_key>"
+```
+
+Результат: получение данных от стороннего сервера
 
 ### <a name="fn-emailSend"></a>emailSend
 
@@ -5525,7 +12140,6 @@ example2: getFromScript(uri: @some_table.url; posts: $json; headers: $headers)
 + **to** — [строка][6], email получателя. Или [список][14] [строк][6] с `email` получателей. Тогда письмо будет отправлено нескольким адресатам *открытой!* копией.
 
 + **body** — [строка][6], тело письма. Обрабатывается как `html`.
-
 
 **Необязательные параметры**
 
@@ -5548,29 +12162,92 @@ example2: getFromScript(uri: @some_table.url; posts: $json; headers: $headers)
 
 + **bfl** — если `true`, то данные об отправке писем складываются в таблицу базы данных `_bfl` в том числе, если транзакция была отменена.
 
+#### <a name="fn-emailSend-examples"></a>Примеры
+
+**Отправить письмо из кода-действия нескольким получателям** *(код действия)*
 
 ```totum
-example: emailSend(to: "test@example.ru"; title: "Отправка письма"; body: "Тестовое письмо"; files: $files)
-	files: rowCreate(field: "Вложенная картинка.png" = "444_h_pole_heder_1_1.png")
-	
-	// Чтобы взять имя файла из поля файл #file_field[0][file]
-	// Обязательно должно быть указано расширение в имени отправляемого файла
-	
-	// например отправляем два файла, лежащих в поле file_field:
-
-example2: emailSend(to: "test@example.ru"; title: "Отправка письма"; body: "Тестовое письмо"; files: $files2)
-	files2: rowCreate(field: "Вложенная картинка.png" = #file_field[0][file]; field: "Вложенная картинка 2.png" = #file_field[1][file])
-	
-	// или с использованием полных данных поля файл:
-	
-example3: emailSend(to: "test@example.ru"; title: "Отправка письма"; body: "Тестовое письмо"; files: #file_field)
-
-	// с использованием filestring
-	
-example4: emailSend(to: "test@example.ru"; title: "Отправка письма"; body: "Тестовое письмо"; files: json`[$filerow]`)
-	fileRow: rowCreate(field: "name" = "Текст файл.txt"; field: "filestring" = $text)
-		text: "Какой-то текст"
+=: emailSend(to: json`["recipient1@example.com", "recipient2@example.com"]`; title: "Some title"; body: "Some text")
 ```
+
+Результат: отправка email
+
+**Отправить письмо с вложенным файлом** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; files: $files)
+
+	files: rowCreate(field: "Attached file.txt" = $path_to_file_on_server)
+		path_to_file_on_server: #file_field[0][file]
+```
+
+Результат: отправка email
+
+**Указать адрес отправителя, отличный от заданного для схемы для письма отправляемого из кода-действия** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; from: "custom_sender@example.com")
+```
+
+Результат: отправка email
+
+**Отправить из кода-действия письмо с HTML содержимым** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "<h1>HTML Content</h1><p>This is a paragraph.</p>")
+```
+
+Результат: отправка email
+
+**Отправить письмо с изображениями, встроенными в HTML-тело письма** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "<h1>HTML Content</h1><p>This is a paragraph with an image: <img src='path_to_image_in_totum'></p>")
+```
+
+Результат: отправка email
+
+**Отправить письмо с указанием адреса для ответа, отличным от адреса отправителя** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; replyto: "reply_to@example.com")
+```
+
+Результат: отправка email
+
+**Отправить письмо из кода действия со скрытой копией** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; hiddencopy: "hidden_copy@example.com")
+```
+
+Результат: отправка email
+
+**Отправить письмо из кода-действия и вложить в него несколько файлов, взятых из поля Файл** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; files: $files)
+
+	files: rowCreate(field: "Attached file 1.txt" = #file_field[0][file]; field: "Attached file 2.txt" = #file_field[1][file])
+```
+
+Результат: отправка email
+
+**Отправить письмо из кода-действия и записать лог отправки для дальнейшей отладки** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; bfl: true)
+```
+
+Результат: отправка email
+
+**Отправить письмо из кода-действия и вложить в него всех файлов, взятых из поля Файл без переназначения их имен** *(код действия)*
+
+```totum
+=: emailSend(to: "recipient@example.com"; title: "Some title"; body: "Some text"; files: #file_field)
+```
+
+Результат: отправка email
 
 #### <a name="fn-emailSend-settings"></a>Настройки SMTP/sendmail
 
@@ -5624,6 +12301,49 @@ protected $SmtpData = [
 
 > В этом случае настройки в `custom_smtp_setings_for_schema` не действуют.
 
+##### <a name="fn-emailSend-phpmailer"></a>Параметры PHPMailer: `mail_<параметр>`
+
+Письма отправляются библиотекой [PHPMailer](https://github.com/PHPMailer/PHPMailer). Кроме `host`, `port`, `login`, `password` / `pass` в настройки SMTP можно добавить любые свойства объекта PHPMailer — ключом `mail_<имя свойства>`. Totum отрезает префикс `mail_` и устанавливает свойство как есть: `mail_SMTPSecure` → `$mail->SMTPSecure`. Имя свойства пишется с соблюдением регистра, как в PHPMailer.
+
+Работает и в `custom_smtp_setings_for_schema` таблицы `Настройки`, и в `$SmtpData` файла `Conf.php`.
+
+Часто нужные:
+
++ `mail_SMTPSecure` — шифрование: `"ssl"` (обычно порт 465) или `"tls"` (STARTTLS, обычно порт 587).
++ `mail_SMTPAutoTLS` — `false` отключает автоматический переход на STARTTLS, если сервер его предлагает, а сертификат не проходит проверку.
++ `mail_Timeout` — таймаут подключения в секундах.
++ `mail_SMTPOptions` — опции потока, например отключение проверки сертификата: `{"ssl": {"verify_peer": false, "verify_peer_name": false, "allow_self_signed": true}}`.
++ `mail_AuthType` — способ авторизации: `"LOGIN"`, `"PLAIN"`, `"CRAM-MD5"` и т.д.
++ `mail_Hostname` — имя хоста для `HELO` / `Message-ID`.
++ `mail_Sender` — адрес `Return-Path` (адрес возврата недоставленных писем).
+
+Пример для `custom_smtp_setings_for_schema`:
+
+```
+{
+  "host": "smtp.example.com",
+  "port": 587,
+  "login": "totum@example.com",
+  "password": "password_here",
+  "mail_SMTPSecure": "tls",
+  "mail_Timeout": 20
+}
+```
+
+То же в `Conf.php`:
+
+```
+protected $SmtpData = [
+  'host' => 'smtp.example.com',
+  'port' => 587,
+  'login' => 'totum@example.com',
+  'pass' => 'password_here',
+  'mail_SMTPSecure' => 'tls',
+];
+```
+
+> Свойства `mail_…` устанавливаются после `host` / `port` / `login` и до адресов и содержимого письма: ими можно переопределить и `Host`, `Port`, `Username`, `Password`, `CharSet`. Отправитель (`from`) задается функцией, а не через `mail_From`.
+
 ### <a name="fn-notificationSend"></a>notificationSend
 
 Доступен в секциях: [Код действия][28].
@@ -5639,7 +12359,6 @@ protected $SmtpData = [
 + **users** — одно число или список id пользователей.
 
 + **title** — заголовок нотификации.
-
 
 **Необязательные параметры (хотя бы один должен быть указан)**
 
@@ -5662,6 +12381,60 @@ protected $SmtpData = [
 list_users: listCreate(item: 19; item: 32)
 ```
 
+#### <a name="fn-notificationSend-examples"></a>Примеры
+
+**Быстро отправить внутреннюю нотификацию нескольким пользователям** *(код действия)*
+
+```totum
+=: notificationSend(users: $list_users; title: "Notification Title"; ntf: "This is a notification text.")
+
+list_users: listCreate(item: 1; item: 2; item: 3)
+```
+
+Результат: отправка нотификации
+
+**Отправить внутреннюю нотификацию одному пользователю упрощенным способом** *(код действия)*
+
+```totum
+=: notificationSend(users: 1; title: "Notification Title"; ntf: "This is a notification text.")
+```
+
+Результат: отправка нотификации
+
+**Быстро отправить email уведомление пользователю с заголовком и текстом, если у пользователя задан email** *(код действия)*
+
+```totum
+=: notificationSend(users: 1; title: "Email Title"; eml: "This is an email text.")
+```
+
+Результат: отправка нотификации
+
+**Отправить кастомное уведомление для пользователя** *(код действия)*
+
+```totum
+=: notificationSend(users: 1; title: "Custom Notification Title"; custom: "custom_code_name" = "Custom notification text.")
+```
+
+Результат: отправка нотификации
+
+**Отправить внутреннее уведомление и email для пользователя одним действием упрощенным способом** *(код действия)*
+
+```totum
+=: notificationSend(users: 1; title: "Notification Title"; ntf: "This is a notification text."; eml: "This is an email text.")
+```
+
+Результат: отправка нотификации
+
+**Отправить быстрое внутреннее уведомление нескольким пользователям и продублировать его на их email** *(код действия)*
+
+```totum
+=: notificationSend(users: $list_users; title: "Notification Title"; ntf: "This is a notification text."; eml: "This is an email text.")
+
+list_users: listCreate(item: 1; item: 2; item: 3)
+```
+
+Результат: отправка нотификации
+
 ## <a name="part-11"></a>Форматирование
 
 ### <a name="fn-setFormat"></a>setFormat
@@ -5675,7 +12448,6 @@ list_users: listCreate(item: 19; item: 32)
 Результаты работы функции применяются к ячейке последовательно, в соответствии с индексами `f1=:`, `f2=:`, `f3=:` и так далее.
 
 `setFormat` имеет преимущество над [setRowFormat][316] при пересечении условий форматирования.
-
 
 **Необязательные параметры**
 
@@ -5780,12 +12552,193 @@ list_users: listCreate(item: 19; item: 32)
 	+ `textasvalue: "num"` или `textasvalue: "str"`
 	+ для уточнения десятичного разделителя `textasvalue: "num|."` или `textasvalue: "num|,"`
 
+#### <a name="fn-setFormat-examples"></a>Примеры
+
+**Сделать текст в поле жирным**
 
 ```totum
-f1=: setformat(bold: true; color: "tomato")
-f2=: setformat(condition: $#nfv != ""; block: true)
-//Результат: 
+f1=: setFormat(bold: true)
 ```
+
+Результат: изменение форматирования поля
+
+**Изменить цвет текста в поле на красный**
+
+```totum
+f1=: setFormat(color: "red")
+```
+
+Результат: изменение форматирования поля
+
+**Задать условие для изменения формата поля**
+
+```totum
+f1=: setFormat(condition: #some_field = "some_value"; color: "red")
+```
+
+Результат: изменение форматирования поля
+
+**Заблокировать поле при выполнении нескольких условий**
+
+```totum
+f1=: setFormat(condition: #field1 = "value1"; condition: $select = true; block: true)
+
+select: selectList(table: $#ntn; field: 'field2'; where: 'check' = false)
+```
+
+Результат: изменение форматирования поля
+
+**Установить цвет фона поля по условию**
+
+```totum
+f1=: setFormat(condition: #some_field = "some_value"; background: "yellow")
+```
+
+Результат: изменение форматирования поля
+
+**Подчеркнуть текст в ячейке по условию**
+
+```totum
+f1=: setFormat(condition: #some_field = "some_value"; decoration: "underline")
+```
+
+Результат: изменение форматирования поля
+
+**Сделать текст в ячейке курсивом**
+
+```totum
+f1=: setFormat(italic: true)
+```
+
+Результат: изменение форматирования поля
+
+**Задать длину маркерного выделения текста в поле**
+
+```totum
+f1=: setFormat(progress: 50)
+```
+
+Результат: изменение форматирования поля
+
+**Задать длину в процентах и изменить цвет маркерного выделения текста в поле**
+
+```totum
+f1=: setFormat(progress: 50; progresscolor: "blue")
+```
+
+Результат: изменение форматирования поля
+
+**Вывести заданный текст вместо значения поля**
+
+```totum
+f1=: setFormat(text: "Some text")
+```
+
+Результат: изменение форматирования поля
+
+**Вывести заданный текст вместо значения поля и скрыть отображение значение в контекстной панели**
+
+```totum
+f1=: setFormat(text: "Some text"; textasvalue: true)
+```
+
+Результат: изменение форматирования поля
+
+**Вывести заданный текст вместо значения поля и скрыть отображение значение в контекстной панели и задать тип сортировки текста как цифр с разделителем десятичных в виде ','**
+
+```totum
+f1=: setFormat(text: "Some text"; textasvalue: "num|,")
+```
+
+Результат: изменение форматирования поля
+
+**Добавить иконку слева от значения поля**
+
+```totum
+f1=: setFormat(icon: "shower")
+```
+
+Результат: изменение форматирования поля
+
+**Добавить комментарий к полю по условию**
+
+```totum
+f1=: setFormat(condition: #some_field = "some_value"; comment: "This is a comment")
+```
+
+Результат: изменение форматирования поля
+
+**Скрыть поле в панели с возможностью его отобразить при изменении условий**
+
+```totum
+f1=: setFormat(condition: #some_field = 100; hide: "panel" = true)
+```
+
+Результат: изменение форматирования поля
+
+**Установить отступ у текста слева в поле**
+
+```totum
+f1=: setFormat(tab: 10)
+```
+
+Результат: изменение форматирования поля
+
+**Выровнять отображение значение в поле по центру**
+
+```totum
+f1=: setFormat(align: "center")
+```
+
+Результат: изменение форматирования поля
+
+**Отобразить кнопку редактирования в поле**
+
+```totum
+f1=: setFormat(editbutton: true)
+```
+
+Результат: изменение форматирования поля
+
+**Скрыть индикацию ручного значения в поле**
+
+```totum
+f1=: setFormat(showhand: false)
+```
+
+Результат: изменение форматирования поля
+
+**Задать плэйсхолдер для пустого поля**
+
+```totum
+f1=: setFormat(placeholder: "Placeholder text")
+```
+
+Результат: изменение форматирования поля
+
+**Отключить возможность разворачивать папку в tree-view в поле**
+
+```totum
+f1=: setFormat(expand: false)
+```
+
+Результат: изменение форматирования поля
+
+**Сделать так, чтобы значение в text копировалось и отображалось в контекстной панели как значение поля**
+
+```totum
+f1=: setFormat(textasvalue: true)
+```
+
+Результат: изменение форматирования поля
+
+**Скрыть поле в панели без возможности его отобразить при изменении условий**
+
+```totum
+f1=: setFormat(hide: "extpanel" = true)
+```
+
+Результат: изменение форматирования поля
 
 ### <a name="fn-setRowFormat"></a>setRowFormat
 
@@ -5798,7 +12751,6 @@ f2=: setformat(condition: $#nfv != ""; block: true)
 Результаты работы функции применяются к таблице последовательно, в соответствии с индексами `f1=:`, `f2=:`, `f3=:` и.т.д.
 
 `setRowFormat` имеет преимущество над [setTableFormat][317] при пересечении условий.
-
 
 **Необязательные параметры**
 
@@ -5862,6 +12814,88 @@ f2=: setformat(condition: $#nfv != ""; block: true)
 	
 + **rowcomment** — [строка][6], поддерживает html. Комментарий в кнопках управления строкой. Например, для объяснения причины по которой заблокировано удаление.
 
+#### <a name="fn-setRowFormat-examples"></a>Примеры
+
+**Задать цвет бэкграунда строки при определенном условии**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; background: "#ff00cc")
+```
+
+Результат: форматирование строки
+
+**Заблокировать изменения во всей строке по определенному условию**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; block: true)
+```
+
+Результат: форматирование строки
+
+**Изменить цвет текста во всей строке**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; color: "#ff00cc")
+```
+
+Результат: форматирование строки
+
+**Сделать текст во всей строке строки жирным**
+
+```totum
+f1=: setRowFormat(bold: true)
+```
+
+Результат: форматирование строки
+
+**Подчеркнуть текст во всей строке**
+
+```totum
+f1=: setRowFormat(decoration: "underline")
+```
+
+Результат: форматирование строки
+
+**Сделать текст всей строки курсивом по условию**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; italic: true)
+```
+
+Результат: форматирование строки
+
+**Заблокировать удаление строки по условию**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; blockdelete: true)
+```
+
+Результат: форматирование строки
+
+**Заблокировать сортировку (изменение порядка) строки по условию**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; blockorder: true)
+```
+
+Результат: форматирование строки
+
+**Заблокировать дублирование строки по условию**
+
+```totum
+f1=: setRowFormat(condition: #field_name = "some_value"; blockduplicate: true)
+```
+
+Результат: форматирование строки
+
+**Добавить комментарий к строке, который будет показан под кнопками управления слева**
+
+```totum
+f1=: setRowFormat(rowcomment: "Your comment here")
+```
+
+Результат: форматирование строки
+
 ### <a name="fn-setTableFormat"></a>setTableFormat
 
 Доступен в секциях: Форматирование [таблицы][41].
@@ -5869,7 +12903,6 @@ f2=: setformat(condition: $#nfv != ""; block: true)
 =: setTableFormat(condition: ; blockdelete: ; blockadd: ; blockorder: ; blockduplicate: )
 ```
 Условия форматирования, применяемые ко всей таблице, включая [хедер и футер][35].
-
 
 **Необязательные параметры**
 
@@ -5972,6 +13005,218 @@ f2=: setformat(condition: $#nfv != ""; block: true)
 
 + **hidedots** — `hidedots: "window" = true` или `hidedots: "table" = true` для скрытия кнопки с точками внизу справа во всплывающем окне или таблице.
 
+#### <a name="fn-setTableFormat-examples"></a>Примеры
+
+**Задать условие, при котором форматирование таблицы будет применяться только если значение в одном поле равно значению в другом, если условие выполняется — блокировать все действия в таблице**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = #h_field2; block: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Заблокировать возможность удаления строк в таблице при выполнении условия**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = 100; blockdelete: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Заблокировать возможность дублирования строк в таблице при выполнении условия**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; blockduplicate: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Заблокировать возможность сортировки строк вручную при выполнении нескольких условий**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "value1"; condition: #h_field2 > 10; blockorder: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Заблокировать возможность добавления новых строк в таблицу при выполнении определенного условия**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; blockadd: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Скрыть кнопку добавления строк, оставив доступной кнопку добавления через Панель**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; hideadd: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Задать отображаемый заголовок таблицы**
+
+```totum
+f1=: setTableFormat(tabletitle: "Some custom title")
+```
+
+Результат: установка форматирования таблицы
+
+**Задать отображаемый заголовок строчной части таблицы**
+
+```totum
+f1=: setTableFormat(rowstitle: "Some custom row title")
+```
+
+Результат: установка форматирования таблицы
+
+**Задать отображаемый заголовок для нескольких полей при выполнении определенного условия**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; fieldtitle: 'field1' = "Custom field title 1"; fieldtitle: 'field2' = "Custom field title 2")
+```
+
+Результат: установка форматирования таблицы
+
+**Задать текст, отображаемый под описанием таблицы**
+
+```totum
+f1=: setTableFormat(tabletext: "Some custom text under the table description")
+```
+
+Результат: установка форматирования таблицы
+
+**Задать HTML-код, отображаемый под описанием таблицы**
+
+```totum
+f1=: setTableFormat(tablehtml: "<div>Custom HTML content</div><script>In PRO with JS-scripts</script>")
+```
+
+Результат: установка форматирования таблицы
+
+**Задать текст, отображаемый под префильтром таблицы**
+
+```totum
+f1=: setTableFormat(tablecomment: "Some custom text under the prefilter")
+```
+
+Результат: установка форматирования таблицы
+
+**Задать список кнопок, которые будут отображаться над строчной частью таблицы**
+
+```totum
+f1=: setTableFormat(buttons: json`["field_name_button_1", "field_name_button_2"]`)
+```
+
+Результат: установка форматирования таблицы
+
+**Задать список кнопок, которые будут отображаться в кнопке с точками в нижнем правом углу таблицы**
+
+```totum
+f1=: setTableFormat(dotbuttons: json`["field_name_button_1", "field_name_button_2"]`)
+```
+
+Результат: установка форматирования таблицы
+
+**Задать список кнопок, которые будут отображаться в кнопке бутерброд рядом с заголовком таблицы**
+
+```totum
+f1=: setTableFormat(extbuttons: json`["field_name_button_1", "field_name_button_2"]`)
+```
+
+Результат: установка форматирования таблицы
+
+**Задать список кнопок, которые будут отображаться в выпадающем меню печати в верхней части таблицы**
+
+```totum
+f1=: setTableFormat(printbuttons: json`["field_name_button_1", "field_name_button_2"]`)
+```
+
+Результат: установка форматирования таблицы
+
+**Скрыть определенные поля в таблице по условиям**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; fieldhide: 'field1' = true; fieldhide: 'field2' = "force")
+
+f2=: setTableFormat(condition: #h_field1 != "some_value"; fieldhide: 'field1' = false; fieldhide: 'field2' = false)
+```
+
+Результат: установка форматирования таблицы
+
+**Скрыть определенные поля в таблице при выполнении условия и показать их при невыполнении условия**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; fieldshide: json`["field_1","field_2"]`)
+```
+
+Результат: установка форматирования таблицы
+
+**Заменить заголовок в браузере на кастомный заголовок при выполнении определенного условия**
+
+```totum
+f1=: setTableFormat(condition: #h_field1 = "some_value"; browsertitle: "Custom Browser Title")
+```
+
+Результат: установка форматирования таблицы
+
+**Заменить заголовок в браузере на аналогичный кастомному заголовку таблицы**
+
+```totum
+f1=: setTableFormat(browsertitle: true)
+```
+
+Результат: установка форматирования таблицы
+
+**Раскрасить четные и нечетные строки таблицы с заданным процентом затемнения**
+
+```totum
+f1=: setTableFormat(interlace: "3")
+```
+
+Результат: установка форматирования таблицы
+
+**Раскрасить четные и нечетные строки таблицы с использованием HTML-цветов**
+
+```totum
+f1=: setTableFormat(interlace: "tomato/beige")
+```
+
+Результат: установка форматирования таблицы
+
+**Раскрасить четные и нечетные строки таблицы с использованием HEX-цветов**
+
+```totum
+f1=: setTableFormat(interlace: "#343434/beige")
+```
+
+Результат: установка форматирования таблицы
+
+**Скрыть кнопки управления рядом с названием таблицы**
+
+```totum
+f1=: setTableFormat(topbuttons: false)
+```
+
+Результат: установка форматирования таблицы
+
+**Скрыть кнопку с точками внизу справа во всплывающем окне**
+
+```totum
+f1=: setTableFormat(hidedots: "window" = true)
+```
+
+Результат: установка форматирования таблицы
+
+**Скрыть кнопку с точками внизу справа в таблице**
+
+```totum
+f1=: setTableFormat(hidedots: "table" = true)
+```
+
+Результат: установка форматирования таблицы
+
 ### <a name="fn-setRowsOrder"></a>setRowsOrder
 
 Доступен в секциях: Форматирование [таблицы][41].
@@ -5985,6 +13230,26 @@ f2=: setformat(condition: $#nfv != ""; block: true)
 	+ Если строка с указанным id не будет представлена на странице, он будет проигнорирован.
 	
 Может быть использован совместно с быстрой переменной `$#rows`, доступной только в форматировании [таблицы][41]. Переменная возвращает `список` с учетом [разбивки на страницы][469].
+
+#### <a name="fn-setRowsOrder-examples"></a>Примеры
+
+**Переместить строки с id 3, 5 и 7 наверх таблицы**
+
+```totum
+f1=: setRowsOrder(ids: json`[3, 5, 7]`)
+```
+
+Результат: изменение порядка отображения строк
+
+**Использовать быструю переменную для получения списка строк с учетом разбивки на страницы и пересортировать видимые строки по возрастанию значений одного из полей**
+
+```totum
+f1=: setRowsOrder(ids: $list)
+
+list: selectList(table: $#ntn; field: 'id'; where: 'id' = $#rows; order: 'some_field_name' asc)
+```
+
+Результат: изменение порядка отображения строк
 
 ### <a name="fn-setRowsHide"></a>setRowsHide
 
@@ -6018,6 +13283,16 @@ f2=: setformat(condition: $#nfv != ""; block: true)
 f1=: setRowsHide(ids: $@testProc)
 ```
 
+#### <a name="fn-setRowsHide-examples"></a>Примеры
+
+**Скрыть строки с id 3 и 5**
+
+```totum
+f1=: setRowsHide(ids: json`[3,5]`)
+```
+
+Результат: скрытие строк
+
 ### <a name="fn-setRowsShow"></a>setRowsShow
 
 Доступен в секциях: Форматирование [таблицы][41].
@@ -6049,6 +13324,16 @@ f1=: setRowsHide(ids: $@testProc)
 ```totum
 f1=: setRowsShow(ids: $@testProc)
 ```
+
+#### <a name="fn-setRowsShow-examples"></a>Примеры
+
+**Показать строки с id 1, 3 и 5**
+
+```totum
+f1=: setRowsShow(ids: json`[1,3,5]`)
+```
+
+Результат: показ строк
 
 ### <a name="fn-setFloatFormat"></a>setFloatFormat
 
@@ -6082,16 +13367,75 @@ f1=: setRowsShow(ids: $@testProc)
 
 **[Видео на YouTube: Адаптивность](https://www.youtube.com/watch?v=IAs6nCPnw5c)**
 
-
 > Эти же параметры могут быть заданы в [настройках секции][458] в виде:
 
 > `glue : field_name, else_field_name : true` или `maxwidth : block_number : 400`
 
+#### <a name="fn-setFloatFormat-examples"></a>Примеры
+
+**В коде-форматирования поля задать номер группы для поля в хедере или футере для использования в Секциях**
 
 ```totum
-example: setFloatFormat(blocknum: 1; nextline: true; maxwidth: 400; fill: true; height: 200; maxheight: 400; glue: true)
-
+f1=: setFloatFormat(blocknum: 1)
 ```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля указать перенос поля на следующую строку внутри группы секции едера или футера**
+
+```totum
+f1=: setFloatFormat(nextline: true)
+```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля задать максимальную ширину поля в пикселях для Секций хедера/футера**
+
+```totum
+f1=: setFloatFormat(maxwidth: 400)
+```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля сделать так, чтобы поле расширялось до максимально возможной ширины блока**
+
+```totum
+f1=: setFloatFormat(fill: true)
+```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля задать высоту поля в пикселях для Секций**
+
+```totum
+f1=: setFloatFormat(height: 200)
+```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля задать динамическую высоту поля в пикселях для использования в Секциях**
+
+```totum
+f1=: setFloatFormat(maxheight: 400)
+```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля склеить поле с находящимся слева от него для запрета их раздельного переноса на следующую строку, при недостаточной ширине экрана**
+
+```totum
+f1=: setFloatFormat(glue: true)
+```
+
+Результат: назначение параметров Секции для конкретного поля
+
+**В коде-форматирования поля задать ширину, при которой произойдет перенос поля на следующую строку, даже если минимальная ширина поля еще не была достигнута**
+
+```totum
+f1=: setFloatFormat(breakwidth: 300)
+```
+
+Результат: назначение параметров Секции для конкретного поля
 
 ### <a name="fn-panelButton"></a>panelButton
 
@@ -6106,7 +13450,6 @@ example: setFloatFormat(blocknum: 1; nextline: true; maxwidth: 400; fill: true; 
 Кнопки ставятся друг за другом. Сначала все **button,** потом **buttons**.
 
 При вызове кнопки ей передается текущее окружение `$#ntn`, `$#nci`, `$#nth`, `#id (и прочие строчные поля)`.
-
 
 **Обязательные параметры**
 
@@ -6155,7 +13498,6 @@ example: setFloatFormat(blocknum: 1; nextline: true; maxwidth: 400; fill: true; 
 
 + **refresh** — `true`, `"recalculate"` и `"reload"`.
 
-
 **ПРИМЕРЫ**
 
 ```totum
@@ -6165,6 +13507,70 @@ p1=: panelButton(condition: $#nfv != ""; code: @table.field.id[$id]; text: "OPEN
 	id: "..."
 
 ```
+
+#### <a name="fn-panelButton-examples"></a>Примеры
+
+**Создать кнопку в контекстной панели по клику правой кнопки мыши на поле, которая выполняет определенный код при нажатии**
+
+```totum
+p1=: panelButton(code: $code; text: "Click Me"; icon: "link"; background: "mistyrose")
+
+```code:totum
+=: linkToDataText(title: "Result"; text: "You clicked the button")
+```
+```
+
+Результат: показ кнопки в контекстной панели по правой кнопке мыши
+
+**Задать условие показа кнопки в контекстной панели по клику правой кнопки мыши на поле, чтобы она появлялась только при выполнении определенного условия**
+
+```totum
+p1=: panelButton(condition: #field_name = "some_value"; condition: #other_field = true; code: $code; text: "Click Me"; icon: "link"; background: "mistyrose")
+
+```code:totum
+=: linkToDataText(title: "Result"; text: "You clicked the button")
+```
+```
+
+Результат: показ кнопки в контекстной панели по правой кнопке мыши
+
+**Задать иконку для кнопки и цвет фона в контекстной панели по клику правой кнопки мыши на поле**
+
+```totum
+p1=: panelButton(code: $code; text: "Click Me"; icon: "link"; background: "mistyrose")
+
+```code:totum
+=: linkToDataText(title: "Result"; text: "You clicked the button")
+```
+```
+
+Результат: показ кнопки в контекстной панели по правой кнопке мыши
+
+**Передать переменные в код, который будет выполнен при нажатии кнопки в контекстной панели по клику правой кнопки мыши на поле**
+
+```totum
+p1=: panelButton(code: $code; text: "Click Me"; icon: "link"; background: "mistyrose"; vars: $vars)
+
+vars: rowCreate(field: "var1" = "Value 1"; field: "var2" = "Value 2")
+
+```code:totum
+=: linkToDataText(title: "Result"; text: str`"You clicked the button with var1 = " + $#var1 + " and var2 = " + $#var2`)
+```
+```
+
+Результат: показ кнопки в контекстной панели по правой кнопке мыши
+
+**Настроить обновление таблицы после нажатия кнопки в контекстной панели по клику правой кнопки мыши на поле**
+
+```totum
+p1=: panelButton(code: $code; text: "Click Me"; icon: "link"; background: "mistyrose"; refresh: true)
+
+```code:totum
+=: linkToDataText(title: "Result"; text: "You clicked the button")
+```
+```
+
+Результат: показ кнопки в контекстной панели по правой кнопке мыши
 
 ### <a name="fn-panelButtons"></a>panelButtons
 
@@ -6177,7 +13583,6 @@ p1=: panelButtons(condition: ; button: ; button: ; buttons: ; refresh: true)
 Кнопки ставятся друг за другом. Сначала все **button,** потом **buttons**.
 
 При вызове кнопки ей передается текущее окружение `$#ntn`, `$#nci`, `$#nth`, `#id (и прочие строчные поля)`.
-
 
 **Необязательные параметры**
 
@@ -6215,7 +13620,6 @@ p1=: panelButtons(condition: ; button: ; button: ; buttons: ; refresh: true)
 
 	В `code` возможно передать `name` другого поля в текущей таблице, тогда код будет взят из него из соответствующего типа кода.
 
-
 + `icon` — [строка][6] название иконки `fontawersome 4` без `fa-`.
 
 + `background` — [строка][6] название цвета `web color` или HEX `#ddd`. В PRO — также [пользовательский цвет][655] `##aliceblue`.
@@ -6224,26 +13628,166 @@ p1=: panelButtons(condition: ; button: ; button: ; buttons: ; refresh: true)
 
 + `refresh` — позволяет указать refresh конкретной кнопке в стеке.
 
+#### <a name="fn-panelButtons-examples"></a>Примеры
 
+**Создать в контекстной панели по правой кнопке мыши на поле, несколько кнопок с определенными надписями и кодами для выполнения при нажатии**
 
 ```totum
-example: panelButtons(button: $b1; button: $b2; button: $b3)
+p1=: panelButtons(button: $b1; button: $b2; button: $b3)
 
-b1: rowCreate(field: "text" = "OPEN"; field: "code" = @table.field_vith_code; field: "vars" = $vars; field: "refresh" = true)
+b1: rowCreate(field: "text" = "Button 1"; field: "code" = $code1)
 
-b2: rowCreate(field: "text" = "IFRAME"; field: "code" = "field_name_in_table"; field: "vars" = $vars; field: "refresh" = false)
+b2: rowCreate(field: "text" = "Button 2"; field: "code" = $code2)
 
-	~vars: rowCreate(field: "field_value" = #field_value)
+b3: rowCreate(field: "text" = "Button 3"; field: "code" = $code3)
 
-b3: rowCreate(field: "text" = "DELETE"; field: "code" = $code; field: "refresh" = true)
-
-	```code:totum
-	=: delete(table: $#ntn; where: 'id' = #id)
-	```
-
-// text и code — обязательные параметры, остальные нет.
-
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You clicked Button 1")
 ```
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You clicked Button 2")
+```
+
+```code3:totum
+=: linkToDataText(title: "Result 3"; text: "You clicked Button 3")
+```
+```
+
+Результат: создание массива кнопок в контекстной панели
+
+**Создать в контекстной панели по правой кнопке мыши на поле, несколько кнопок с определенными надписями и кодами для выполнения при нажатии, передав настройки кнопок как массив данных rowlist**
+
+```totum
+p1=: panelButtons(buttons: $buttons)
+
+buttons: listCreate(item: $b1; item: $b2; item: $b3)
+
+	b1: rowCreate(field: "text" = "Button 1"; field: "code" = $code1)
+	b2: rowCreate(field: "text" = "Button 2"; field: "code" = $code2)
+	b3: rowCreate(field: "text" = "Button 3"; field: "code" = $code3)
+
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You clicked Button 1")
+```
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You clicked Button 2")
+```
+
+```code3:totum
+=: linkToDataText(title: "Result 3"; text: "You clicked Button 3")
+```
+```
+
+Результат: создание массива кнопок в контекстной панели
+
+**Создать в контекстной панели по правой кнопке мыши на поле, несколько кнопок с определенными надписями и кодами для выполнения при нажатии и настроить обновление таблицы в которой открывалась панель после нажатия для всех кнопок**
+
+```totum
+p1=: panelButtons(button: $b1; button: $b2; button: $b3; refresh: true)
+
+b1: rowCreate(field: "text" = "Button 1"; field: "code" = $code1)
+
+b2: rowCreate(field: "text" = "Button 2"; field: "code" = $code2)
+
+b3: rowCreate(field: "text" = "Button 3"; field: "code" = $code3)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You clicked Button 1")
+```
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You clicked Button 2")
+```
+
+```code3:totum
+=: linkToDataText(title: "Result 3"; text: "You clicked Button 3")
+```
+```
+
+Результат: создание массива кнопок в контекстной панели
+
+**Создать в контекстной панели по правой кнопке мыши на поле, несколько кнопок с определенными надписями и кодами для выполнения при нажатии и настроить обновление таблицы в которой открывалась панель после нажатия только для одной из кнопок**
+
+```totum
+p1=: panelButtons(button: $b1; button: $b2; button: $b3)
+
+b1: rowCreate(field: "text" = "Button 1"; field: "code" = $code1)
+
+b2: rowCreate(field: "text" = "Button 2"; field: "code" = $code2; field: "refresh" = true)
+
+b3: rowCreate(field: "text" = "Button 3"; field: "code" = $code3)
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You clicked Button 1")
+```
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You clicked Button 2")
+```
+
+```code3:totum
+=: linkToDataText(title: "Result 3"; text: "You clicked Button 3")
+```
+```
+
+Результат: создание массива кнопок в контекстной панели
+
+**Создать в контекстной панели по правой кнопке мыши на поле, несколько кнопок с определенными надписями и кодами для выполнения при нажатии и добавить на кнопки иконки и задать цвет фона кнопок**
+
+```totum
+p1=: panelButtons(button: $b1; button: $b2; button: $b3)
+
+b1: rowCreate(field: "text" = "Button 1"; field: "code" = $code1; field: "icon" = "link"; field: "background" = "mistyrose")
+
+b2: rowCreate(field: "text" = "Button 2"; field: "code" = $code2; field: "icon" = "edit"; field: "background" = "lightblue")
+
+b3: rowCreate(field: "text" = "Button 3"; field: "code" = $code3; field: "icon" = "trash"; field: "background" = "lightcoral")
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: "You clicked Button 1")
+```
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: "You clicked Button 2")
+```
+
+```code3:totum
+=: linkToDataText(title: "Result 3"; text: "You clicked Button 3")
+```
+```
+
+Результат: создание массива кнопок в контекстной панели
+
+**Создать в контекстной панели по правой кнопке мыши на поле, несколько кнопок с определенными надписями и кодами для выполнения при передать в коды кнопок по две одинаковые переменные**
+
+```totum
+p1=: panelButtons(button: $b1; button: $b2; button: $b3)
+
+b1: rowCreate(field: "text" = "Button 1"; field: "code" = $code1; field: "vars" = $vars)
+
+b2: rowCreate(field: "text" = "Button 2"; field: "code" = $code2; field: "vars" = $vars)
+
+b3: rowCreate(field: "text" = "Button 3"; field: "code" = $code3; field: "vars" = $vars)
+
+vars: rowCreate(field: "var1" = "Value 1"; field: "var2" = "Value 2")
+
+```code1:totum
+=: linkToDataText(title: "Result 1"; text: str`"You clicked Button 1 with var1 = " + $#var1 + " and var2 = " + $#var2`)
+```
+
+```code2:totum
+=: linkToDataText(title: "Result 2"; text: str`"You clicked Button 2 with var1 = " + $#var1 + " and var2 = " + $#var2`)
+```
+
+```code3:totum
+=: linkToDataText(title: "Result 3"; text: str`"You clicked Button 3 with var1 = " + $#var1 + " and var2 = " + $#var2`)
+```
+```
+
+Результат: создание массива кнопок в контекстной панели
 
 ### <a name="fn-panelHtml"></a>panelHtml
 
@@ -6261,6 +13805,24 @@ b3: rowCreate(field: "text" = "DELETE"; field: "code" = $code; field: "refresh" 
 
 + **condition** — при наличии функция выполнится только при срабатывании в `true`. Множественный параметр.
 
+#### <a name="fn-panelHtml-examples"></a>Примеры
+
+**Добавить HTML-код в панель по правой кнопке мыши**
+
+```totum
+p1=: panelHtml(html: "<div>Custom HTML Content</div>")
+```
+
+Результат: HTML-содержимое в контекстной панели по правой кнопке мыши
+
+**Добавить HTML-код в панель по правой кнопке мыши только при выполнении нескольких условий**
+
+```totum
+p1=: panelHtml(condition: #field_name = "some_value"; condition: #other_field = true; html: "<div>Custom HTML Content</div>")
+```
+
+Результат: HTML-содержимое в контекстной панели по правой кнопке мыши
+
 ### <a name="fn-panelImg"></a>panelImg
 
 Доступен в секциях: Форматирование [ячейки][39].
@@ -6268,7 +13830,6 @@ b3: rowCreate(field: "text" = "DELETE"; field: "code" = $code; field: "refresh" 
 =: panelImg(condition: ; img: )
 ```
 Добавляет картинку в панель по правой кнопке мыши. Работает только с кодами `p` в [форматировании ячейки][39].
-
 
 **Обязательные параметры**
 
@@ -6278,11 +13839,23 @@ b3: rowCreate(field: "text" = "DELETE"; field: "code" = $code; field: "refresh" 
 
 + **condition** — при наличии функция выполнится только при срабатывании в `true`. Множественный параметр.
 
+#### <a name="fn-panelImg-examples"></a>Примеры
+
+**Добавить картинку хранящуюся в поле типа Файл в панель по правой кнопке мыши**
 
 ```totum
-example: panelImg(img: #file[0][file])
-
+p1=: panelImg(img: #file[0][file])
 ```
+
+Результат: картинка в контекстной панели по правой кнопке мыши
+
+**Добавить картинку хранящуюся в поле типа Файл в панель по правой кнопке мыши только при выполнении определенного условия**
+
+```totum
+p1=: panelImg(condition: #field_name = "some_value"; img: #file[0][file])
+```
+
+Результат: картинка в контекстной панели по правой кнопке мыши
 
 ## <a name="part-12"></a>Обработка json
 
@@ -6295,7 +13868,6 @@ example: panelImg(img: #file[0][file])
 ```
 Возвращает [одну][14] [строку][6] в формате json.
 
-
 **Необязательные параметры**
 
 + **data** — данные любого формата.
@@ -6304,11 +13876,69 @@ example: panelImg(img: #file[0][file])
 
 + **flag** - `ESCAPED_UNICODE` или `PRETTY`.
 
+#### <a name="fn-jsonCreate-examples"></a>Примеры
+
+**Создать JSON-строку из массива данных Totum**
+
 ```totum
-example: jsonCreate(data: $data; field: "c" = 3; field: "b" = 4)
-	data: rowCreate(field: "a" = 1; field: "b" = 2)
-	
-// Результат: {"a":1,"b":4,"c":3}
+=: jsonCreate(data: json`{"a":"1","b":"2"}`)
+```
+
+Результат: {"a":"1","b":"2"}
+
+**Как при создании JSON-строки передать два ключа с данными?**
+
+```totum
+=: jsonCreate(field: "key1" = "value1"; field: "key2" = "value2")
+```
+
+Результат: {"key1":"value1","key2":"value2"}
+
+**Как при создании JSON-строки передать и массив данных и пару дополнительных ключей?**
+
+```totum
+=: jsonCreate(data: $data; field: "key1" = "value1"; field: "key2" = "value2")
+
+data: rowCreate(field: "a" = 1; field: "b" = 2)
+```
+
+Результат: {"a":"1","b":"2","key1":"value1","key2":"value2"}
+
+**Как при создании JSON-строки передать массив данных, но переписать в нем значение одного из ключей?**
+
+```totum
+=: jsonCreate(data: $data; field: "b" = 4)
+
+data: rowCreate(field: "a" = 1; field: "b" = 2)
+```
+
+Результат: {"a":"1","b":"4"}
+
+**Создать JSON-строку из массива данных Totum, указав формат ESCAPED_UNICODE**
+
+```totum
+=: jsonCreate(data: $data; flag: "ESCAPED_UNICODE")
+
+data: rowCreate(field: "a" = 1; field: "b" = 2)
+```
+
+Результат: {"a":"1","b":"2"}
+
+**Создать JSON-строку из массива данных Totum, указав формат PRETTY**
+
+```totum
+=: jsonCreate(data: $data; flag: "PRETTY")
+
+data: rowCreate(field: "a" = 1; field: "b" = 2)
+```
+
+Результат:
+
+```
+{
+    "a": 1,
+    "b": 2
+}
 ```
 
 ### <a name="fn-jsonExtract"></a>jsonExtract
@@ -6318,21 +13948,21 @@ example: jsonCreate(data: $data; field: "c" = 3; field: "b" = 4)
 ```totum
 =: jsonExtract(text: )
 ```
-Возвращает данные из json-строки или `null`, если формат строки не json.
+Возвращает данные из json-строки: список, `row` или одно значение.
 
++ Если `text` — пустая строка, возвращает пустую строку.
++ Если `text` не является валидным JSON, выполнение прерывается с ошибкой «Ошибка разбора JSON» (как [errorException][287]). Если ответ может быть не JSON (например, ответ стороннего сервиса), оберните вызов в [tryCatch][288]:
+
+```totum
+=: tryCatch(try: $parse; catch: ""; error: "exception")
+	parse: jsonExtract(text: $answer)
+```
 
 **Обязательные параметры**
 
 + **text** — текст в формате json.
 
-
-```totum
-example1: jsonExtract(text: "[1,2,3,4]")
-
-// Результат - лист из значений 1,2,3,4
-```
-
-**СИНТАКСИЧЕСКИЙ АНАЛОГ:**
+**СИНТАКСИЧЕСКИЙ АНАЛОГ** — `` json`…` `` ([подробнее, в том числе о подстановке значений из кода][701]):
 
 ```totum
 example2: json`[1,2,3,4]`
@@ -6348,28 +13978,102 @@ example3: if(condition: json`[1,2,3,4]` = 3; then: true; else: false)
 // Результат - true
 ```
 
+#### <a name="fn-jsonExtract-examples"></a>Примеры
+
+**Извлечь данные из JSON-строки, содержащей объект с несколькими ключами**
+
+```totum
+=: jsonExtract(text: '{"key1": "value1", "key2": "value2"}')
+```
+
+Результат: {"key1": "value1", "key2": "value2"}
+
+**Обработать JSON-строку, превратив ее в массив данных Totum**
+
+```totum
+=: jsonExtract(text: '{"key1": "value1", "key2": "value2"}')
+```
+
+Результат: {"key1": "value1", "key2": "value2"}
+
+**Использовать JSON-строку для задания списка значений с возможностью использования в параметрах функций**
+
+```totum
+=: json`[1,2,3,4]`
+```
+
+Результат: [1,2,3,4]
+
+**Использовать JSON-строку для задания row с возможностью использования в параметрах функций**
+
+```totum
+=: json`{"key1": "value1", "key2": "value2"}`
+```
+
+Результат: {"key1": "value1", "key2": "value2"}
+
 ## <a name="part-14"></a>Операции с файлами
 
 ### <a name="fn-fileGetContent"></a>fileGetContent
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
 ```totum
-=: fileGetContent(file: )
+=: fileGetContent(file: ; secure: )
 ```
-Возвращает содержимое файла в текущей транзакции.
+Возвращает содержимое файла в текущей транзакции. Если файл не найден — `null`.
 
 **Обязательные параметры**
 
 + **file** — имя файла на диске. При обращении к полю [файл][132] его можно получить как `#file_field[0][file]`.
 
+**Необязательные параметры**
+
++ <a name="fn-fileGetContent-secure"></a>**secure** — `true`: файл берется только из папки защищенных файлов `secureFiles` — для файлов из полей с настройкой [Защищенный доступ к файлам][537].
+
+	Как ищется файл:
+	+ имя с подпапкой (поле с [customFileFolder][622], `file` содержит `/`) — всегда в `secureFiles`, `secure` не нужен;
+	+ без `secure` — сначала в папке обычных файлов, а если там файла нет — в `secureFiles`;
+	+ с `secure: true` — только в `secureFiles`.
+
+	Указывайте `secure: true` для полей с защищенным доступом. Без него, если в папке обычных файлов лежит файл с тем же именем (например, загруженный в поле до включения `secureFile` — такие файлы остаются на диске), будет возвращено содержимое старого файла, а не защищенного.
+
+	```totum
+	=: fileGetContent(file: #contract[0][file]; secure: true)
+	```
+
+#### <a name="fn-fileGetContent-examples"></a>Примеры
+
+**Получить содержимое файла по его имени** *(код действия)*
 
 ```totum
-example: fileGetContent(file: #file_field[0]["file"])
-
-//Результат: содержимое запрошенного файла
-
-//Exception: при отсутствии файла - "Файл [[$fname]] не существует на диске"
+=: fileGetContent(file: "filename")
 ```
+
+Результат: бинарное содержимое файла
+
+**Получить имя файла из поля типа Файл** *(код действия)*
+
+```totum
+=: #file_field[0][file]
+```
+
+Результат: бинарное содержимое файла
+
+**Получить содержимое файла по его имениесли мы знаем, что это единственный файл в поле some_file в текущей таблице** *(код действия)*
+
+```totum
+=: fileGetContent(file: #some_file[0][file])
+```
+
+Результат: бинарное содержимое файла
+
+**Получить содержимое файла по его имени если мы знаем, что в поле some_file в текущей таблице находится несколько файлов и нам нужен второй** *(код действия)*
+
+```totum
+=: fileGetContent(file: #some_file[1][file])
+```
+
+Результат: бинарное содержимое файла
 
 ## <a name="part-15"></a>Системные
 
@@ -6420,7 +14124,7 @@ example: sysTranslit(str: "Мама рама")
 //Результат: mama_rama
 ```
 
-### <a name="fn-getTableSourse"></a>getTableSource
+### <a name="fn-getTableSource"></a>getTableSource
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
 ```totum
@@ -6500,7 +14204,6 @@ example: getTableSource(table: 'globcalcs_test_table')
 ```
 Возвращает данные из встроенной системы логирования в виде списка массивов.
 
-
 **Обязательные параметры**
 
 + **field** — [name-параметр][3] поле в таблице `table`.
@@ -6532,6 +14235,256 @@ example: getTableSource(table: 'globcalcs_test_table')
 
 	+ Если передать в качестве значение параметра `0` или `""`, то он будет отключен!
 
+#### <a name="fn-logRowList-examples"></a>Примеры
+
+**Получить список изменений для конкретного поля в таблице из встроенной системы логирования**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; id: 500)
+```
+
+Результат:
+
+```
+[
+  {
+    "comment": "3,58 €",
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+    "action": 2,
+    "value": "3,58 €"
+  },
+  {
+    "comment": "3,57 €",
+    "dt": "2024-09-07 20:08:00",
+    "user": 1,
+    "action": 2,
+    "value": "3,57 €"
+  },
+  {
+    "comment": "3,56 €",
+    "dt": "2024-09-07 20:05:50",
+    "user": 1,
+    "action": 2,
+    "value": "3,56 €"
+  },
+  {
+    "comment": "3,55 €",
+    "dt": "2024-09-07 20:04:13",
+    "user": 1,
+    "action": 2,
+    "value": "3,55 €"
+  }
+]
+```
+
+**Ограничить количество возвращаемых изменений последними тремя при запросе данных из встроенной системы логирования**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; id: 500; limit: 3)
+```
+
+Результат:
+
+```
+[
+  {
+    "comment": "3,58 €",
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+    "action": 2,
+    "value": "3,58 €"
+  },
+  {
+    "comment": "3,57 €",
+    "dt": "2024-09-07 20:08:00",
+    "user": 1,
+    "action": 2,
+    "value": "3,57 €"
+  },
+  {
+    "comment": "3,56 €",
+    "dt": "2024-09-07 20:05:50",
+    "user": 1,
+    "action": 2,
+    "value": "3,56 €"
+  }
+]
+```
+
+**Получить лог изменений для поля хедера из таблицы, которая является расчетной в цикле**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; cycle: 1)
+```
+
+Результат:
+
+```
+[
+  {
+    "comment": "3,58 €",
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+    "action": 2,
+    "value": "3,58 €"
+  },
+  {
+    "comment": "3,57 €",
+    "dt": "2024-09-07 20:08:00",
+    "user": 1,
+    "action": 2,
+    "value": "3,57 €"
+  },
+  {
+    "comment": "3,56 €",
+    "dt": "2024-09-07 20:05:50",
+    "user": 1,
+    "action": 2,
+    "value": "3,56 €"
+  },
+  {
+    "comment": "3,55 €",
+    "dt": "2024-09-07 20:04:13",
+    "user": 1,
+    "action": 2,
+    "value": "3,55 €"
+  }
+]
+```
+
+**Вернуть все поля лога при запросе из встроенного лога изменений**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; id: 500)
+```
+
+Результат:
+
+```
+[
+  {
+    "comment": "3,58 €",
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+    "action": 2,
+    "value": "3,58 €"
+  },
+  {
+    "comment": "3,57 €",
+    "dt": "2024-09-07 20:08:00",
+    "user": 1,
+    "action": 2,
+    "value": "3,57 €"
+  },
+  {
+    "comment": "3,56 €",
+    "dt": "2024-09-07 20:05:50",
+    "user": 1,
+    "action": 2,
+    "value": "3,56 €"
+  },
+  {
+    "comment": "3,55 €",
+    "dt": "2024-09-07 20:04:13",
+    "user": 1,
+    "action": 2,
+    "value": "3,55 €"
+  }
+]
+```
+
+**Отключить ограничение на количество возвращаемых изменений при запросе из встроенной системы логгирования**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; id: 500; limit: 0)
+```
+
+Результат:
+
+```
+[
+  {
+    "comment": "3,58 €",
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+    "action": 2,
+    "value": "3,58 €"
+  },
+  {
+    "comment": "3,57 €",
+    "dt": "2024-09-07 20:08:00",
+    "user": 1,
+    "action": 2,
+    "value": "3,57 €"
+  },
+  {
+    "comment": "3,56 €",
+    "dt": "2024-09-07 20:05:50",
+    "user": 1,
+    "action": 2,
+    "value": "3,56 €"
+  },
+  {
+    "comment": "3,55 €",
+    "dt": "2024-09-07 20:04:13",
+    "user": 1,
+    "action": 2,
+    "value": "3,55 €"
+  }
+]
+```
+
+**Указать конкретные поля для возврата из таблицы лога при запросе лога изменений**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; id: 500; params: json`["comment", "dt", "user"]`)
+```
+
+Результат:
+
+```
+[
+  {
+    "comment": "3,58 €",
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+  },
+  {
+    "comment": "3,57 €",
+    "dt": "2024-09-07 20:08:00",
+    "user": 1,
+  },
+  {
+    "comment": "3,56 €",
+    "dt": "2024-09-07 20:05:50",
+    "user": 1,
+  },
+  {
+    "comment": "3,55 €",
+    "dt": "2024-09-07 20:04:13",
+    "user": 1,
+  }
+]
+```
+
+**Получить id пользователя и дату-время последнего изменения поля в строчной части таблицы в цикле из встроенной системы логирования**
+
+```totum
+=: logRowList(table: 'table_name'; field: 'field_name'; id: 500; cycle: 1; params: json`["user", "dt"]`; limit: 1)
+```
+
+Результат:
+
+```
+[
+  {
+    "dt": "2024-09-07 20:09:21",
+    "user": 1,
+  }
+]
+```
+
 ### <a name="fn-tableLogSelect"></a>tableLogSelect
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
@@ -6540,7 +14493,6 @@ example: getTableSource(table: 'globcalcs_test_table')
 ```
 Возвращает `rowList` из таблицы логгирования действий пользователей.
 
-
 **Обязательные параметры**
 
 + **from** — дата от в формате `Y-m-d`.
@@ -6548,7 +14500,6 @@ example: getTableSource(table: 'globcalcs_test_table')
 + **to** — дата до в формате `Y-m-d`.
 
 + **users** — список `id` пользователей.
-
 
 **Необязательные параметры**
 
@@ -6559,6 +14510,40 @@ example: getTableSource(table: 'globcalcs_test_table')
 	+ asc — по возрастанию
 	+ desc — по убыванию
 
+#### <a name="fn-tableLogSelect-examples"></a>Примеры
+
+**Получить список действий одного пользователя за определенный период из внутренней системы логгирования**
+
+```totum
+=: tableLogSelect(from: "2023-01-01"; to: "2023-12-31"; users: json`[3]`; order: 'dt' desc)
+```
+
+Результат: rowlist с данными из системы логгирования
+
+**Получить список действий нескольких пользователей за определенный период из внутренней системы логгирования**
+
+```totum
+=: tableLogSelect(from: "2023-01-01"; to: "2023-12-31"; users: json`[1,2,3]`; order: 'dt' desc)
+```
+
+Результат: rowlist с данными из системы логгирования
+
+**Получить список действий одного пользователя за определенный период из внутренней системы логгирования и отфильтровать их по времени по убыванию**
+
+```totum
+=: tableLogSelect(from: "2023-01-01"; to: "2023-12-31"; users: json`[2]`; order: 'dt' desc)
+```
+
+Результат: rowlist с данными из системы логгирования
+
+**Получить список действий нескольких пользователей за определенный период из внутренней системы логгирования и отфильтровать их по id пользователя по возрастанию**
+
+```totum
+=: tableLogSelect(from: "2023-01-01"; to: "2023-12-31"; users: json`[1,2,3]`; order: 'user' asc)
+```
+
+Результат: rowlist с данными из системы логгирования
+
 ### <a name="fn-tableLog"></a>tableLog
 
 Доступен в секциях: [Код действия][28].
@@ -6566,7 +14551,6 @@ example: getTableSource(table: 'globcalcs_test_table')
 =: tableLog(table: ''; cycle: ; id: ; field: ; comment: )
 ```
 Позволяет внести произвольную запись в Лог по полю. Например, если у вас есть цикл в результате которого несколько раз меняются значения поля, но нужно записать только финальное изменение.
-
 
 **Обязательные параметры**
 
@@ -6581,6 +14565,40 @@ example: getTableSource(table: 'globcalcs_test_table')
 + **id** — `id` строки, если `field` определяет поле в строчной части.
 
 + **comment** — [строка][6], комментарий, который будет записан в лог.
+
+#### <a name="fn-tableLog-examples"></a>Примеры
+
+**Сделать нестандартную запись в лог поля в хедере или футере из кода-действия** *(код действия)*
+
+```totum
+=: tableLog(table: 'table_name'; field: 'field_name'; comment: "Your custom log comment")
+```
+
+Результат: нестандартная запись в лог
+
+**Сделать нестандартную запись в лог поля строчной части из кода-действия и добавить к ней комментарий** *(код действия)*
+
+```totum
+=: tableLog(table: 'table_name'; id: 1; field: 'field_name'; comment: "Your custom log comment")
+```
+
+Результат: нестандартная запись в лог
+
+**Сделать нестандартную запись в лог поля хедера из кода-действия и добавить к ней комментарий, если поле находится в таблице внутри цикла** *(код действия)*
+
+```totum
+=: tableLog(table: 'table_name'; cycle: 1; field: 'field_name'; comment: "Your custom log comment")
+```
+
+Результат: нестандартная запись в лог
+
+**Сделать нестандартную запись в лог поля из кода-действия и добавить к ней комментарий, если поле находится в строчной части таблицы** *(код действия)*
+
+```totum
+=: tableLog(table: 'table_name'; id: 1; field: 'field_name'; comment: "Your custom log comment")
+```
+
+Результат: нестандартная запись в лог
 
 ### <a name="fn-userInRoles"></a>userInRoles
 
@@ -6597,6 +14615,24 @@ example: getTableSource(table: 'globcalcs_test_table')
 **Обязательные параметры**
 
 + **role** — множественный параметр `id` роли.
+
+#### <a name="fn-userInRoles-examples"></a>Примеры
+
+**Проверить, есть ли у пользователя определенная роль**
+
+```totum
+=: userInRoles(role: 1)
+```
+
+Результат: true
+
+**Определить, принадлежит ли пользователь к нескольким определенным ролям**
+
+```totum
+=: userInRoles(role: 1; role: 2; role: 3)
+```
+
+Результат: true
 
 ### <a name="fn-getUsingFields"></a>getUsingFields
 
@@ -6635,11 +14671,9 @@ example: getUsingFields(table: 'settings'; field: 'code')
 ```
 Возвращает полный путь к таблице с протоколом HTTPS.
 
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name таблицы из которой берутся данные.
-
 
 **Необязательные параметры**
 
@@ -6647,12 +14681,49 @@ example: getUsingFields(table: 'settings'; field: 'code')
 
 + **protocol** — `"http"` если нужно вывести ссылку с `http` вместо `https`.
 
-
 **ПРИМЕРЫ**
 
+#### <a name="fn-tableUrl-examples"></a>Примеры
+
+**Получить полный путь к таблице с использованием протокола http**
+
 ```totum
-example: tableUrl(table: 'table_name'; cycle: $#nci; protocol: "http")
+=: tableUrl(table: 'table_name'; protocol: "http")
 ```
+
+Результат: http://example.com/table_path
+
+**Указать цикл и таблицу для получения пути к таблице**
+
+```totum
+=: tableUrl(table: 'table_name'; cycle: 1)
+```
+
+Результат: https://example.com/table_path
+
+**Задать имя таблицы для получения её полного пути**
+
+```totum
+=: tableUrl(table: 'table_name')
+```
+
+Результат: https://example.com/table_path
+
+**Получить полный путь к таблице с использованием протокола https**
+
+```totum
+=: tableUrl(table: 'table_name')
+```
+
+Результат: https://example.com/table_path
+
+**Получить путь к расчетной таблице в цикле**
+
+```totum
+=: tableUrl(table: 'table_name'; cycle: 1)
+```
+
+Результат: https://example.com/table_path
 
 ### <a name="fn-sleep"></a>sleep
 
@@ -6663,10 +14734,37 @@ example: tableUrl(table: 'table_name'; cycle: $#nci; protocol: "http")
 
 Создает паузу в выполнении действия на указанное количество секунд.
 
-
 **Обязательные параметры**
 
 + **sec** — число секунд.
+
+#### <a name="fn-sleep-examples"></a>Примеры
+
+**Сделать паузу в выполнении действия на 5 секунд** *(код действия)*
+
+```totum
+a1=: set(table: 'some_table'; field: 'some_field' = "new_value"; where: 'id' = 400; log: true)
+
+a2=: sleep(sec: 5)
+
+a3=: emailSend(to: #email; title: "Some title"; body: "Some email")
+```
+
+Результат: выполнение действия, пауза, второе действие
+
+**Приостановить выполнение действия на 10 секунд** *(код действия)*
+
+```totum
+=: while(action: $set; action: $sleep; action: $email)
+
+set: set(table: 'some_table'; field: 'some_field' = "new_value"; where: 'id' = 400; log: true)
+
+sleep: sleep(sec: 5)
+
+email: emailSend(to: #email; title: "Some title"; body: "Some email")
+```
+
+Результат: выполнение действия, пауза, второе действие
 
 ### <a name="fn-isItPro"></a>isItPro
 
@@ -6715,7 +14813,7 @@ example: tableUrl(table: 'table_name'; cycle: $#nci; protocol: "http")
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
 ```totum
-=: execSSH(ssh: ; vars: )
+=: execSSH(ssh: ; vars: ; stdin: )
 ```
 Возвращает полный ответ команды SSH в виде текста.
 
@@ -6737,20 +14835,66 @@ example: tableUrl(table: 'table_name'; cycle: $#nci; protocol: "http")
 
 	+ Если **vars:** — [ассоциативный массив][30], то к команде будут дописаны параметры вида `key='value'` с экранированием внутри `value`.
 
++ <a name="fn-execSSH-stdin"></a>**stdin** — [строка][6], которая передается команде на стандартный ввод (`stdin`). После записи ввод закрывается — команда получает конец ввода (EOF).
+
+	+ Позволяет передать скрипту большие или произвольные данные (json, текст, csv) без ограничений длины командной строки и без экранирования: в командной строке их не видно (например, в `ps`).
+	+ С `stdin` результат зависит от кода завершения команды: при коде `0` возвращается вывод `stdout`, при другом коде — вывод ошибок `stderr`. Без `stdin` (или если он пуст) возвращается только `stdout`, как и раньше.
+	+ Передается только [строка][6]: [список][14] или [ассоциативный массив][30] сначала преобразуйте в текст — например, [jsonCreate][318].
+
+	```totum
+	=: execSSH(ssh: "python3 /home/totum/scripts/process.py"; stdin: $json)
+
+	json: jsonCreate(data: $rows)
+	rows: selectRowList(table: 'orders'; field: 'id'; field: 'sum'; where: 'status' = "new")
+	```
+
+	Скрипт читает данные из стандартного ввода, например в Python: `data = json.load(sys.stdin)`.
+
+#### <a name="fn-execSSH-examples"></a>Примеры
+
+**Из кода запустить выполнение SSH-скрипта, через консоль сервера**
 
 ```totum
-example1: execSSH(ssh: "php -v")
-
-//Результат: PHP 7.1.28 (cli) (built: Apr 9 2019 11:24:32) ( NTS ) Copyright (c) 1997-2018 The PHP Group Zend Engine v3.1.0, Copyright (c) 1998-2018 Zend Technologies with the ionCube PHP Loader (enabled) + Intrusion Protection from ioncube24.com (unconfigured) v10.3.2, Copyright (c) 2002-2018, by ionCube Ltd.
+=: execSSH(ssh: "php -v")
 ```
+
+Результат: выполнение SSH-скрипта и получение стандартного вывода как результата его работы
+
+**Из кода запустить выполнение SSH-скрипта, через консоль сервера и передать список параметров через пробел с экранированием**
 
 ```totum
-example2: execSSH(ssh: "python ./python_script"; vars: $vars)
+=: execSSH(ssh: "script.sh"; vars: $params)
 
-vars: rowCreate(field: "key_1" = "value_1"; field: "key_2" = "value_2")
-
-// В ssh будет выполнена команда $ python ./python_script key_1='value_1' key_2='value_2'
+params: listCreate(item: "param1"; item: "param2")
 ```
+
+Результат: выполнение SSH-скрипта и получение стандартного вывода как результата его работы
+
+**Из кода запустить выполнение SSH-скрипта, через консоль сервера и передать список параметров через пробел с ключами**
+
+```totum
+=: execSSH(ssh: "script.sh"; vars: $params)
+
+params: rowCreate(field: "key1" = "param1"; field: "key2" = "param2")
+```
+
+Результат: выполнение SSH-скрипта и получение стандартного вывода как результата его работы
+
+**Из кода запустить выполнение SSH-скрипта, который находится в домашней папке пользователя totum**
+
+```totum
+=: execSSH(ssh: "../../script.sh")
+```
+
+Результат: выполнение SSH-скрипта и получение стандартного вывода как результата его работы
+
+**Из кода запустить выполнение SSH-скрипта, который находится в папке, которая находится домашней папке пользователя totum на сервере**
+
+```totum
+=: execSSH(ssh: "../../folder/script.sh")
+```
+
+Результат: выполнение SSH-скрипта и получение стандартного вывода как результата его работы
 
 ### <a name="fn-linkToAnonymTable"></a>linkToAnonymTable
 
@@ -6766,12 +14910,9 @@ vars: rowCreate(field: "key_1" = "value_1"; field: "key_2" = "value_2")
 
 Примеры анонимных таблиц: [https://start.demo.totum.online/An/30](https://start.demo.totum.online/An/30) и [https://start.demo.totum.online/An/52](https://start.demo.totum.online/An/52)
 
-
-
 **Обязательные параметры**
 
 + **table** — [name-параметр][3] name [временной таблицы][34], которая будет показана неавторизованному пользователю.
-
 
 **Необязательные параметры**
 
@@ -6783,12 +14924,61 @@ vars: rowCreate(field: "key_1" = "value_1"; field: "key_2" = "value_2")
 
 + **target** — если задан `iframe|blank|self|parent|top` то будет осуществлен переход по ссылке аналогично `linkToScript`.
 
-```totum
-example: linkToAnonymTable(table: 'tmp_anonym_table'; params: $row)
-row: rowCreate(field: "order_id" = 1111)
+#### <a name="fn-linkToAnonymTable-examples"></a>Примеры
 
-//Результат: htts://test.demo.totum.online/An/444?d=Y4EK1mpzeZtzxRcB58aMBQ06jVAtzVVU9A6bUo3oJbIP04JcHs7fdnD%2B9HCrh%2F4TUS9R0E4BLjfPXZ3slG%2FQgjJqGkheCb%2B8Hm53neuqHq2bbxdd5a2sjOIEBBvmnFES
+**Создать ссылку на временную таблицу для анонимного доступа, передав в таблицу зашифрованные данные в поля хедера**
+
+```totum
+=: linkToAnonymTable(table: 'tmp_table_name'; params: $row)
+
+row: rowCreate(field: "order_id" = 1111)
 ```
+
+Результат: https://test.demo.totum.online/An/444?d=Y4EK1mpzeZtzxRcB58aMBQ06jVAtz
+
+**Создать ссылку на временную таблицу для анонимного доступа, передав в таблицу зашифрованные данные в полей в строчной части для нескольких строк**
+
+```totum
+=: linkToAnonymTable(table: 'tmp_table_name'; params: $row)
+
+rowList: rowListCreate(field: 'field1' = json`[1,2,3]`; field: 'field2' = json`[4,5,6]`)
+```
+
+Результат: https://test.demo.totum.online/An/444?d=Y4EK1mpzeZtzxRcB58aMBQ06jVAtzVVU9A6b
+
+**Создать ссылку на временную таблицу для анонимного доступа, передав в таблицу зашифрованные данные в полей в хедере и строчной части для нескольких строк**
+
+```totum
+=: linkToAnonymTable(table: 'tmp_table_name'; data: $rowList; params: $row)
+
+rowList: rowListCreate(field: 'field1' = json`[1,2,3]`; field: 'field2' = json`[4,5,6]`)
+
+row: rowCreate(field: 'h_field1' = 40; field: 'h_field_2' = 50)
+```
+
+Результат: https://test.demo.totum.online/An/444?d=Y4EK1mpzeZtzxRcB58aMBQ06jVAtzVVU9A6bUo3oJbIP04Jc
+
+**Изменить протокол на http для ссылки на анонимную таблицу**
+
+```totum
+=: linkToAnonymTable(table: 'tmp_table_name'; data: $rowList; params: $row; protocol: "http")
+
+rowList: rowListCreate(field: 'field1' = json`[1,2,3]`; field: 'field2' = json`[4,5,6]`)
+
+row: rowCreate(field: 'h_field1' = 40; field: 'h_field_2' = 50)
+```
+
+Результат: http://test.demo.totum.online/An/444?d=Y4EK1mpzeZtzxRcB58aMBQ06jVAtzVVU9A6bUo3oJbI
+
+**Не создавать ссылку на анонимную таблицу, а открыть ее во всплывающем окне** *(код действия)*
+
+```totum
+=: linkToDataTable(table: 'tmp_anonym_table'; params: $row; target: "iframe")
+
+row: rowCreate(field: "order_id" = 1111)
+```
+
+Результат: открытие всплывающего окна
 
 #### GET/POST/INPUT
 
@@ -6820,6 +15010,38 @@ row: rowCreate(field: "order_id" = 1111)
 
 + **target** — если задан `iframe|blank|self|parent|top` то будет осуществлен переход по ссылке аналогично `linkToScript`.
 
+#### <a name="fn-linkToForm-examples"></a>Примеры
+
+**Создать ссылку на форму с заполненными данными для неавторизованного пользователя**
+
+```totum
+=: linkToForm(path: "path-to-form"; params: $row)
+
+row: rowCreate(field: "field_name" = "value")
+```
+
+Результат: url с зашифрованными параметрами
+
+**Изменить протокол с https на http при создании ссылки на форму**
+
+```totum
+=: linkToForm(path: "path-to-form"; params: $row; protocol: "http")
+
+row: rowCreate(field: "field_name" = "value")
+```
+
+Результат: url с зашифрованными параметрами
+
+**Не получить ссылку на форму, а открыть ее в окне как стороннюю страницу** *(код действия)*
+
+```totum
+=: linkToForm(path: "path-to-form"; params: $row; target: "blank")
+
+row: rowCreate(field: "field_name" = "value")
+```
+
+Результат: открытие новой вкладки с формой
+
 ### <a name="fn-linkToQuickForm"></a>linkToQuickForm
 
 **Только для PRO-версии**
@@ -6848,6 +15070,50 @@ row: rowCreate(field: "order_id" = 1111)
 
 + **target** — если задан `iframe|blank|self|parent|top` то будет осуществлен переход по ссылке аналогично `linkToScript`.
 
+#### <a name="fn-linkToQuickForm-examples"></a>Примеры
+
+**Создать ссылку на быструю форму с заполненными полями**
+
+```totum
+=: linkToQuickForm(path: "path-to-form"; fields: $row)
+
+row: rowCreate(field: "field_name1" = "value1"; field: "field_name2" = "value2")
+```
+
+Результат: ссылка на быструю форму с шифрованными параметрами
+
+**Создать ссылку на быструю форму с заполненными полями, которые нельзя изменить**
+
+```totum
+=: linkToQuickForm(path: "path-to-form"; fields: $row; fixed: $row_fix)
+
+row: rowCreate(field: "field_name1" = "value1"; field: "field_name2" = "value2")
+
+row_fix: rowCreate(field: "fixed_field_name1" = "fixed_value1"; field: "fixed_field_name2" = "fixed_value2")
+```
+
+Результат: ссылка на быструю форму с шифрованными параметрами
+
+**Создать ссылку на быструю форму с заполненными полями и изменить протокол ссылки на http**
+
+```totum
+=: linkToQuickForm(path: "path-to-form"; fields: $row; protocol: "http")
+
+row: rowCreate(field: "field_name1" = "value1"; field: "field_name2" = "value2")
+```
+
+Результат: ссылка на быструю форму с шифрованными параметрами
+
+**Вместо создания ссылки на быструю форму открыть ее во всплывающем окне** *(код действия)*
+
+```totum
+=: linkToQuickForm(path: "path-to-form"; fields: $row; target: "iframe")
+
+row: rowCreate(field: "field_name1" = "value1"; field: "field_name2" = "value2")
+```
+
+Результат: открытие во всплывающем окне
+
 ### <a name="fn-encriptedFormParams"></a>encriptedFormParams
 
 **Только для PRO-версии**
@@ -6859,10 +15125,31 @@ row: rowCreate(field: "order_id" = 1111)
 
 Вернет строку с шифрованным параметром `d`, которую можно передать в `get` при вызове стороннейй страницы с [формой][504] (вставленной на эту страницу как js-скрипт) для передачи в поля формы необходимой информации.
 
-
 **Необязательные параметры**
 
 + **params** — необходимо передать `row` для заполнения полей нестрочных плейсментов.
+
+#### <a name="fn-encriptedFormParams-examples"></a>Примеры
+
+**Передать зашифрованные параметры для формы вставленной на страницу как js-скрипт в GET-запросе**
+
+```totum
+=: encriptedFormParams(params: $row)
+
+row: rowCreate(field: 'field1' = "value"; field: 'field2' = "value2")
+```
+
+Результат: d=sdOKfu9uhDFasd...
+
+**Использовать шифрование параметров для передачи данных в форму, интегрированную в стороннюю web-страницу**
+
+```totum
+=: encriptedFormParams(params: $row)
+
+row: rowCreate(field: 'field1' = "value"; field: 'field2' = "value2")
+```
+
+Результат: d=sdOKfu9uhDFasd...
 
 ### <a name="fn-proDbConnect"></a>proDbConnect
 
@@ -6872,10 +15159,27 @@ row: rowCreate(field: "order_id" = 1111)
 ```
 [PRO Доступ к базам данных][596] Открывает коннект к сторонней базе данных. Возвращает `hash` соединения.
 
-
 **Обязательные параметры**
 
 + **name** — name коннекта к БД в таблице `ttm__external_databases`
+
+#### <a name="fn-proDbConnect-examples"></a>Примеры
+
+**Подключиться к сторонней базе данных**
+
+```totum
+=: proDbConnect(name: "external_db_name")
+```
+
+Результат: хэш подключения
+
+**Как в система Totum получить хэш подключения к сторонней базе данных?**
+
+```totum
+=: proDbConnect(name: "external_db_name")
+```
+
+Результат: хэш подключения
 
 ### <a name="fn-proDbDisconnect"></a>proDbDisconnect
 
@@ -6891,6 +15195,32 @@ row: rowCreate(field: "order_id" = 1111)
 
 + **hash** — [строка][6]  hash коннекта открытого `proDbConnect`.
 
+#### <a name="fn-proDbDisconnect-examples"></a>Примеры
+
+**Закрыть соединение со сторонней базой данных, открытое ранее**
+
+```totum
+=: proDbDisconnect(hash: "hash_here_from_proDbConnect")
+```
+
+Результат: закрытие соединения к сторонней базе данных
+
+**Завершить коннект к сторонней базе данных**
+
+```totum
+=: proDbDisconnect(hash: "hash_here_from_proDbConnect")
+```
+
+Результат: закрытие соединения к сторонней базе данных
+
+**Закрыть коннект к сторонней базе данных по его хэш**
+
+```totum
+=: proDbDisconnect(hash: "hash_here_from_proDbConnect")
+```
+
+Результат: закрытие соединения к сторонней базе данных
+
 ### <a name="fn-proDbExecQuery"></a>proDbExecQuery
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
@@ -6899,11 +15229,9 @@ row: rowCreate(field: "order_id" = 1111)
 ```
 [PRO Доступ к базам данных][596]. Выполняет запрос и возвращает количество задействованных строк (в `PDO` — `rowCount`).
 
-
 **Обязательные параметры**
 
 + **query** — `Query` строка. Может быть использована подстановка параметров через `?`.
-
 
 **Необязательные параметры**
 
@@ -6915,6 +15243,48 @@ row: rowCreate(field: "order_id" = 1111)
 
 + **hash** — [строка][6] hash коннекта функции `proDbConnect`. Если передан hash, то коннект по завершению выполнения функции закрыт не будет.
 
+#### <a name="fn-proDbExecQuery-examples"></a>Примеры
+
+**Выполнить запись данных в сторонней базе данных, если коннект к ней был открыт ранее** *(код действия)*
+
+```totum
+=: proDbExecQuery(hash: "hash_from_proDbConnect"; query: "INSERT INTO table_name (column1, column2) VALUES (?, ?)"; params: $params)
+
+params: listCreate(item: "value1"; item: "value2")
+```
+
+Результат: изменение в сторонней базе данных
+
+**Использовать подстановку параметров в запросе на запись в стороннюю базу данных, если мы знаем, что коннект к ней был открыт ранее** *(код действия)*
+
+```totum
+=: proDbExecQuery(hash: "hash_from_proDbConnect"; query: "INSERT INTO table_name (column1, column2) VALUES (?, ?)"; params: $params)
+
+params: listCreate(item: "value1"; item: "value2")
+```
+
+Результат: изменение в сторонней базе данных
+
+**Передать параметры для подстановки значений в запросе к сторонней базе данных, с учетом того, что под это действие нужно открыть и закрыть соединение** *(код действия)*
+
+```totum
+=: proDbExecQuery(name: "external_db_name"; query: "INSERT INTO table_name (column1, column2) VALUES (?, ?)"; params: $params)
+
+params: listCreate(item: "value1"; item: "value2")
+```
+
+Результат: изменение в сторонней базе данных
+
+**Выполнить запись в стороннюю базу данных нескольких строк, передав значения двух ключей, открыв соединение и закрыв его после выполнения** *(код действия)*
+
+```totum
+=: proDbExecQuery(name: "external_db_name"; query: "INSERT INTO table_name (column1, column2) VALUES (?, ?), (?, ?), (?, ?)"; params: $params)
+
+params: listCreate(item: "value1"; item: "value2"; item: "value3"; item: "value4"; item: "value5"; item: "value6")
+```
+
+Результат: изменение в сторонней базе данных
+
 ### <a name="fn-proDbSelect"></a>proDbSelect
 
 Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
@@ -6923,11 +15293,9 @@ row: rowCreate(field: "order_id" = 1111)
 ```
 [PRO Доступ к базам данных][596]. Выполняет `Query` и возвращает первую строку в виде `row`.
 
-
 **Обязательные параметры**
 
 + **query** — `Query` строка. Может быть использована подстановка параметров через `?`.
-
 
 **Необязательные параметры**
 
@@ -6938,6 +15306,58 @@ row: rowCreate(field: "order_id" = 1111)
 + **name** — name коннекта в таблице `ttm__external_databases`. Если передается name, то коннект будет открыт при начале исполнения функции и закрыт после ее выполнения.
 
 + **hash** — [строка][6] hash коннекта функции `proDbConnect`. Если передан hash, то коннект по завершению выполнения функции закрыт не будет.
+
+#### <a name="fn-proDbSelect-examples"></a>Примеры
+
+**Выполнить запрос к базе сторонней данных и вернуть толкьо первую строку результата**
+
+```totum
+=: proDbSelect(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: row из данных из сторонней базы данных
+
+**Использовать подстановку параметров в SQL-запросе к сторонней базе данных**
+
+```totum
+=: proDbSelect(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: row из данных из сторонней базы данных
+
+**Передать несколько параметров для подстановки в SQL-запросе к сторонней базе данных (например имя таблицы и параметр сравнения по ключу)**
+
+```totum
+=: proDbSelect(name: "external_db"; query: "SELECT * FROM ? WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "table_name"; item: "value")
+```
+
+Результат: row из данных из сторонней базы данных
+
+**Выполнить запрос к базе сторонней данных и вернуть толкьо первую строку результата используя ранее открытое соединения**
+
+```totum
+=: proDbSelect(hash: "hash_from_proDbConnect"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: row из данных из сторонней базы данных
+
+**Выполнить запрос к базе сторонней данных и вернуть толкьо первую строку результата открыв соединение и закрыв его после получения результата**
+
+```totum
+=: proDbSelect(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: row из данных из сторонней базы данных
 
 ### <a name="fn-proDbSelectList"></a>proDbSelectList
 
@@ -6947,11 +15367,9 @@ row: rowCreate(field: "order_id" = 1111)
 ```
 [PRO Доступ к базам данных][596]. Выполняет `Query` и возвращает результат в виде `rowList`.
 
-
 **Обязательные параметры**
 
 + **query** — `Query` строка. Может быть использована подстановка параметров через `?`.
-
 
 **Необязательные параметры**
 
@@ -6962,6 +15380,58 @@ row: rowCreate(field: "order_id" = 1111)
 + **name** — name коннекта в таблице `ttm__external_databases`. Если передается name, то коннект будет открыт при начале исполнения функции и закрыт после ее выполнения.
 
 + **hash** — [строка][6] hash коннекта функции `proDbConnect`. Если передан hash, то коннект по завершению выполнения функции закрыт не будет.
+
+#### <a name="fn-proDbSelectList-examples"></a>Примеры
+
+**Выполнить запрос к базе сторонней данных и вернуть список строк результата**
+
+```totum
+=: proDbSelectList(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: rowList из данных сторонней базы
+
+**Использовать подстановку параметров в SQL-запросе к сторонней базе данных при получении списка разультатов**
+
+```totum
+=: proDbSelectList(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: rowList из данных сторонней базы
+
+**Передать параметры для подстановки в SQL-запросе к сторонней базе данных при получении списка результатов запроса**
+
+```totum
+=: proDbSelectList(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: rowList из данных сторонней базы
+
+**Выполнить запрос к сторонней базе данных и вернуть все строки результата используя ранее открытое соединения**
+
+```totum
+=: proDbSelectList(hash: "hash_from_proDbConnect"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: rowList из данных сторонней базы
+
+**Выполнить запрос к сторонней базе данных и вернуть все строки результата открыв соединение и закрыв его после получения результата**
+
+```totum
+=: proDbSelectList(name: "external_db"; query: "SELECT * FROM table_name WHERE condition = ?"; params: $list)
+
+list: listCreate(item: "value")
+```
+
+Результат: rowList из данных сторонней базы
 
 ### <a name="fn-proPrefilteredIds"></a>proPrefilteredIds
 
@@ -6982,6 +15452,48 @@ row: rowCreate(field: "order_id" = 1111)
 
 + **excludelist** — список name-полей на исключение.
 
+#### <a name="fn-proPrefilteredIds-examples"></a>Примеры
+
+**Получить id строк, ограниченных префильтрами**
+
+```totum
+=: proPrefilteredIds()
+```
+
+Результат: список id строк, ограниченных префильтрами
+
+**Как исключить определенные префильтры при получении id строк в системе Totum?**
+
+```totum
+=: proPrefilteredIds(exclude: "filter_name")
+```
+
+Результат: список id строк, ограниченных префильтрами
+
+**Как использовать параметр exclude для исключения нескольких префильтров в системе Totum?**
+
+```totum
+=: proPrefilteredIds(exclude: "filter_name_1"; exclude: "filter_name_2")
+```
+
+Результат: список id строк, ограниченных префильтрами
+
+**Как применить параметр excludelist для исключения name-полей в системе Totum?**
+
+```totum
+=: proPrefilteredIds(excludelist: json`["filter_name_1", "filter_name_2"]`)
+```
+
+Результат: список id строк, ограниченных префильтрами
+
+**Получить id строк, игнорируя определенные префильтры**
+
+```totum
+=: proPrefilteredIds(excludelist: json`["filter_name_1", "filter_name_2"]`)
+```
+
+Результат: список id строк, ограниченных префильтрами
+
 ### <a name="fn-proLinkToBuffer"></a>proLinkToBuffer
 
 Доступен в секциях: [Код действия][28].
@@ -6990,12 +15502,45 @@ row: rowCreate(field: "order_id" = 1111)
 ```
 Копирует текст в буфер обмена компьютера.
 
-
 **Обязательные параметры**
 
 + **text** — Текст для сохранения в буфер обмена.
 
 	+ Передается как [одна][14] [строка][6].
+
+#### <a name="fn-proLinkToBuffer-examples"></a>Примеры
+
+**Скопировать строку в буфер обмена** *(код действия)*
+
+```totum
+=: proLinkToBuffer(text: "some text here")
+```
+
+Результат: текст сохраненный в буфере обмена
+
+**Сохранить текст в буфер обмена** *(код действия)*
+
+```totum
+=: proLinkToBuffer(text: "some text here")
+```
+
+Результат: текст сохраненный в буфере обмена
+
+**Передать текст в буфер обмена** *(код действия)*
+
+```totum
+=: proLinkToBuffer(text: "some text here")
+```
+
+Результат: текст сохраненный в буфере обмена
+
+**Использовать функцию для копирования текста в буфер обмена** *(код действия)*
+
+```totum
+=: proLinkToBuffer(text: "some text here")
+```
+
+Результат: текст сохраненный в буфере обмена
 
 ### <a name="fn-proGetAuthorizationLink"></a>proGetAuthorizationLink
 
@@ -7006,7 +15551,6 @@ row: rowCreate(field: "order_id" = 1111)
 Создает одноразовый или многоразовый токен для входа в систему.
 
 Подробнее смотрите [PRO Auth Links][633]
-
 
 **Обязательные параметры**
 
@@ -7027,6 +15571,139 @@ row: rowCreate(field: "order_id" = 1111)
 	+ `multiple` — токен действует, пока не выйдет `timeout`
 	
 + **filter** — множественный параметр, можно передать значения Префильтров.
+
+#### <a name="fn-proGetAuthorizationLink-examples"></a>Примеры
+
+**Создать одноразовый токен авторизации для пользователя с id 123** *(код действия)*
+
+```totum
+=: proGetAuthorizationLink(user: 123; timeout: 60; type: "single")
+```
+
+Результат: создание строки с токеном в таблице токенов ttm__auth_tokens и возврат ссылки для перехода
+
+**Создать многоразовый токен доступа и задать срок действия токена до 2025-01-01 00:00** *(код действия)*
+
+```totum
+=: proGetAuthorizationLink(user: 123; timeout: "2025-01-01 00:00"; type: "multiple")
+```
+
+Результат: создание строки с токеном в таблице токенов ttm__auth_tokens и возврат ссылки для перехода
+
+**Создать многоразовый токен доступа для пользователя с id 456, который будет действовать два часа** *(код действия)*
+
+```totum
+=: proGetAuthorizationLink(user: 456; timeout: 7200; type: "multiple")
+```
+
+Результат: создание строки с токеном в таблице токенов ttm__auth_tokens и возврат ссылки для перехода
+
+**Указать таблицу, которая будет открыта при переходе по ссылке многоразового токена авторизации** *(код действия)*
+
+```totum
+=: proGetAuthorizationLink(user: 123; timeout: 3600; table: 'table_name'; type: "multiple")
+```
+
+Результат: создание строки с токеном в таблице токенов ttm__auth_tokens и возврат ссылки для перехода
+
+**Создать одноразовый токен для авторизации и задать срок действия токена на 60 секунд** *(код действия)*
+
+```totum
+=: proGetAuthorizationLink(user: 123; timeout: 60; type: "single")
+```
+
+Результат: создание строки с токеном в таблице токенов ttm__auth_tokens и возврат ссылки для перехода
+
+**Создать одноразовый токен авторизации с указанием таблицы и значениями префильтров, которые должны быть подставлены в момент его открытия** *(код действия)*
+
+```totum
+=: proGetAuthorizationLink(user: 123; timeout: 60; table: 'table_name'; type: 'single'; filter: 'fl_prefilter_1' = "value_1"; filter: 'fl_prefilter_2' = "value_2")
+```
+
+Результат: создание строки с токеном в таблице токенов ttm__auth_tokens и возврат ссылки для перехода
+
+### <a name="fn-proCookie"></a>proCookie
+
+**Только для PRO-версии**
+
+Доступен в секциях: [Код][27]; [Код действия][28]; [Код селекта][4]; Форматирование [ячейки][39], [строки][40], [таблицы][41].
+```totum
+=: proCookie(name: ""; value: ; default: ; options: )
+```
+Читает или устанавливает cookie браузера текущего пользователя. Например, чтобы запомнить выбор пользователя (вид, фильтр, последний открытый объект) между открытиями страниц без записи в базу.
+
++ Без `value` и `default` — **чтение**: возвращает значение cookie из текущего запроса браузера. Если cookie нет — пустую строку `""`.
++ С `value` (или `default`) — **установка**: cookie отправляется в браузер с ответом. Функция возвращает `null`.
+
+**Особенности**
+
++ К имени автоматически добавляется префикс `ttm__`: `name: "view"` — это cookie `ttm__view` в браузере. Так cookie схемы не пересекаются с другими cookie сайта. Читаются тоже только cookie с этим префиксом.
++ Если в `value` передан [список][14] или [ассоциативный массив][30], он автоматически сохраняется как json. При чтении значение, которое является корректным json, автоматически разбирается обратно — возвращается список / ассоциативный массив. Поэтому числа и `true` / `false` при чтении возвращаются числом и булевым значением, а не строкой.
++ `value: ""` удаляет cookie.
++ Cookie устанавливается **вне транзакции**: заголовок отправляется браузеру сразу при выполнении функции и не отменяется, даже если действие потом завершится ошибкой и транзакция будет отменена.
++ Установленная cookie видна для чтения только со **следующего** запроса браузера: в том же действии `proCookie(name: …)` вернет старое значение.
++ Работает только в запросах из браузера (web). В кронах, API, процессах `ssh: true` и консоли cookie некуда установить и неоткуда прочитать.
++ Если ответ браузеру уже начал отправляться, установка невозможна — функция вернет строку `"headers_sent"`.
+
+**Обязательные параметры**
+
++ **name** — [строка][6], имя cookie без префикса `ttm__`.
+
+**Необязательные параметры**
+
++ **value** — значение для установки: [строка][6], [число][5], [список][14] или [ассоциативный массив][30]. `""` — удалить cookie.
+
++ **default** — то же, что `value`: устанавливает cookie переданным значением. Наличие cookie не проверяется — значение будет перезаписано.
+
++ **options** — [ассоциативный массив][30] параметров cookie. Учитываются только ключи (остальные отбрасываются):
+	+ `expires` — время окончания действия, unix timestamp ([число][5]). Без `expires` cookie живет до закрытия браузера.
+	+ `path` — путь, для которого действует cookie. По умолчанию `/` — для всего сайта.
+	+ `domain` — домен cookie.
+	+ `secure` — `true`: передавать только по https.
+	+ `httponly` — `true`: cookie недоступна из JavaScript страницы.
+	+ `samesite` — `"Lax"`, `"Strict"` или `"None"`.
+
+	> Если `options` переданы, то `path: "/"` по умолчанию не подставляется: без `path` в `options` браузер привяжет cookie к адресу текущей страницы, и на других страницах ее не будет видно. Указывайте `path` явно.
+
+#### <a name="fn-proCookie-examples"></a>Примеры
+
+**Запомнить выбранный пользователем вид на 30 дней** *(код действия)*
+
+```totum
+=: proCookie(name: "orders_view"; value: #h_view; options: $options)
+
+options: rowCreate(field: "expires" = $expires; field: "path" = "/"; field: "samesite" = "Lax")
+expires: math`$now + 30 * 24 * 60 * 60`
+now: dateFormat(date: $#ndt; format: "U")
+```
+
+Результат: в браузере установлена cookie `ttm__orders_view`
+
+**Прочитать сохраненный вид, а если cookie нет — взять значение по умолчанию** *(код)*
+
+```totum
+=: if(condition: $saved = ""; then: "list"; else: $saved)
+
+saved: proCookie(name: "orders_view")
+```
+
+Результат: `list` или сохраненное значение
+
+**Сохранить ассоциативный массив и прочитать его обратно** *(код действия)*
+
+```totum
+a1=: proCookie(name: "last_filter"; value: $filter)
+
+filter: rowCreate(field: "client" = #client; field: "status" = #status)
+```
+
+При следующем открытии `proCookie(name: "last_filter")` вернет ассоциативный массив `{"client": …, "status": …}`, а `$cookie[client]` — значение по ключу.
+
+**Удалить cookie** *(код действия)*
+
+```totum
+=: proCookie(name: "last_filter"; value: "")
+```
 
 ## <a name="part-18"></a>Services
 

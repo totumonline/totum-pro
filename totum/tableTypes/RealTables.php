@@ -606,7 +606,7 @@ abstract class RealTables extends aTable
     {
         $where = ['id' => $this->tableRow['id']];
 
-        if (!in_array($this->getTableRow()['actual'], ['off', 'disable', 'disablenotice', 'disablerefresh']) || $this->Totum->getTableSpecialSaveType($this->getTableRow()['name'])) {
+        if (!in_array($this->getTableRow()['actual'], ['off', 'disable', 'disablenotice', 'disablerefresh']) && !$this->Totum->getTableSpecialSaveType($this->getTableRow()['name'])) {
             $where['updated'] = $this->savedUpdated;
 
         }

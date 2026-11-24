@@ -9,6 +9,36 @@ the system tables `tree`, `tables`, `tables_fields` — the agent changes it wit
 `edit_panel`, `delete_rows`) like the creator does it with the panels of web. The creator view adds instructions, the tool
 `get_field_settings`, the section `## Creator view` of `get_table_schema` and the short form of the field settings (`data_src`).
 
+## Before development — required reading
+> **ATTENTION: the most common error is not using `~`.** Every time you write or change a Totum code, check the lines that are called
+> more than once with the same value and fix them with `~` (except the lines that depend on the element / iteration of `listReplace` / `while`) —
+> [docs/ARCHITECTURE.md#fix-lines](docs/ARCHITECTURE.md#fix-lines), MCP: `read_docs {"ref": "ARCHITECTURE#fix-lines"}`.
+
+Before building tables or writing codes read:
+1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (server: `https://<host>/docs/ARCHITECTURE.md`, MCP: `read_docs {"ref": "ARCHITECTURE"}`) — architectural patterns of Totum codes
+   (the same line is in the instructions of the creator view, `MCPCreator::INSTRUCTIONS`). The main ones:
+   - **`~` on lines called several times with the same value** — extra important for performance. In `listReplace` and `while` do not fix lines
+     that depend on the current element / iteration: `~` keeps the first value for all the following ones.
+   - **Short lists — inline `` json`["short","lists"]` ``**, not a separate line with `listCreate`.
+   - **Strings**: `` str`…` `` is written right in the parameter of the function, not in a separate line;
+     in `` str`…` `` a space is added by `++`, not inside the quotes (`` str`"Счёт №" ++ #order_num + $#nl` ``);
+     a string with `"` inside — `strAdd` with the parts in single quotes (`strAdd(str: 'Заказ "'; str: #order_num; str: '"')`).
+   - **Simple math** (add, subtract, divide) — `` math`…` `` right in the parameter of the function (`` field: 'sum' = math`#price * #quantity - #discount` ``).
+   - **Dates and numbers (money) in texts for users** (messages, notifications, comments) — formatted with `dateFormat` / `numFormat`.
+   - **Names of lines**: `dateAdd` — `dadd` (also with a negative number), `numFormat` — `nf`, `dateFormat` — `df`; several in one code — `dadd_***`, `nf_***`, `df_***`.
+   - **Empty list** — `$list = $#lc`, not `$list = ""` (it is `true` also for a list with one empty element).
+   - Examples of the docs may be written in other ways — the patterns of ARCHITECTURE.md have priority.
+   - **Layout of `listReplace`**: the line of the source `list` has an additional indent — two tabs (important!), the lines of `action` — one tab, nested ones deeper:
+     ```totum
+     =: listReplace(list: $rows; action: "total" = $total; value: "row")
+     		rows: selectRowList(table: 'order_items'; field: 'id'; field: 'price'; field: 'quantity')
+     	total: $#row[price] * $#row[quantity]
+     ```
+   - **Several `action` of `listReplace` one after another**: the result of an `action` is passed to the next one through an intermediate `var`
+     (`action_row: var(name: "action_row"; value: $var_action_row)`, `var_action_row: …`, the next `action` reads `$#action_row`).
+2. The sections of the functions you use — `read_docs {"function": …}`, the settings — `read_docs {"setting": …}` / `{"table_setting": …}`, the syntax — `read_docs {"ref": "syntax"}`.
+3. Solved questions of users — `search_docs {"q": …, "section": "how-to"}` (pages `user-questions`, `knowledge-base`).
+
 ## Connection
 - stdio: `php bin/totum mcp --user=<login|email> --creator=true` (`--creator` without value = true; `--creator=false` or no option — the usual view).
 - HTTP: header `TTM-Creator: true` in every request (no `X-` prefix — RFC 6648; values `true/1/yes/on`):
