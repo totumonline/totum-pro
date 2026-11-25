@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Documents for agents — in the repo and on every server (the server links are symlinks made by the installer):
+Documents for agents — in the repo and on every server (the server links are relative symlinks `http/AGENTS.md`, `http/CREATOR.md`, `http/docs` committed to the repo):
 | document | repo | server |
 |---|---|---|
 | this file: the project, working with Totum over MCP | `AGENTS.md` | `https://<host>/AGENTS.md` |
@@ -145,6 +145,7 @@ Marks in rights of `get_table_schema` (`MCPMarkdown::featureMarks` + edit marks 
 | `checked-rows` | the code of the button uses `$#ids` — pass the rows checked with checkmarks in `checked_ids` | `codeAction` contains `$#ids` |
 | `log` | the log of manual changes is available — `get_cell`; fields without the mark have no log | `logButton` of fieldsForClient (logging, logRoles, not button/filter), not tmp |
 | `cycle-tab` | tab_ button of a cycles table — a tab inside the cycle (see "Cycles") | `MCPTableResolver::isCycleTabButton` |
+| `field-params` | the format sets the type of the cells (`setFieldParams`) — see "Field params of a cell" | `format` of the field (virtual columns — of the base field) contains `setFieldParams` |
 
 Field types (UI name → type in output):
 | UI | type | output details | value for writing |
@@ -301,6 +302,22 @@ How MCP applies `q`:
   the answer has the found nodes with `parent` = key and title of the parent.
 - tree without `q`: a long tree gives only the top level (+ the selected value and its branch) with `(has children)` and the line
   `the tree is not loaded completely …` — children with `parent_id`, or `q` over the whole tree.
+
+Select of `setFieldParams` (a Data field whose cell is a select by the format, mark `#fieldParams(select…)`, see "Field params of a cell"): `get_select_options` with `field` + `id`
+(the core `getEditSelectFromTable` builds the Select from the params of the cell). A virtual column of a dynamic field (`dyn/key`) has no field in the core:
+the options are the `values` of the params of the cell (`MCPTools::paramsValuesOptions`); its `codeSelect` → error.
+
+### Field params of a cell (setFieldParams)
+The cell format `setFieldParams(condition; params)` makes web show and edit a cell as a field of another type (string, number, checkbox, select…; docs `dynamic-fields#dynamic-field-params`),
+also in the virtual columns of a dynamic field (`dn=:` of the table format, `$#nfd` — the key of the column). The params come in the format of the cell `f.fieldParams`
+(select — also the titles `v_` of the value: `Field::addFormat`):
+- `read_table` / `get_row` / cards: mark `#fieldParams(number(3))`, `#fieldParams(string, required)`, `#fieldParams(select multiple)` (`MCPMarkdown::fieldParamsType` = `fieldType` of the params);
+  select / tree / checkbox values are shown like these types (`Alpha [a], Gamma [c]`, `true`).
+- `get_table_schema`: mark `field-params` of the fields whose format has `setFieldParams` (virtual columns — by the base field).
+- `get_cell`: `field params of the cell …: web shows and edits this cell as number(3) instead of listRow`, `params: {json}` (without `v_`) and how to write the value
+  (select — the call of `get_select_options`). The value is kept in the field itself and written by its rules (Data): required / regexp / decimal places of the params are checked only by the browser.
+- Core fix: `CalculateFormat::funcSetFieldParams` of a select in a virtual column (`dyn/key`) took the field `dyn/key` that does not exist (warnings) — now the base field.
+Test table: `mcp_test_search` (`value` — Data with setFieldParams by `kind`, `dyn` — dynamic field with columns `dyn/n` number, `dyn/c` checkbox, `dyn/s` select).
 
 ### Changes
 ```json
@@ -723,7 +740,7 @@ Both tools are in every mode (annotation `readOnlyHint`); they read the markdown
 - Links of the docs are consistent (2026-11-23): every `[N]` of the texts is defined in `links.md`, every target page/anchor exists, anchors are unique in a page,
   anchors `fields-settings-<name>` / `table-settings-<name>` are the names of the settings (data_src / fields of `tables`). Removed the links of the old docs
   (`/install…`, `/ubuntu/#fpm|#nginx`, technical functions `fn-dateWeekDay`, `fn-getFromSoap`, `fn-getTableSource`, `fn-setForm…Format`, `fn-schemaGzString…`, `fn-servicePdfGenerator`,
-  `fn-serviceAskOpenai…`, `fn-setFieldParams` — not documented, better not to use them); `interface#part-N` → the page / `sx-section-parameters`; `[24]` → `functions#part-9`.
+  `fn-serviceAskOpenai…` — not documented, better not to use them; `fn-setFieldParams` is documented since 2026-11-25); `interface#part-N` → the page / `sx-section-parameters`; `[24]` → `functions#part-9`.
   A broken ref is answered by `read_docs` with similar anchors.
 - Check of the links after changes of the docs and the rules of `links.md` — section "Editing" of [docs/DOCS.md](docs/DOCS.md).
 
@@ -836,6 +853,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `checked-rows` | (`get_table_schema`) the button code uses the checked rows (`$#ids`): pass `checked_ids` |
 | `log` | (`get_table_schema`) log of manual changes is available (`get_cell`) |
 | `cycle-tab` | (`get_table_schema`) tab_ button of a cycles table: a tab inside the cycle, `click_button` with `id` = cycle |
+| `field-params` | (`get_table_schema`) the format of the field sets the type of its cells (`setFieldParams`): see `#fieldParams(…)` of the cells, `get_cell` |
 | `required` | required field |
 | `—` | view only |
 
@@ -865,6 +883,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `#textasvalue:"…"` | format `text` with `textasvalue`: web shows the text and uses it as the cell value (copy, filters) |
 | `#comment:"…"` | format `comment`: hint to the cell (in web — info icon), e.g. what to do with an empty cell |
 | `#placeholder:"…"` | hint for an empty value |
+| `#fieldParams(number(3))` | `setFieldParams` of the format: web shows and edits the cell as this type (string, number, checkbox, select…) — write a value of it; params — `get_cell` |
 | `#style(color: ##tomato; bold: true)` | visual format of the cell (only with `styles: true`, see "Styles") |
 | `…` | text is cut (field setting "visible text length") — full value via `get_cell` / `get_value` / `get_row` |
 | `⏎` | new line inside a value |
@@ -935,6 +954,26 @@ Like the popups of web (`Actions::checkForNotifications`): table `notifications`
 - They stay until closed (web shows them again on every page): `notification_update` = the buttons of the popup — core `Actions::notificationUpdate` (Actions without a table):
   `deactivate` → `active = false`; `later` → `active_dt_from = now + num unit` (minutes / hours / days, default 5 minutes); `all` = `ALL_ACTIVE`. Not own / missing ids → error.
 - Times are in the timezone of the schema (Totum sets it; plain php CLI is UTC).
+
+### Search of the system (search / search_click) — `MCPSearch`
+The search button of the top panel of web (`__header.php`: shown when `ttm__search_settings` has MeiliSearch `h_get_updates` or TRGM `h_use_trgm_search` on; docs `meilisearch`):
+```json
+{"name": "search",       "arguments": {"q": "monaco"}}
+{"name": "search",       "arguments": {"q": "bridge", "catalogs": ["test"]}}
+{"name": "search_click", "arguments": {"pk": "71-4"}}
+{"name": "search_click", "arguments": {"pk": "71-2", "button": "info"}}
+```
+- `search` = `Actions::getSearchResults` (post `q`, `cats`; engine MeiliSearch first like the core): the tables of `ttm__search_settings` available for the user, rows he sees in web,
+  at most `h_search_limit` (default 20). Answer: `# Search: "q" · TRGM · N result(s)`, the catalogs (`ttm__search_catalog`, `searchCatalog`), the table
+  `| pk | table · row | catalog | title | text (**found**) | buttons |` — the markers of the engine → `**word**` (MeiliSearch text is html-escaped — decoded), text cut to 500.
+  Unknown catalog → error with the list; the search off / no `ttm__search_settings` → error (web has no search button).
+- `search_click` = `Actions::searchClick` (post `pk`, `button`): the code of the card (column `code` of the row of the table in `ttm__search_settings`) or of the button
+  (`buttons` = `[{name, title, code}]`) runs in the context of the row of the result. The core does nothing silently on a wrong click — MCP checks before: pk `tableId-rowId`,
+  the table in the access of the user and in the search, the row visible (`loadFilteredRows web`), the button exists, the code is not empty.
+  Answer `# Search result 71-4 · table · row 4` + `**Opened: the card …**` / `**Pressed: button Info [info] of the card**`, changed tables, then side effects and opened windows like
+  `click_button`; the windows of the code are submitted in the table of the result (`MCPSearch::tableArgs`). Creator view: `debug` (tool flag `'debug' => true` — the debug prop without `table`).
+- Core fix: TRGM search with catalogs passed the parameters in the wrong order (catalogs instead of `q` in `WHERE`) — `Actions::getSearchResults`.
+- Test: `mcp_test_search` (`ttm_search` = index/title/catalog `test`), row in `ttm__search_settings` (code `linkToPanel`, buttons `info` — linkToDataText, `open` — linkToTable), TRGM on.
 
 ### Errors
 Text `ERROR: …` with `isError: true` — the action is not done, the transaction is rolled back completely. HTTP authorization errors — status 401.
