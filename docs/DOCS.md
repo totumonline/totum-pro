@@ -4,7 +4,7 @@ Markdown documentation of Totum. The same files are the source of the documentat
 so they are written for people — agents read them as they are.
 
 - Repo: `docs/`. Server: `https://<host>/docs/DOCS.md`, articles — `https://<host>/docs/<lang>/<section>/<page>.md`
-  (e.g. `https://<host>/docs/ru/totum/functions.md`; the folder `docs/` is published as `/docs/` by a symlink of the installer).
+  (e.g. `https://<host>/docs/ru/totum/functions.md`; the folder `docs/` is published as `/docs/` by the relative symlink `http/docs` of the repo).
 - MCP: `search_docs` (sections by words) and `read_docs` (a section by ref) read these files on the server — no internet requests needed.
 
 ## Structure
@@ -37,7 +37,7 @@ Titles are given in English; a page has its title in its own language (the first
 | page | title | what is inside · anchors |
 |---|---|---|
 | `syntax` **long** | Syntax | the language of codes: where codes are used, `=:` and named lines, references `#field`, `#old.`, `#s.`, `#h.`, `#c.`, `#l.`, `$line`, `$#var`, `$$`, `@table.field`, list items and sections, calling functions, variables (code / global / process), order of calculation of lines and of math, data types and types of storage (one value / list / row), user colors `##name` (`sx-colors`), operators, `cond`, JSON literal `` json`…` `` with values from the code (`sx-json`), concatenation, text inclusion, QROW · `sx-…`, chapters `part-N` |
-| `functions` **long** | Functions | every function: syntax, required / optional parameters, result · `fn-<name>`; its examples (a task, the code, the result) · `fn-<name>-examples`; chapters `part-N`: selects, dates, math, strings, lists, rows (associative arrays), logic (`if`, `while`, …), recalculation / insert / change (action functions), windows and scripts (`linkTo…`), formatting (`setFormat`, panels), json, files, system, xml, PRO, Services |
+| `functions` **long** | Functions | every function: syntax, required / optional parameters, result · `fn-<name>`; its examples (a task, the code, the result) · `fn-<name>-examples`; chapters `part-N`: selects, dates, math, strings, lists, rows (associative arrays), logic (`if`, `while`, …), recalculation / insert / change (action functions), windows and scripts (`linkTo…`), formatting (`setFormat`, `setFieldParams`, panels), json, files, system, xml, PRO, Services |
 | `comparisons` **long** | Comparison table | how `=`, `!=`, `<`, `>`, `==` compare values of different types: rules, simple values, lists, associative arrays (a reference table of cases) · `sx-compare-…` |
 | `specific-codes` | Specifics of codes | code of a field: order of calculation, recalculation of rows, actions from a code, `linkToDataTable`, old values; action code: triggers, order of execution, special syntax, `linkTo…` windows, mail and scripts; formats: special syntax, panel functions, row / table formatting, weak and strong block |
 | `calculation-sequence` | Calculation order and recalculation units | order of calculation of fields, units of recalculation, table types by units of recalculation |
@@ -54,8 +54,9 @@ Titles are given in English; a page has its title in its own language (the first
 | `relational-associations` | Relational associations | selects: value and view, select code, individual select, `#` vs `select`, multiple selects, editing the source from a select, `linkToPanel`, another basefield (`bfield`), select-tree |
 | `trees` | Trees | tables shown as a tree (`treeViewType`), formatting of the tree field, indent `tab:` / `#l.tree`, `roots` |
 | `prefilter` | Prefilter | filters that limit the rows loaded from the database: what they are for, how they work |
+| `data-field-search` | Search by keys in a Data field | `where` and prefilters by the keys of the `row` of a Data (`listRow`) field — `{"ttm__filter": "jsonb", …}`: one value, several keys (AND, `ttm__type: or`), lists inside a key, `ttm__or`, `ttm__interval` (numbers / strings, `sign`), `ttm__strict`, a `row` without `ttm__filter`, indexes · `dfs-…` |
 | `duplicate` | Duplicating rows and cycles | duplicating rows and cycles, code on duplicate, `$#duplicatedId` |
-| `dynamic-fields` | Dynamic fields | PRO: virtual columns made by a code (`dn=:`), naming |
+| `dynamic-fields` | Dynamic fields | PRO: virtual columns made by a code (`dn=:`), naming; another field type in every row of one field — `setFieldParams` (`dynamic-field-params`) |
 | `autofill-tables` | Autofill of tables | videos about filling tables automatically |
 | `print-and-csv` **long** | Print and CSV | print templates; full CSV and CSV of rows: format of export / import |
 
@@ -90,7 +91,7 @@ Titles are given in English; a page has its title in its own language (the first
 | `pro-versioned` | File versions | PRO versions of files of a file field: enabling, timer of a new version, rights, storage of big volumes |
 | `srv_connection` | SERVICES Connection | installing the services and connecting Totum to them, logs |
 | `srv_using_from_interface` | SERVICES Export, print, preview and import | services in the interface: xlsx export, pdf print, docx / xlsx preview, xlsx import |
-| `srv_xlsx_or_docx_generator` | SERVICES XLSX and DOCX generation | generating xlsx from table data and templates, pictures in templates, docx by template, many files, PDF, download and email of generated files |
+| `srv_xlsx_or_docx_generator` | SERVICES XLSX and DOCX generation | generating xlsx from table data and templates, formulas in xlsx, pictures in templates, docx by template, many files, PDF, download and email of generated files |
 
 ### Administration
 | page | title | what is inside |

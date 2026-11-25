@@ -27,7 +27,8 @@ A cycles table with one cycle per user is opened by read_table into the cycle of
 Tmp tables return sess_hash in the header - pass it back.
 Filters are stateless: pass `filters` in every call. Cell marks: `Title [key]` select/tree title and key to write,
 `✋(x)` manual value differs from calculated x, `✊` manual value equal to calculated, `!ERR` calculation error,
-`#block` blocked by format, `#icon-name` icon, `…` cut text (full via get_cell/get_value/get_row), `⏎` new line.
+`#block` blocked by format, `#icon-name` icon, `…` cut text (full via get_cell/get_value/get_row), `⏎` new line,
+`#fieldParams(number(3))` the cell is shown and edited in web as a field of this type (setFieldParams of the format) - write a value of it, get_cell shows its params.
 Visual formats (color, bold, background…) are not shown by default: `styles: true` of read_table / get_row gives `#style(color: ##tomato; bold: true)`
 (##name — user colors of ttm__colors, the legend is in "## Styles"); get_cell shows them always.
 get_cell = right-click panel of a cell: full value, calculated value, style, description, panel buttons, log of manual changes.
@@ -40,6 +41,8 @@ Rows checked with checkmarks in web are `checked_ids` of click_button (buttons m
 Tables hidden from the tree are not in list_tables: they are opened only by buttons/links of other tables - do not open them directly.
 Files do not go through the answers: get_file saves a file to the disk of the stdio server or gives a curl link (HTTP);
 new files are {"path"} (stdio) / {"upload"} of upload_file (HTTP) / small {"name","text"|"base64"}; a file upload window - submit_file_upload.
+The search of the system (the search button of web, if it is on): search finds rows by words, search_click opens a result like the click on its card
+(its code opens the table / panel of the row or does an action; extra buttons of the card - search_click with button).
 Tasks may come as notifications: get_notifications shows them like the popups of web, notification_update closes / postpones a handled one.
 Comments "(N, unread M)" are not read by you: get_value / get_cell show them (#unread) and mark them as read, mark_comments_read marks without opening.
 Documentation of Totum (interface, fields, tables, codes and functions): search_docs finds sections by words, read_docs reads them (no internet needed).

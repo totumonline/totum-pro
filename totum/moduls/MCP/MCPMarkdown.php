@@ -45,7 +45,8 @@ class MCPMarkdown
             . 'Not supported by the agent interface: versions of versioned fields, OnlyOffice editing, a new file from a docx/xlsx template',
         'unic' => 'unic — string that must not repeat in the table',
         'password' => 'password — value is hidden; writing a text sets a new password',
-        'listRow' => 'listRow (data) — JSON (array/object), write JSON',
+        'listRow' => 'listRow (data) — JSON (array/object), write JSON; a cell with #fieldParams(type) (setFieldParams of the format) is shown and edited in web '
+            . 'as a field of that type — write a value of that type (number, string, true/false, key of an option of a select), get_cell shows its params',
         'chart' => 'chart — read-only',
         'fieldParams' => 'fieldParams (settings of a field, data_src of tables_fields) — get_value shows the settings that work, get_field_settings (creator view) — '
             . 'all settings of the type; write {"setting": value} — only the changed settings, null — switch off',
@@ -682,11 +683,41 @@ class MCPMarkdown
         if ($isEmpty && !empty($f['placeholder']) && is_scalar($f['placeholder'])) {
             $marks[] = '#placeholder:"' . static::esc((string)$f['placeholder']) . '"';
         }
+        if ($params = static::fieldParams($f)) {
+            $marks[] = '#fieldParams(' . static::esc($this->fieldParamsType($params)) . ')';
+        }
         return $marks;
+    }
+
+    /**
+     * setFieldParams of the cell format: web shows and edits the cell as a field of the type of params (select — with the titles in v_)
+     */
+    public static function fieldParams(array $f): ?array
+    {
+        return is_array($f['fieldParams'] ?? null) && is_string($f['fieldParams']['type'] ?? null) && $f['fieldParams']['type'] !== ''
+            ? $f['fieldParams'] : null;
+    }
+
+    public function fieldParamsType(array $params): string
+    {
+        return $this->fieldType(['category' => 'column', 'name' => ''] + $params, true, true) . (!empty($params['required']) ? ', required' : '');
+    }
+
+    /**
+     * Fields whose format sets the params of their cells (setFieldParams); virtual columns of a dynamic field (name/key) — by the base field
+     */
+    public static function hasFieldParams(aTable $Table, array $field): bool
+    {
+        $format = $Table->getFields()[explode('/', $field['name'])[0]]['format'] ?? null;
+        return str_contains(json_encode($format ?? '', JSON_UNESCAPED_UNICODE), 'setFieldParams');
     }
 
     protected function cellValue(array $field, array $cell, mixed $rawValue): string
     {
+        $params = static::fieldParams(is_array($cell['f'] ?? null) ? $cell['f'] : []);
+        if ($params && in_array($params['type'], ['select', 'tree', 'checkbox'])) {
+            $field = ['type' => $params['type'], 'multiple' => !empty($params['multiple'])] + $field;
+        }
         $v = $cell['v'] ?? null;
         switch ($field['type']) {
             case 'select':
@@ -1051,6 +1082,9 @@ class MCPMarkdown
         if (!empty($f['comment']) && is_scalar($f['comment'])) {
             $out .= 'format comment (hint to the cell): ' . static::plain((string)$f['comment']) . "\n";
         }
+        if ($params = static::fieldParams($f)) {
+            $out .= $this->fieldParamsLines($field, $params, $id);
+        }
         if (($style = $this->styleText($f)) !== '') {
             $out .= 'style (visual format of web): ' . $style . "\n";
         }
@@ -1100,8 +1134,33 @@ class MCPMarkdown
         return $out;
     }
 
+    /**
+     * get_cell: the params that setFieldParams of the format gives to the cell, and how to write its value
+     */
+    protected function fieldParamsLines(array $field, array $params, ?int $id): string
+    {
+        $type = $params['type'];
+        $settings = array_diff_key($params, array_flip(['v_', 'name', 'category']));
+        $hint = str_replace(' (see {N …} in title)', '', static::TYPE_HINTS[$type] ?? $type);
+        if (in_array($type, ['select', 'tree'])) {
+            $hint = $type . ' — key of an option' . (!empty($params['multiple']) ? ', multiple — array of keys' : '') . '; options: get_select_options `'
+                . json_encode(['table' => $this->Table->getTableRow()['name'], 'field' => $field['name']] + ($id ? ['id' => $id] : []),
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '` (+ cycle / sess_hash / filters of the table)';
+        }
+        return 'field params of the cell (setFieldParams of the format): web shows and edits this cell as ' . $this->fieldParamsType($params)
+            . ' instead of ' . $field['type'] . "\n"
+            . 'params: ' . static::cut(json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 3000) . "\n"
+            . 'write the value as ' . $hint . '. The value is kept in the field itself: the core writes it by the rules of the field ('
+            . $field['type'] . '), the required / regexp / decimal places of the params are checked only by the browser — keep them yourself' . "\n";
+    }
+
     protected function fullValue(array $field, array $cell, mixed $full): string
     {
+        $params = static::fieldParams(is_array($cell['f'] ?? null) ? $cell['f'] : []);
+        if ($params && in_array($params['type'], ['select', 'tree', 'checkbox'])) {
+            $value = $this->cellValue($field, $cell, null);
+            return $value === '' ? '(empty)' : $value;
+        }
         switch ($field['type']) {
             case 'text':
                 $value = static::scalar($full ?? $cell['v'] ?? '');
@@ -1229,6 +1288,11 @@ class MCPMarkdown
         }
         if (MCPTableResolver::isCycleTabButton($this->Table, $this->Table->getFields()[$field['name']] ?? $field)) {
             $marks['cycle-tab'] = 'cycle-tab — tab_ button: web shows it as a tab inside the cycle (not as a column for not creators); click_button with "id" = cycle opens the table of the tab';
+        }
+        if (static::hasFieldParams($this->Table, $field)) {
+            $marks['field-params'] = 'field-params — the format of the field sets the type of its cells (setFieldParams): web shows and edits a cell as a field of another type '
+                . '(string, number, checkbox, select…) — such cells have #fieldParams(type) in read_table / get_row, its params and how to write — get_cell; '
+                . 'select cells — get_select_options with field + id';
         }
         if (!empty($field['logButton']) && $this->Table->getTableRow()['type'] !== 'tmp') {
             $marks['log'] = 'log — the log of manual changes of the field is available: get_cell (section "Log of manual changes"); fields without the mark have no log';

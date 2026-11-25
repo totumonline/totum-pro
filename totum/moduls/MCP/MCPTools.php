@@ -235,8 +235,31 @@ class MCPTools
                 ],
                 'required' => ['action'],
             ],
+            'search' => [
+                'description' => 'Search through the system like the search button of the top panel of web (set in ttm__search_settings: MeiliSearch or TRGM): '
+                    . 'finds rows of the tables of the search by the words of their search index — the results are cards (title, text with the **found** words, catalog). '
+                    . 'Like web, open a result with search_click: the code of the card runs (it opens the table / panel of the row or does an action); '
+                    . 'cards may have extra buttons — search_click with button. Error if the search is switched off (web has no search button).',
+                'props' => [
+                    'q' => ['type' => 'string', 'description' => 'Words to search'],
+                    'catalogs' => static::NAMES + ['description' => 'Only these catalogs (names from the answer, ttm__search_catalog)'],
+                ],
+                'required' => ['q'],
+            ],
+            'search_click' => [
+                'description' => 'Click on a result of search like on its card in web: runs the code of the card (code of the table in ttm__search_settings) '
+                    . 'in the context of the row of the result, or with button — the code of that button of the card. '
+                    . 'Side effects and opened windows (the table / panel of the row…) — like click_button: continue in them with the args they give.',
+                'props' => [
+                    'pk' => ['type' => 'string', 'description' => 'pk of the result from search: "<table id>-<row id>"'],
+                    'button' => ['type' => 'string', 'description' => 'name of a button of the card (column buttons of search); omit — the click on the card'],
+                ],
+                'required' => ['pk'],
+                'debug' => true,
+            ],
             'get_select_options' => [
-                'description' => 'Options of select/tree field: key and title. Write the key.',
+                'description' => 'Options of select/tree field: key and title. Write the key. '
+                    . 'Also a Data field whose cell is a select by setFieldParams (mark #fieldParams(select…)): field + id of the row.',
                 'props' => static::TABLE_PROPS + [
                         'field' => ['type' => 'string'],
                         'id' => ['type' => 'integer', 'description' => 'Row id (column field of existing row)'],
@@ -468,7 +491,7 @@ class MCPTools
     /* tools that do not change the data (MCP annotation readOnlyHint: clients may call them without a confirmation);
        read_table recalculates the changed like the opening of web, get_value / get_cell mark comments as read like web */
     protected const READ_ONLY_TOOLS = ['list_tables', 'get_table_schema', 'read_table', 'get_row', 'get_value', 'get_cell', 'get_select_options', 'get_file',
-        'export_table', 'get_field_settings', 'search_codes'];
+        'export_table', 'get_field_settings', 'search_codes', 'search'];
 
     protected function isToolOff(array $tool): bool
     {
@@ -482,7 +505,7 @@ class MCPTools
             if ($this->isToolOff($tool)) {
                 continue;
             }
-            if ($this->creator && key_exists('table', $tool['props']) && empty($tool['noDebug'])) {
+            if ($this->creator && (key_exists('table', $tool['props']) || !empty($tool['debug'])) && empty($tool['noDebug'])) {
                 $tool['props']['debug'] = MCPLog::PROP;
             }
             $result[] = [
@@ -552,7 +575,9 @@ class MCPTools
             $datas = $Totum->getInterfaceDatas() ?? [];
             $panels = $Totum->getPanelLinks();
             $text .= MCPMarkdown::sideEffects($links, $datas, $panels, $this->hostUrl($Config), $this->humanPages($Config));
-            $text .= $this->openedWindows($Totum, $links, $datas, array_intersect_key($args, array_flip(['table', 'cycle', 'sess_hash'])), $panels,
+            /* the code of a search card runs in the table of the result: its windows (buttons, input…) are submitted there */
+            $tableArgs = $name === 'search_click' ? MCPSearch::tableArgs($Totum, $args) : array_intersect_key($args, array_flip(['table', 'cycle', 'sess_hash']));
+            $text .= $this->openedWindows($Totum, $links, $datas, $tableArgs, $panels,
                 $name === 'click_button' && is_string($args['insert_hash'] ?? null) ? $args['insert_hash'] : null);
         }
         return $text;
@@ -1411,6 +1436,16 @@ class MCPTools
             . '`; postpone it: `' . $this->json(['ids' => $one, 'action' => 'later', 'num' => 1, 'unit' => 'hours']) . "`\n";
     }
 
+    protected function toolSearch(Totum $Totum, array $args): string
+    {
+        return (new MCPSearch($Totum))->search($args);
+    }
+
+    protected function toolSearchClick(Totum $Totum, array $args): string
+    {
+        return (new MCPSearch($Totum))->click($args);
+    }
+
     protected function toolNotificationUpdate(Totum $Totum, array $args): string
     {
         $action = $args['action'] ?? null;
@@ -1573,8 +1608,16 @@ class MCPTools
         $panelHash = $this->panelHash($args);
         [$Resolver, $Actions] = $this->prepare($Totum, $args, $insertHash || $panelHash);
         $field = $this->visibleField($Resolver, (string)($args['field'] ?? ''));
-        if (!in_array($field['type'], ['select', 'tree'])) {
+        /* a Data field with the select of setFieldParams in the format of the cell: the core takes the options from the params (getEditSelect) */
+        $byParams = $field['type'] === 'listRow' && MCPMarkdown::hasFieldParams($Resolver->getTable(), $field);
+        if (!in_array($field['type'], ['select', 'tree']) && !$byParams) {
             throw new errorException('Field ' . $field['name'] . ' is not of type select/tree');
+        }
+        if ($byParams && $field['category'] === 'column' && empty($args['id']) && !$insertHash && !$panelHash) {
+            throw new errorException('Field ' . $field['name'] . ' is a select by setFieldParams of its cells: parameter "id" (row id) is required');
+        }
+        if ($byParams && str_contains($field['name'], '/')) {
+            return $this->paramsValuesOptions($Totum, $Resolver, $Actions, $field, $args);
         }
         if ($panelHash) {
             if ($field['category'] !== 'column' || $insertHash || !empty($args['row'])) {
@@ -1597,12 +1640,50 @@ class MCPTools
             }
             $data = ['field' => $field['name'], 'item' => $item];
         }
-        $options = $this->options($Totum, fn($q, $parentId) => $Actions->getEditSelect($data, $q, $parentId), $field['type'] === 'tree',
-            (string)($args['q'] ?? ''), $args['parent_id'] ?? null);
+        try {
+            $options = $this->options($Totum, fn($q, $parentId) => $Actions->getEditSelect($data, $q, $parentId), $field['type'] === 'tree',
+                (string)($args['q'] ?? ''), $args['parent_id'] ?? null);
+        } catch (errorException $e) {
+            throw $byParams ? new errorException($e->getMessage() . ' (setFieldParams of this cell does not make it a select with values / codeSelect: '
+                . 'see #fieldParams of the cell, write the value of its type)') : $e;
+        }
         return '# Options ' . $Resolver->getTable()->getTableRow()['name'] . '.' . $field['name'] . ' (' . $options['count'] . ")\n"
             . ($options['sliced'] ? "not all options are shown — refine q\n" : '')
             . ($options['notComplete'] ? "the tree is not loaded completely: (has children) — get its children with parent_id = key, or search the whole tree with q\n" : '')
             . "\n" . $options['table'];
+    }
+
+    /**
+     * A virtual column of a dynamic field (name/key) with the select of setFieldParams: the core has no field of this name to calculate
+     * the options (getEditSelect) — they are the values of the params of the cell, like the select of web shows them
+     */
+    protected function paramsValuesOptions(Totum $Totum, MCPTableResolver $Resolver, MCPReadTableActions|MCPWriteTableActions $Actions, array $field, array $args): string
+    {
+        $id = !empty($args['id']) ? (int)$args['id'] : null;
+        if ($this->insertHash($args) || $this->panelHash($args)) {
+            throw new errorException('Field ' . $field['name'] . ' is a virtual column of a dynamic field: its options are given for a saved row — pass "id"');
+        }
+        $cell = $Actions->mcpCell($field['name'], $id, 0)['cell'];
+        $params = MCPMarkdown::fieldParams(is_array($cell['f'] ?? null) ? $cell['f'] : []);
+        if (($params['type'] ?? null) !== 'select') {
+            throw new errorException('The cell ' . $field['name'] . ($id ? ' of row ' . $id : '') . ' is not a select by setFieldParams'
+                . ($params ? ' (#fieldParams(' . $params['type'] . '))' : '') . ': write the value of its type');
+        }
+        if (!is_array($params['values'] ?? null) || !$params['values']) {
+            throw new errorException('The select of the cell ' . $field['name'] . ' takes its options by codeSelect: the core calculates them only for real fields, '
+                . 'not for a virtual column of a dynamic field — the current value is in get_cell');
+        }
+        $q = (string)($args['q'] ?? '');
+        $search = $q !== '' ? $Totum->getLangObj()->getSearchFunction($q) : null;
+        $rows = [];
+        foreach ($params['values'] as $key => $value) {
+            $title = MCPMarkdown::scalar(is_array($value) ? ($value['title'] ?? '') : $value);
+            if (!$search || $search($title)) {
+                $rows[] = [MCPMarkdown::esc($key), MCPMarkdown::esc($title) . (is_array($value) && !empty($value['disabled']) ? ' #disabled' : ''), ''];
+            }
+        }
+        return '# Options ' . $Resolver->getTable()->getTableRow()['name'] . '.' . $field['name'] . ' (' . count($rows) . ")\n"
+            . "values of setFieldParams of the cell\n\n" . MCPMarkdown::mdTable(['key', 'title', 'parent'], $rows);
     }
 
     /**
