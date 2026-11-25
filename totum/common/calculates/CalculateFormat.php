@@ -91,8 +91,9 @@ class CalculateFormat extends Calculate
                         'params'))) {
                     if (($fieldParams['type'] ?? '') === 'select') {
                         if (!empty($fieldParams['codeSelect']) || !empty($fieldParams['values'])) {
-                            $fieldData = $this->Table->getFields()[$this->varName];
-                            $fullFieldParams = [...$fieldParams, 'name' => $fieldData['name'], 'category' => $fieldData['category']];
+                            /* a virtual column of a dynamic field (name/key) — the category of its base field */
+                            $fieldData = $this->Table->getFields()[$this->varName] ?? $this->Table->getFields()[explode('/', $this->varName)[0]];
+                            $fullFieldParams = [...$fieldParams, 'name' => $this->varName, 'category' => $fieldData['category']];
 
                             $selectField = $this->Table->getTotum()->getSomeField(Select::class, $fullFieldParams, $this->Table);
                             $valArray = $this->row[$this->varName];

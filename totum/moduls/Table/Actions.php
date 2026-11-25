@@ -489,7 +489,7 @@ SELECT
     WHERE lower(?) OPERATOR(public.<%) lower(ttm_search -> 'v' ->> 'index')  $cats
 SQL;
 
-                $vars=[...$vars, $this->post['q'] ?? '', ...$catsVar , $this->post['q'] ?? ''];
+                $vars=[...$vars, $this->post['q'] ?? '', $this->post['q'] ?? '', ...$catsVar];
 
             }
 

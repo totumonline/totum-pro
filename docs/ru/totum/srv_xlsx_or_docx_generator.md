@@ -74,6 +74,26 @@ data: rowCreate(field: "title" = "Some title"; field: "value" = "Some value"; fi
 rowList: rowListCreate(field: "field_1" = json`[1,2,3]`; field: "field_2" = json`["A","B","C"]`; field: "field_3" = json`["A1","B2","C3"]`; field: "field_4" = "")
 ```
 
+## <a name="srv-xlsx-formulas"></a> Как вставить в xlsx формулу
+
+Генератор работает на PhpSpreadsheet: значение переменной, которое начинается со знака `=`, записывается в ячейку как формула.
+
++ Имена функций — только на английском: `СУММ` → `SUM`, `СРЗНАЧ` → `AVERAGE`.
++ Номера строк диапазона считаются в коде: если вставляется несколько строк, итоговая формула под ними должна заканчиваться номером последней вставленной строки. Формула собирается через `` str`…` ``.
+
+Пример: в пятой строке шаблона — переменные `${name}` и `${cost}` (`${cost}` в колонке `G`), под ней итог `${total}`. В `${name}` передается `rowList` — строки вставляются с 5-й, сумма по колонке `G` считается с 5-й по последнюю вставленную:
+
+```totum
+=: set(table: $#ntn; field: 'generated_file' = json`[{"name": "report.xlsx", "filestring": $filestring}]`; where: 'id' = #id)
+
+filestring: serviceXlsxGenerator(template: #h_xlsx_template[0][file]; data: $data)
+	data: rowCreate(field: "name" = $rows; field: "total" = $total)
+		rows: selectRowList(table: 'orders'; field: 'name'; field: 'cost'; order: 'id' asc)
+		total: str`"=SUM(G5:G" + $last_row + ")"`
+			last_row: math`4 + $count`
+				count: listCount(list: $rows)
+```
+
 ## <a name="srv-images"></a> Как добавить картинки, вместо одной из переменных
 
 В качестве подмены переменной можно передать картинку, которая будет имплементирована в документ.

@@ -19,6 +19,10 @@ Before building tables or writing codes read:
    (the same line is in the instructions of the creator view, `MCPCreator::INSTRUCTIONS`). The main ones:
    - **`~` on lines called several times with the same value** — extra important for performance. In `listReplace` and `while` do not fix lines
      that depend on the current element / iteration: `~` keeps the first value for all the following ones.
+   - **Totals of the previous rows** (`listSum` of `selectList` of all the previous rows of the client / date) in simple tables and cycles tables —
+     a CRASH of the system UNDER LOAD: the query is slower with every new row. Make a field with `codeOnlyInAdd`: the previous value by one `select` + the current one.
+   - **As few queries to the database as possible** (they are the most expensive): several `select` of different fields of the same row —
+     one `~row: selectRow(…; field: …; field: …)` and `$row[field]`; several `selectList` with the same `where` — one `selectRowList`.
    - **Short lists — inline `` json`["short","lists"]` ``**, not a separate line with `listCreate`.
    - **Strings**: `` str`…` `` is written right in the parameter of the function, not in a separate line;
      in `` str`…` `` a space is added by `++`, not inside the quotes (`` str`"Счёт №" ++ #order_num + $#nl` ``);
@@ -27,6 +31,7 @@ Before building tables or writing codes read:
    - **Dates and numbers (money) in texts for users** (messages, notifications, comments) — formatted with `dateFormat` / `numFormat`.
    - **Names of lines**: `dateAdd` — `dadd` (also with a negative number), `numFormat` — `nf`, `dateFormat` — `df`; several in one code — `dadd_***`, `nf_***`, `df_***`.
    - **Empty list** — `$list = $#lc`, not `$list = ""` (it is `true` also for a list with one empty element).
+   - **After `set` into the current row** `#field` keeps the value of the start of the code — the new value is read by `select` / `@table.field[#id]`.
    - Examples of the docs may be written in other ways — the patterns of ARCHITECTURE.md have priority.
    - **Layout of `listReplace`**: the line of the source `list` has an additional indent — two tabs (important!), the lines of `action` — one tab, nested ones deeper:
      ```totum
