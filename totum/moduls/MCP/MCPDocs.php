@@ -7,7 +7,7 @@ use totum\config\Conf;
 
 /**
  * Documentation of Totum for agents (search_docs / read_docs) from the markdown files of docs/ — the same files as the documentation site:
- * docs/DOCS.md — the index, docs/<lang>/<section>/<page>.md — articles (sections: totum, training-course, how-to),
+ * docs/DOCS.md — the index, docs/<lang>/<section>/<page>.md — articles (sections: totum, training-course, how-to, patterns),
  * docs/links.md — numbered links "[N]: /page#anchor" shared by all languages (in the texts: [text][N]).
  * Root pages (ROOT_PAGES, docs/<NAME>.md, common for all languages): ref "<NAME>" / "<NAME>#anchor", e.g. "ARCHITECTURE".
  * A section of a page is a heading (anchor <a name="…"> in it) with its text up to the next heading of the same or a higher level.

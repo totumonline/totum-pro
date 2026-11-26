@@ -42,7 +42,25 @@ Before building tables or writing codes read:
    - **Several `action` of `listReplace` one after another**: the result of an `action` is passed to the next one through an intermediate `var`
      (`action_row: var(name: "action_row"; value: $var_action_row)`, `var_action_row: …`, the next `action` reads `$#action_row`).
 2. The sections of the functions you use — `read_docs {"function": …}`, the settings — `read_docs {"setting": …}` / `{"table_setting": …}`, the syntax — `read_docs {"ref": "syntax"}`.
-3. Solved questions of users — `search_docs {"q": …, "section": "how-to"}` (pages `user-questions`, `knowledge-base`).
+3. Before designing the tables of a system — the patterns of building systems `docs/ru/patterns/` (server: `https://<host>/docs/ru/patterns/patterns.md`, MCP: `read_docs {"ref": "patterns/patterns"}`;
+   the same line is in `MCPCreator::INSTRUCTIONS`) — solutions of the working B2M platform with the real names of its tables and fields:
+   - **Tab of a cycle** (`cycle-tabs`): data that cannot be a calcs table of the cycle — a simple table opened by a `tab_` button with a linked prefilter and a not linked flag `fl_tab` (creator only);
+     its table format hides them (`fieldshide`), sets the title, blocks adding out of the tab.
+   - **Tree anchors** (`tree-anchors`): an anchor opens the main table (it lies in a technical folder), the subtables have the branch of the anchor as their place in the tree.
+   - **Stored fields** (`stored-fields`) and **recalculation of the changed rows** (`table-action-recalc`): summary fields of a cycles table row — `codeOnlyInAdd` + `notLoaded`, recalculated by
+     `reCalculate(…; field: …; where: 'id' = $uniq)` from `default_action` of the source tables, `$uniq` — `listUniq` of the owners of `$#changes`; deleted rows — the action on delete with `#old`.
+   - **Process variables** (`process-vars`): `procVar(name: …; default: …)` — one value for all the rows of a process (`default` is calculated only when the variable is not set); flags between codes.
+   - **Background** (`background-daemons`): changes only set a flag-queue field, a daemon takes one row per run and drops the flag with `exclude`, the heavy calculation — the action of the flag on `false`.
+   - **Autofill** (`insert-param`): `insert` = `#h_insert`, the list in the param `h_insert` — visible, given from outside, reset by `clear`, fixed after deleting rows.
+   - **exec of a field** (`exec-field-code`): `exec(code: "field_name")` — in the called code no `$#nfv` / `$#nf` / `$#onfv` (they are of the caller), the fields by name.
+   - **listReplace** (`listreplace-load`): `var` between actions, one `~selectRowList` + `listFilter` in the action instead of a query per element.
+   - **Cache by design** (`cache-by-design`) and **indexes** (`indexes`): what can be calculated at writing — in the action into a field (big selects many times faster);
+     indexes on the fields of `where` of big selects, not more than one per 7–8 columns, GIN for values inside lists (`ttm__custom_indexes`).
+   - **Mass changes and triggers** (`action-triggers`): the root row changes the children by one `setList` with a `procVar` flag; one technical trigger field (`listCreate` of the watched fields) instead of actions in every field.
+   - **Data of a cycle** (`cycles-data-flow`): one footer field → label / `select` in the cycles table; the cycles row is recalculated last in a cascade — trigger in the cycles table or data from the source.
+   - **Trees** (`tree-view`): `treeViewCalc`, descendants in `tree_children`, ancestors by `where: 'tree_children' = id`, old and new parents, `#old` on delete, `roots` for big trees, no pagination for trees.
+   - **Interface** (`interface-conventions`), **navigation and access** (`access-and-navigation`), **tracking and daemons** (`load-and-actuality`), **extending** (`extending`: `spec…`, `execSSH` + `stdin`, `ext…`).
+4. Solved questions of users — `search_docs {"q": …, "section": "how-to"}` (pages `user-questions`, `knowledge-base`).
 
 ## Connection
 - stdio: `php bin/totum mcp --user=<login|email> --creator=true` (`--creator` without value = true; `--creator=false` or no option — the usual view).

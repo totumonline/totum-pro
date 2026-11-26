@@ -460,7 +460,7 @@ class MCPTools
                     . 'Read a found section with read_docs. Before writing a code — check the functions you use.',
                 'props' => [
                     'q' => ['type' => 'string', 'description' => 'Words to search, e.g. "selectList order" or "только при добавлении"'],
-                    'section' => ['type' => 'string', 'description' => 'Only this section: totum (reference), training-course, how-to; default — all: the reference first, the other sections — blocks "more in <section>" after it'],
+                    'section' => ['type' => 'string', 'description' => 'Only this section: totum (reference), training-course, how-to, patterns (patterns of building systems with B2M examples); default — all: the reference first, the other sections — blocks "more in <section>" after it'],
                     'lang' => ['type' => 'string', 'description' => 'Language of the docs (default — the language of Totum, ru if there is no such docs)'],
                     'limit' => ['type' => 'integer', 'description' => 'How many sections, default ' . MCPDocs::DEFAULT_LIMIT . ', max ' . MCPDocs::MAX_LIMIT],
                 ],
@@ -471,10 +471,10 @@ class MCPTools
                 'description' => 'Read the documentation of Totum: a section (from its heading to the next one of the same level) by ref "page#anchor" '
                     . '(from search_docs or links «text (→ ref)» in the texts), a whole page by "page", or by short forms: function (e.g. "selectList"), '
                     . 'setting (a field setting of data_src, e.g. "codeOnlyInAdd"), field_type (e.g. "select"), table_setting (a setting of the row of tables, e.g. "deleting"). '
-                    . 'Architectural patterns of codes (read before development) — ref "ARCHITECTURE". '
+                    . 'Architectural patterns of codes (read before development) — ref "ARCHITECTURE"; patterns of building systems (tabs, tree anchors, stored fields, background calculations…) — ref "patterns/patterns". '
                     . 'Without arguments — the index (DOCS.md and the list of pages). Long texts are paged: offset from "next page".',
                 'props' => [
-                    'ref' => ['type' => 'string', 'description' => '"page", "page#anchor" or "section/page#anchor", e.g. "functions#fn-select", "syntax", "how-to/some-page"; root pages: "ARCHITECTURE"'],
+                    'ref' => ['type' => 'string', 'description' => '"page", "page#anchor" or "section/page#anchor", e.g. "functions#fn-select", "syntax", "how-to/some-page", "patterns/patterns"; root pages: "ARCHITECTURE"'],
                     'function' => ['type' => 'string', 'description' => 'Name of a function (functions#fn-<name>)'],
                     'setting' => ['type' => 'string', 'description' => 'Name of a field setting (fields#fields-settings-<name>)'],
                     'field_type' => ['type' => 'string', 'description' => 'Field type (fields#type-<type>)'],
