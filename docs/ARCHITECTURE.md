@@ -9,6 +9,9 @@ The language of the codes is described in the documentation ([DOCS.md](DOCS.md),
 - **Priority.** Examples of the documentation, the training course and the how-to may be written in other ways (they are left as they are).
   When they differ from this file, **the patterns of this file have priority** — write new codes by them.
 - One pattern — one section: the rule, why, an example, the traps. Examples use abstract names (`some_table`, `some_field`).
+- This file is about writing codes. How a system is put together from tables, fields, settings and codes (tabs of cycles, tree anchors, stored fields and their recalculation,
+  process variables, background calculations, autofill, `exec` of a field) — the section `patterns` of the docs with the examples of the B2M platform:
+  `docs/ru/patterns/patterns.md`, MCP: `read_docs {"ref": "patterns/patterns"}`.
 
 ## <a name="fix-lines"></a> Fix lines with `~` when they are called more than once with the same value
 > **ATTENTION: the most common error is not using `~`.** Every time you write or change a Totum code, check the lines that are called

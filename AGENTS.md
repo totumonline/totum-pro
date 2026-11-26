@@ -7,6 +7,7 @@ Documents for agents — in the repo and on every server (the server links are r
 | creator view of MCP: tree, tables, fields (`--creator=true` / header `TTM-Creator: true`) | [CREATOR.md](CREATOR.md) | `https://<host>/CREATOR.md` |
 | documentation of Totum: syntax, functions, fields, tables, interface | [docs/DOCS.md](docs/DOCS.md) | `https://<host>/docs/DOCS.md`, articles `https://<host>/docs/<lang>/totum/<page>.md` |
 | architectural patterns of Totum codes — required reading before development | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | `https://<host>/docs/ARCHITECTURE.md` |
+| patterns of building systems (structure of tables, fields, recalculations; examples of B2M) — before designing tables | [docs/ru/patterns/patterns.md](docs/ru/patterns/patterns.md) | `https://<host>/docs/ru/patterns/patterns.md` |
 
 Over MCP the documentation is read without internet requests: `search_docs` / `read_docs` (see "Documentation (search_docs, read_docs)").
 
@@ -719,7 +720,8 @@ Both tools are in every mode (annotation `readOnlyHint`); they read the markdown
 {"name": "read_docs", "arguments": {"ref": "syntax", "offset": 419}}
 {"name": "read_docs", "arguments": {"ref": "ARCHITECTURE#fix-lines"}}
 ```
-- Pages: `docs/<lang>/<section>/<page>.md` (sections `totum`, `training-course`, `how-to`), `lang` — argument / language of Totum (`Conf::getLang()`), `ru` if there are no docs of it.
+- Pages: `docs/<lang>/<section>/<page>.md` (sections `totum`, `training-course`, `how-to`, `patterns` — patterns of building systems with the examples of B2M, index `patterns/patterns`), `lang` — argument / language of Totum (`Conf::getLang()`), `ru` if there are no docs of it.
+  Sections are the folders of `docs/<lang>/` (`MCPDocs::sections()`): a new folder is a new section of `search_docs` / `read_docs` without changes of the code — add its pages to `docs/DOCS.md`.
 - Root pages `MCPDocs::ROOT_PAGES` — `docs/<NAME>.md`, common for all languages (section `''`): `ARCHITECTURE` (architectural patterns of codes, required reading before development).
   ref `ARCHITECTURE` / `ARCHITECTURE#<anchor>` (case-insensitive); the index (`read_docs` without arguments) lists them in `## Root pages`; `search_docs` does not search them.
   A new root page — a file in `docs/` + its name in `ROOT_PAGES`.
