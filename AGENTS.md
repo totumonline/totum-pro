@@ -147,6 +147,7 @@ Marks in rights of `get_table_schema` (`MCPMarkdown::featureMarks` + edit marks 
 | `log` | the log of manual changes is available — `get_cell`; fields without the mark have no log | `logButton` of fieldsForClient (logging, logRoles, not button/filter), not tmp |
 | `cycle-tab` | tab_ button of a cycles table — a tab inside the cycle (see "Cycles") | `MCPTableResolver::isCycleTabButton` |
 | `field-params` | the format sets the type of the cells (`setFieldParams`) — see "Field params of a cell" | `format` of the field (virtual columns — of the base field) contains `setFieldParams` |
+| `dblclick-action` | an action code on click of a field (not a button): web runs it by a double click on a blocked / not editable cell — `click_button`, also on `#block` cells | `CodeActionOnClick` of fieldsForClient (read-only access — only with `AllowActionClickOnRead`) |
 
 Field types (UI name → type in output):
 | UI | type | output details | value for writing |
@@ -154,7 +155,7 @@ Field types (UI name → type in output):
 | String | `string` | `regexp /…/ "error text"` (schema, insert row card) | text matching the regexp |
 | Number | `number` | `(decimals)`, `{N unit}`, `money(…)`, `step`, `regexp /…/` (schema) | number without unit/separators |
 | Select | `select` | `→table`, `multiple` | key / array of keys |
-| Select-tree | `tree` | `→table`, `multiple` | key / array of keys (`get_select_options` with `parent_id`) |
+| Select-tree | `tree` | `→table`, `multiple`; values with the path `Root > Parent > Title [key]` | key / array of keys (`get_select_options` with `parent_id`) |
 | Checkbox | `checkbox` | | `true` / `false` |
 | Date | `date` | `date (Y-m-d)` / `datetime (Y-m-d H:i)` | `"Y-m-d"` / `"Y-m-d H:i"` |
 | Button | `button` | `"TEXT"` (schema) | — (`click_button`) |
@@ -223,6 +224,41 @@ Audience parts of table descriptions and field helps (`Totum::filterAudienceText
 | `<agent>…</agent>` | hidden for everybody (incl. creator) | shown as a plain line — instructions for agents |
 
 `ReadTableActions::isAgentInterface()` is `false`, `MCPActionsTrait` overrides it with `true`. A help that consists only of `<agent>` parts has no info icon in web.
+
+### Tree view (read_table with branch)
+A table whose column `tree` (type tree) has the PRO setting `treeViewType` is shown by web as a tree (`ReadTableActions::getPageViewType` = `tree`):
+`self` — by this table (a row is a node, its children are the rows with `tree` = its id), `other` — by folders (the options of the field tree, e.g. rows of another table;
+the rows of this table are in the folders by `tree`). MCP (`MCPActionsTrait::mcpReadTree`, flag `mcpTreeCall` → the core works as the tree page: `getResultTree`, `isPagingView('tree')`):
+```json
+{"name": "read_table", "arguments": {"table": "treeviewanothertable"}}
+{"name": "read_table", "arguments": {"table": "treeviewanothertable", "branch": "3"}}
+{"name": "read_table", "arguments": {"table": "treeviewanothertable", "branch": "1", "recursive": true}}
+{"name": "read_table", "arguments": {"table": "tableviewself", "filters": {"fl_vybor_roots": ["1"]}}}
+```
+```
+view: tree (other) — by folders: … the branches inside are not loaded (like web until they are opened) — read them with "branch"     (header, MCPMarkdown::treeViewLine)
+## Tree (other) — 5 node(s) shown of 7, 7 row(s) in the tree
+- 5 «Верхний уровень вторая ветка» · rows 1 · in the branch 3 · loaded
+  - 6 «Второй уровень 3» · rows 1 · in the branch 2 · not loaded — read_table {"table":"treeviewanothertable","branch":"6"}
+the rows below are in the order of the open tree of web: a folder, its rows, then its subfolders …
+add a row into a folder like web (the menu of the folder «Add a row» — the panel of a new row): insert_row {…,"data":{"tree":"<folder key>"}} …; no adding on the top level (… treeHideAddButton) …
+## Rows 1–2 of 2 of the loaded branches
+```
+- Opening (without `branch`) = `getTreeTopLevel`: the roots are loaded (their rows), their children are shown not loaded; `treeViewLoad` — everything is loaded.
+  `branch` (key or list) = the opening of a folder (`loadTreeBranches`): its rows, its subnodes shown; `recursive` = «Open all» (the whole branch).
+- Nodes = the list of the select of the field tree for the current filters (codeSelect: `roots` from a filter, order; `TreeBranchesFilter` of column filters, `withEmptyVal` — `(no folder)`);
+  rows outside the nodes are not shown (like web). Counts: rows per node and in the whole branch (`getByParams` of the field tree with the filters); max 300 node lines.
+- Rows are depth-first (`mcpTreeOrder`, like `_treeRefresh` of web): other — a folder, its rows (order of the table), subfolders; self — the rows that are not nodes, then the nodes in the order of the list,
+  each with its children. `limit` / `offset` page this order. The field tree shows the path (see Select-tree). `ids` / `deleted` — the usual flat view.
+- Paged tree (`other` + pagination of the table): nodes with the counts of the core, no rows on the opening; `branch` + `offset` / `limit` = `loadTreeRows` (rows of the folder in the db), no `recursive`.
+- `other` with a column `tree_category` — the row of a folder (`· folder row N`); `selectTable` of the field tree (without `treeBfield`) — the lines how to add («Add a branch»: insert_row of
+  selectTable with `treeViewParentField` / `tree` = parent) and edit a folder (edit_panel of selectTable).
+- Adding: web adds in the tree view only through the panel of a new row (button Add, «Add a row» of a folder, `+` of a self row) — `insert_row` is that panel
+  (line `tree view: like web the row is added through the panel of a new row …`): fields hidden in the panel (`hide` panel / extpanel) are not shown and not set, blocks — table → row → cell;
+  `add_row` with data goes through the insert row too (`MCPTools::openInsertRow`; `dry_run` — the insert row card). `treeHideAddButton` / table format `hideadd` — no adding on the top level:
+  `add_row` without `tree` → `ERROR: Tree view: the button Add of the top level is hidden …` (`MCPTools::checkTreeAdd`).
+- Test tables: `tableviewself` (self, load + open, `fl_vybor_roots` → roots of codeSelect, `panel_hide` — `hide: "extpanel"`), `treeviewanothertable` (other by `tableviewself`, branches not loaded,
+  `treeHideAddButton`, the same roots filter).
 
 ### Next page
 Default `limit = 50`, max 500. The answer has a header `## Rows 1–50 of 340`. If there are more rows, the end of the answer contains `next page: offset=50`. Pass this offset:
@@ -353,7 +389,13 @@ Test table: `mcp_test_search` (`value` — Data with setFieldParams by `kind`, `
   when the table has no duplicate code (`on_duplicate`); `replaces` with other fields → error. `MCPTools::checkDuplicateReplaces`.
 - Writing to a field with code (`calc`) makes the value manual (✋). `reset` removes the manual value and returns the calculated one.
 - `dry_run` — show the calculated result without saving (`edit` — only for one row).
-- `updated` — the code from the header of the previous answer. If somebody changed the table since then — error, re-read the table.
+- `updated` — the code from the header of the previous answer. If somebody changed the table since then — error
+  `Таблица "…" была изменена. Обновите таблицу для произведения изменений. (code N is not actual …) — re-read the table …` (the code of the table is not given in the error: re-read).
+- Strict tables (setting `actual` = `strong`, «Строгое»): web sends `tableData.updated` with every change and the core rejects a change over a change not loaded by the user
+  (`aTable::checkTableUpdated`). MCP (stateless) requires `updated` in the writes `MCPTools::STRICT_TOOLS` (edit, add_row, delete_rows, restore_rows, duplicate_rows,
+  reorder_rows, recalc_rows) and in `edit_panel` with `save` (`MCPActionsTrait::mcpCheckUpdated` with `$required`): without it —
+  `ERROR: Table … is in the strict mode of actuality … pass "updated" …`; header line `actual: strict — …`. insert_row / opening of panels / buttons are not checked (like web).
+  The answer to a write has the new code — the next write passes it.
 - `reorder_rows` (only tables with manual order, header line `order: manual (n-field) · can change`):
   `ordered_ids` — these rows take the positions they occupy now, in the given order (pass all ids of the table for a full sort);
   `ids` + `after_id` — move rows after the row `after_id`; `after_id: 0` — to the beginning.
@@ -362,6 +404,20 @@ Test table: `mcp_test_search` (`value` — Data with setFieldParams by `kind`, `
   Buttons whose code uses `$#ids` are marked `checked-rows` in `get_table_schema`; an error of such a button without `checked_ids` gets the hint
   `(the code of … works with the rows checked with checkmarks in web — $#ids: pass them in checked_ids)` (the code itself usually says "check rows" in the language of the schema).
   `uncheckAfterClick` — line `the checkmarks are cleared after this button …`.
+  Cells selected with the mouse: web sends `sl` = `selectedCells.ids` (`{field: [row ids]}`, cells of rows only) with every button, the core gives them to the code as
+  `$#slPro` (`{"row id": [fields]}`, PRO, like `$#changes`; visibility of rows / fields checked by the core). MCP: `selected_cells` `{"field": [row ids]}`
+  (`MCPTools::selectedCells`: visible columns only). No schema mark: a button that needs them says so by its own error.
+  Action on double click (`CodeActionOnClick` of a field, not a button; schema mark `dblclick-action`): web runs it by a double click on the cell when the cell is blocked
+  (`#block` of the cell / row / table) or not editable (`CodeActionOnClickAsUrl` — a click on the value as a link) — `click_button` runs it (`mcpClick` → core `dblClick`),
+  blocks are not checked for it. Read-only access — only with `AllowActionClickOnRead`.
+- Blocks of formats (`MCPActionsTrait::mcpCheckBlocks`; the core does not check them on write): the hierarchy of web `$.extend({}, table f, row f, cell f)` —
+  the cell is the most important, an explicit `block: false` of a lower level unblocks the upper one (`mcpBlockLevel`: cell → row → table).
+  Cells: edit, reset, buttons (`click_button`, buttons of panels), the panel (`edit_panel`, the panel of a new row of the tree view). Rows (delete / duplicate / reorder):
+  `#blockdelete` … of the table or of the row, `#block` of the row or of the table (row `block: false` unblocks). add: `#blockadd` of the table. The insert row (not panel): cell only (like web).
+  The errors say the level: `… blocked by format (#block)` / `… by the format of the row (#block of the row)` + `row comment:` / `… by the format of the table` +
+  `rows comment:` / `table text:` and the hint that the block may be temporary (a background process): wait and re-read.
+  Test table: `mcp_test_blocks` (strict; `h_lock` + `h_lock_btn` — table block with tablecomment; `lock_row` — row block with rowcomment; `free` — `block: false` under the row block;
+  `val` — `#block` by `h_freeze` (formats of all rows change without data); `dbl` — `#block` cell with CodeActionOnClick; `btn_sl` writes `$#slPro` to `sl_data`; `cats` — tree multiple).
   Buttons have rights `click` and are shown as `[BUTTON TEXT]`; `get_cell` / `get_table_schema` show the type `button "TEXT"`.
   The answer contains the rows changed by the button code (`changed fields — …`) and `## Side effects` (links, messages, dialogs).
   `other changed tables: …` — the action changed other tables too (e.g. a button in a window wrote to the source table): re-read them.
@@ -432,7 +488,9 @@ the panel shows the fields: name, amount                    (only with fields: o
 | Amount {N $} | amount | number | edit | 777 |
 | Priority | priority | string | calc | 2 |               — recalculated with the not saved client
 ```
-- Rights in the card: `edit` — can be set with `edit_panel` data / reset (editable field), `calc`, `click` — buttons of the row, `required`. Data fields: editable, not `#block` (row / cell of the current state of the panel), input format (regexp).
+- Rights in the card: `edit` — can be set with `edit_panel` data / reset (editable field), `calc`, `click` — buttons of the row, `required`. Data fields: editable, not `#block` (table → row → cell of the current state of the panel), input format (regexp).
+- Fields hidden in the panel of web by the format `hide: "panel"` / `"extpanel"` (`$.extend` of table / row / cell formats; `hideinpanel` = `hide.panel`) are not in the card
+  (line `fields hidden in the panel by the format …: panel_hide`), data / reset of them → error (`MCPActionsTrait::mcpPanelHiddenFields`, `mcpCheckPanelFields`).
 - `click_button` with `panel_hash`: the button works with the saved row (like web), its code sees the not saved values of the panel as `#pnl.field` (`__edit_hash`). The answer: changes of the button + the panel after it (the not saved changes stay).
 - `save: true` (with or without data/reset in the same call): all collected changes are saved at once, then the hash is deleted — `**The panel is closed**`; `Nothing to save` — no changes.
 - Without write access the panel is not opened (`… read-only … Read the row with get_row`).
@@ -700,7 +758,7 @@ Like web (`Comments`: `_comments_viewed.nums` — how many comments of the cell 
 - `get_table_schema`: `export: export_table — csv, xlsx`; with the csv_edit right / service xlsximport — `import: the csv / xlsx import of web is not supported by the agent interface`.
 
 ### Not in the agent interface (decided)
-csv / xlsx import; kanban / panels view and the tree view of rows (the same data is in the table); versions of files, OnlyOffice, new file from a docx/xlsx template;
+csv / xlsx import; kanban / panels view (the same data is in the table); versions of files, OnlyOffice, new file from a docx/xlsx template;
 on-the-fly unique check (the core checks on save); favorites, theme, switching the user, help, AI proxy, special functions of the creator; print (`linkToPrint`, printTable).
 Buttons moved by the table format to places of web (see the marks `[B] [E] [P] [D]`) are the usual params / footer buttons for the agent.
 The panel of buttons of the user menu (`settings.h_user_settings_buttons`, `loadUserButtons`) is not in the agent interface.
@@ -801,6 +859,8 @@ All service text of the output is in English. Table titles, field titles, data a
 # Orders · orders · id 12 · simple · cycle 15 (projects) · sess_hash …
 updated 2026-11-20 10:00:00 12345 · code 1621071962 · table: edit add delete restore duplicate reorder
 order: manual (n-field) · can change: reorder_rows (…)
+actual: strict — … pass "updated" = the code of this header …   (only strict tables, see "Changes")
+view: tree (self | other) — …                                    (only tables with the tree view, see "Tree view")
 hidden from the tree: … do not open it directly           (only tables hidden from the tree)
 ```
 - title · name · id · type; `cycle` — for calcs, `sess_hash` — for tmp;
@@ -856,6 +916,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `log` | (`get_table_schema`) log of manual changes is available (`get_cell`) |
 | `cycle-tab` | (`get_table_schema`) tab_ button of a cycles table: a tab inside the cycle, `click_button` with `id` = cycle |
 | `field-params` | (`get_table_schema`) the format of the field sets the type of its cells (`setFieldParams`): see `#fieldParams(…)` of the cells, `get_cell` |
+| `dblclick-action` | (`get_table_schema`) action on double click of the field: `click_button`, works on `#block` cells too |
 | `required` | required field |
 | `—` | view only |
 
@@ -879,7 +940,7 @@ Line 1 — field titles, line 2 (`name`) — names for requests, line 3 (`type`)
 | `200 ✋(150)` | manual value that differs from the calculated one (calculated in brackets); text fields show just `✋` |
 | `150 ✊` | set manually, but equal to the calculated one |
 | `!ERR text` | field calculation error |
-| `#block` | cell is blocked by format — cannot be changed |
+| `#block` | cell is blocked by format — cannot be changed (a row `#block` / the table `#block` of the header block its cells too, unless the cell has `block: false`) |
 | `#icon-name` | icon from the cell format |
 | `#text:"…"` | format `text`: web shows this text instead of the value (the real value is before the mark; often the value is empty and the text is a hint like "Needs to be added") |
 | `#textasvalue:"…"` | format `text` with `textasvalue`: web shows the text and uses it as the cell value (copy, filters) |
@@ -918,6 +979,18 @@ no changes in the table
 rows comment (changed): … — tablecomment changed by the action
 ```
 Rows changed by the action itself and by recalculation are shown (up to 50 rows in full).
+- Params / footers changed by codes (set of a button…) are shown too: simple tables have no params in `getChangeIds` — MCP compares their values before / after (`mcpParamsValues`).
+- Formats changed without data (like web: after every action web recalculates the formats of the rows of its page — `getTableClientChangedData`, columns with a format and the row format):
+  MCP remembers the formats of the first `MCP_FORMATS_ROWS` (500) rows of the filters and of the params before the action (`mcpRememberFormats`, only tables with formats;
+  the keys of the usual marks: block, text, comment, placeholder, icon, fieldParams, hide; row block flags, rowcomment) and shows the rows whose formats changed:
+  ```
+  ## Rows (formats changed, data not changed)
+  changed formats — 1: val; 2: val; 3: row format
+  ```
+  (cards / table like the changed rows, up to 50 together with them; `more rows with changed formats: …`).
+- Flags of the table format switched by the action (`tableFlagsChanges`, before — `mcpRememberTableTexts`):
+  `**table is blocked now (#block)** — … wait and re-read it with read_table before the next change` + the rows comment / table text;
+  `**table format switched on: #blockadd**` / `**table format switched off: #block**`.
 `**dry_run: not saved**` — dry run, nothing saved.
 
 ### Side effects

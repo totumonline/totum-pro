@@ -77,8 +77,13 @@ class MCPTools
                 'required' => ['table'],
             ],
             'read_table' => [
-                'description' => 'Read table like opening it in web: description (first page), table text, params, filters, rows page (with rows comment), footers. Cells: "Title [key]" select key, ✋(x) manual differs from calculated x, ✊ manual equal to calculated, !ERR error, #block, …=cut text.',
+                'description' => 'Read table like opening it in web: description (first page), table text, params, filters, rows page (with rows comment), footers. Cells: "Title [key]" select key, ✋(x) manual differs from calculated x, ✊ manual equal to calculated, !ERR error, #block, …=cut text. '
+                    . 'Tables with the tree view (header line "view: tree"): the rows in the order of the open tree and the section "## Tree" with the nodes; '
+                    . 'not loaded branches (web loads them when they are opened) — branch.',
                 'props' => static::TABLE_PROPS + [
+                        'branch' => ['type' => ['string', 'array'], 'items' => ['type' => 'string'],
+                            'description' => 'Tree view: open this node (key from "## Tree") like a click on a folder in web — its rows and subnodes; several — a list'],
+                        'recursive' => ['type' => 'boolean', 'description' => 'Tree view with branch: with all the branches inside ("Open all" of the folder)'],
                         'ids' => static::IDS + ['description' => 'Only these row ids'],
                         'fields' => static::NAMES + ['description' => 'Only these fields (any category)'],
                         'offset' => ['type' => 'integer', 'description' => 'Rows offset, default 0'],
@@ -294,7 +299,8 @@ class MCPTools
                 'description' => 'The correct way to add a row. Insert row like in web: a new row that is filled step by step and recalculated by the code after every change '
                     . '(values and select options depending on other fields, buttons active in the insert row). Without insert_hash — opens a new insert row '
                     . 'and returns its insert_hash; with insert_hash — shows/changes it. Buttons of the insert row: click_button with insert_hash; '
-                    . 'options: get_select_options with insert_hash; save to the table: add_row with insert_hash. Nothing is added until add_row. ' . static::FILE_VALUES,
+                    . 'options: get_select_options with insert_hash; save to the table: add_row with insert_hash. Nothing is added until add_row. '
+                    . 'Tables with the tree view: it is the panel of a new row of web (into a folder — data {"tree": "<key>"}; the fields hidden in the panel are not set). ' . static::FILE_VALUES,
                 'props' => static::TABLE_PROPS + [
                         'insert_hash' => static::INSERT_HASH,
                         'data' => ['type' => 'object', 'description' => 'Values to set {field: value}'],
@@ -336,6 +342,7 @@ class MCPTools
                     . 'values set by its buttons): an inadmissible value can break the user system — use it only for tables without such dependencies. '
                     . 'dry_run (direct insert only) shows the row as it will be calculated without saving. '
                     . 'Cycles tables have no insert row (like web): add_row without data creates a cycle at once, the answer opens its first table. '
+                    . 'Tables with the tree view: web adds rows only through the panel of a new row — add_row with data goes through the insert row (the panel) too. '
                     . static::FILE_VALUES,
                 'props' => static::TABLE_PROPS + static::WRITE_PROPS + [
                         'data' => ['type' => 'object', 'description' => '{field: value}'],
@@ -389,13 +396,18 @@ class MCPTools
                     . 'text/html/json windows show their content, '
                     . 'a json window with a button — submit_json_window, a buttons window — submit_buttons. '
                     . 'A button with the mark context-panel opens the context panel of its cell after pressing (shown in the answer, its buttons — click_panel_button). '
-                    . 'Rows checked with checkmarks in web are checked_ids — web sends them with every button; buttons marked checked-rows need them.',
+                    . 'Rows checked with checkmarks in web are checked_ids — web sends them with every button; buttons marked checked-rows need them. '
+                    . 'Cells selected with the mouse in web are selected_cells — the code of the button gets them as $#slPro. '
+                    . 'A field with an action on double click (mark dblclick-action) is run with click_button too, also when its cell is #block (web runs it exactly then). '
+                    . 'Buttons of a blocked row / table (#block) are not pressed, like web.',
                 'props' => static::TABLE_PROPS + [
                         'field' => ['type' => 'string'],
                         'id' => ['type' => 'integer', 'description' => 'Row id for column buttons; omit for header/footer buttons'],
                         'insert_hash' => static::INSERT_HASH + ['description' => 'Press the column button in the insert row (instead of id; buttons with right add-click)'],
                         'panel_hash' => ['type' => 'string', 'description' => 'Press the column button in the edit panel (instead of id): the code sees the not saved values as #pnl.field'],
                         'checked_ids' => static::IDS + ['description' => 'Rows checked with checkmarks (like in web), passed to the button code as $#ids'],
+                        'selected_cells' => ['type' => 'object', 'additionalProperties' => static::IDS,
+                            'description' => 'Cells of rows selected with the mouse in web: {"field": [row ids]} — the button code gets them as $#slPro ({"row id": [fields]})'],
                     ],
                 'required' => ['table', 'field'],
             ],
@@ -565,8 +577,14 @@ class MCPTools
         return $this->failed;
     }
 
+    /* the tool of the call (prepare: writes of a strict table need "updated") */
+    protected string $toolName = '';
+    /* writes that web checks against tableData.updated (strict tables: actual «strong»); edit_panel — with save */
+    protected const STRICT_TOOLS = ['edit', 'add_row', 'delete_rows', 'restore_rows', 'duplicate_rows', 'reorder_rows', 'recalc_rows'];
+
     protected function runTool(Totum $Totum, Conf $Config, string $name, array $args): string
     {
+        $this->toolName = $name;
         $this->checkOneCycle($Totum, $name, $args);
         $method = 'tool' . str_replace('_', '', ucwords($name, '_'));
         $text = $this->$method($Totum, $args);
@@ -953,17 +971,20 @@ class MCPTools
         }
         $Actions = $Resolver->getActions($post, $forWrite);
         if ($forWrite) {
-            $Actions->mcpCheckUpdated($args['updated'] ?? null);
+            $Actions->mcpCheckUpdated($args['updated'] ?? null,
+                in_array($this->toolName, static::STRICT_TOOLS) || ($this->toolName === 'edit_panel' && !empty($args['save'])));
         }
         if ($forChanges ?? $forWrite) {
             $Actions->mcpRememberTableTexts();
+            $Actions->mcpRememberFormats();
         }
         return [$Resolver, $Actions];
     }
 
     protected function markdown(MCPTableResolver $Resolver, MCPReadTableActions|MCPWriteTableActions $Actions, array $f = []): MCPMarkdown
     {
-        return (new MCPMarkdown($Resolver->getTable(), $Actions->mcpSchema(), $Actions->mcpIsWrite()))->setTableFormat($f);
+        return (new MCPMarkdown($Resolver->getTable(), $Actions->mcpSchema(), $Actions->mcpIsWrite()))->setTableFormat($f)
+            ->withTreeView($Actions->mcpTreeViewType());
     }
 
     protected function ids(array $args, string $name, bool $required = false): array
@@ -1055,7 +1076,7 @@ class MCPTools
         $Md = $this->markdown($Resolver, $Actions, $result['f'] ?? []);
         $out = $Md->header() . "\n**" . $title . "**\n" . (!empty($result['mcpChanges']) ? $Md->changes($result) : "ok\n");
         if (($before = $Actions->mcpTableTextsBefore()) && isset($result['f'])) {
-            $out .= $Md->tableTextsChanges($before, MCPMarkdown::tableTexts($result['f']));
+            $out .= $Md->tableFlagsChanges($before, $result['f']) . $Md->tableTextsChanges($before, MCPMarkdown::tableTexts($result['f']));
         }
 
         $Table = $Resolver->getTable();
@@ -1182,6 +1203,13 @@ class MCPTools
         $offset = max((int)($args['offset'] ?? 0), 0);
         $fields = $this->names($args, 'fields');
 
+        if ($Actions->mcpTreeViewType() && !$this->ids($args, 'ids')) {
+            return $this->readTree($Resolver, $Actions, $args, $offset, $limit, $fields);
+        }
+        if (key_exists('branch', $args) || !empty($args['recursive'])) {
+            throw new errorException('"branch" / "recursive" are for tables with the tree view (header line "view: tree")'
+                . ($Actions->mcpTreeViewType() ? ' without ids' : ''));
+        }
         $data = $Actions->mcpReadTable($offset, $limit, $this->ids($args, 'ids'), (bool)($args['recalculate'] ?? true));
         $Md = (new MCPMarkdown($Resolver->getTable(), $data['form'], $Actions->mcpIsWrite()))->setTableFormat($data['f'])
             ->withStyles(!empty($args['styles']));
@@ -1196,6 +1224,39 @@ class MCPTools
         }
         if ($data['offset'] + $count < $data['allCount']) {
             $out .= "\nnext page: offset=" . ($data['offset'] + $count) . "\n";
+        }
+        return $out . $Md->footerSection($data['params'], $fields) . (!empty($args['styles']) ? $Md->stylesSection() : '');
+    }
+
+    /**
+     * Tree view: like the tree page of web — the nodes ("## Tree") and the rows of the loaded branches in the order of the open tree;
+     * branch — the opening of a node (its rows and subnodes)
+     */
+    protected function readTree(MCPTableResolver $Resolver, MCPReadTableActions|MCPWriteTableActions $Actions, array $args, int $offset, int $limit, ?array $fields): string
+    {
+        $branches = key_exists('branch', $args) ? array_map(fn($b) => is_scalar($b) ? (string)$b : '', (array)$args['branch']) : [];
+        if (key_exists('branch', $args) && !$branches) {
+            throw new errorException('"branch" must be a key of a node of "## Tree" (or a list of keys)');
+        }
+        if (!empty($args['recursive']) && !$branches) {
+            throw new errorException('"recursive" is for "branch": the node whose branches are opened');
+        }
+        $data = $Actions->mcpReadTree($branches, !empty($args['recursive']), $offset, $limit, (bool)($args['recalculate'] ?? true));
+        $Md = (new MCPMarkdown($Resolver->getTable(), $data['form'], $Actions->mcpIsWrite()))->setTableFormat($data['f'])
+            ->withStyles(!empty($args['styles']))->withTreeView($data['type']);
+        $tableArgs = $this->windowArgs($args);
+        $count = count($data['rows']);
+        $out = $Md->header() . ($offset === 0 && !$branches ? $Md->description() . $Md->cycleInfo() : '') . $Md->tableText()
+            . $Md->paramsSections($data['params'], $fields)
+            . ($offset === 0 ? $Md->treeSection($data, $tableArgs) : '');
+        $out .= "\n## Rows " . ($count ? ($offset + 1) . '–' . ($offset + $count) : '0') . ' of ' . $data['allCount']
+            . ($branches ? ' of the branch ' . implode(', ', $branches) : ($data['paging'] ? ' (the paged tree: rows are read by folders)' : ' of the loaded branches'))
+            . "\n" . $Md->rowsComment();
+        if ($count && $Md->fieldsByCategory('column', $fields)) {
+            $out .= $Md->rowsTable($data['rows'], $fields);
+        }
+        if ($offset + $count < $data['allCount']) {
+            $out .= "\nnext page: offset=" . ($offset + $count) . ($branches ? ' (with the same branch)' : '') . "\n";
         }
         return $out . $Md->footerSection($data['params'], $fields) . (!empty($args['styles']) ? $Md->stylesSection() : '');
     }
@@ -1606,7 +1667,7 @@ class MCPTools
         }
         $insertHash = $this->insertHash($args);
         $panelHash = $this->panelHash($args);
-        [$Resolver, $Actions] = $this->prepare($Totum, $args, $insertHash || $panelHash);
+        [$Resolver, $Actions] = $this->prepare($Totum, $args, $insertHash || $panelHash, [], false);
         $field = $this->visibleField($Resolver, (string)($args['field'] ?? ''));
         /* a Data field with the select of setFieldParams in the format of the cell: the core takes the options from the params (getEditSelect) */
         $byParams = $field['type'] === 'listRow' && MCPMarkdown::hasFieldParams($Resolver->getTable(), $field);
@@ -1937,9 +1998,21 @@ class MCPTools
      */
     protected function toolInsertRow(Totum $Totum, array $args, bool $withoutHeader = false): string
     {
+        [$Resolver, $Actions, $res] = $this->openInsertRow($Totum, $args);
+        $Md = $this->markdown($Resolver, $Actions, $res['f']);
+        return ($withoutHeader ? '' : $Md->header())
+            . $Md->insertRowCard($res['row'], $res['hash'], $this->windowArgs($args), !$this->insertHash($args), $res['panel'], $res['hidden']);
+    }
+
+    /**
+     * Insert row: opens a new one (without insert_hash) or changes it with data / reset
+     * @return array [MCPTableResolver, MCPWriteTableActions, mcpInsertRow result]
+     */
+    protected function openInsertRow(Totum $Totum, array $args): array
+    {
         $data = is_array($args['data'] ?? null) ? $args['data'] : [];
         $reset = $this->names($args, 'reset') ?? [];
-        [$Resolver, $Actions] = $this->prepare($Totum, $args, true);
+        [$Resolver, $Actions] = $this->prepare($Totum, $args, true, [], false);
         if ($Resolver->getTable()->getTableRow()['type'] === 'cycles') {
             throw new errorException('A cycles table has no insert row (like web): add a cycle with add_row without data — it is created at once '
                 . 'and its first table is opened in the answer; then change its fields with edit');
@@ -1951,9 +2024,24 @@ class MCPTools
         }
         $this->checkFormats($Resolver, ['insert row' => $data]);
         $data = $this->writeValues($Resolver, $Actions, $data, $insertHash ?? false, 'insert row');
-        $res = $Actions->mcpInsertRow($insertHash, $data, $reset);
-        $Md = $this->markdown($Resolver, $Actions, $res['f']);
-        return ($withoutHeader ? '' : $Md->header()) . $Md->insertRowCard($res['row'], $res['hash'], $this->windowArgs($args), !$insertHash);
+        return [$Resolver, $Actions, $Actions->mcpInsertRow($insertHash, $data, $reset)];
+    }
+
+    /**
+     * Tree view: the button Add of the top level is hidden (field setting treeHideAddButton / table format hideadd) —
+     * like web a row is added only into a folder (self — as a child of a row)
+     */
+    protected function checkTreeAdd(MCPTableResolver $Resolver, MCPWriteTableActions $Actions, mixed $tree): void
+    {
+        if (!($type = $Actions->mcpTreeViewType()) || ($tree !== null && $tree !== '' && $tree !== [])) {
+            return;
+        }
+        $Table = $Resolver->getTable();
+        if (!empty($Table->getFields()['tree']['treeHideAddButton']) || !empty($Actions->mcpTableFormat()['hideadd'])) {
+            throw new errorException('Tree view: the button Add of the top level is hidden (' . (!empty($Table->getFields()['tree']['treeHideAddButton'])
+                    ? 'field setting treeHideAddButton' : 'table format hideadd') . '): like web a row is added only into a '
+                . ($type === 'self' ? 'row (as its child)' : 'folder') . ' — set the field tree (keys — "## Tree" of read_table)');
+        }
     }
 
     protected function toolAddRow(Totum $Totum, array $args): string
@@ -1961,6 +2049,18 @@ class MCPTools
         $data = is_array($args['data'] ?? null) ? $args['data'] : [];
         if ($insertHash = $this->insertHash($args)) {
             return $this->addInsertRow($Totum, $args, $insertHash, $data);
+        }
+        if ((new MCPTableResolver($Totum, $args))->getTable()->getTableRow()['type'] !== 'cycles'
+            && $this->prepare($Totum, $args, false, [], false)[1]->mcpTreeViewType()) {
+            /* tree view: web adds rows only through the panel of a new row (insert row) */
+            [$Resolver, $Actions, $res] = $this->openInsertRow($Totum, array_diff_key($args, ['data' => 1, 'dry_run' => 1]) + ['data' => $data]);
+            if (!empty($args['dry_run'])) {
+                $Md = $this->markdown($Resolver, $Actions, $res['f']);
+                return $Md->header() . "\n**dry_run: not saved** (tree view: the row is added through the panel of a new row — its insert row below)\n"
+                    . $Md->insertRowCard($res['row'], $res['hash'], $this->windowArgs($args), true, true, $res['hidden']);
+            }
+            return $this->addInsertRow($Totum, $args, $res['hash'], [])
+                . "(tree view: like web the row is added through the panel of a new row — the insert row " . $res['hash'] . ")\n";
         }
         [$Resolver, $Actions] = $this->prepare($Totum, $args, true, [
             /* empty data for add() means "new row with defaults" */
@@ -2012,7 +2112,8 @@ class MCPTools
         }
         $data = $this->fieldsInsertAfter($Resolver, $Actions, $args, $data, $insertHash);
         $this->checkFormats($Resolver, ['insert row' => $data]);
-        $Actions->mcpInsertRow($insertHash, $this->writeValues($Resolver, $Actions, $data, $insertHash, 'insert row'));
+        $res = $Actions->mcpInsertRow($insertHash, $this->writeValues($Resolver, $Actions, $data, $insertHash, 'insert row'));
+        $this->checkTreeAdd($Resolver, $Actions, $res['row']['tree']['v'] ?? null);
         return $this->changesAnswer($Resolver, $Actions, $Actions->add(), 'Added from the insert row')
             . "\n**The insert row is saved and closed**: its insert_hash is not valid any more — open a new one with insert_row for the next row.\n";
     }
@@ -2144,6 +2245,9 @@ class MCPTools
         if ($checked = $this->ids($args, 'checked_ids')) {
             $click['checked_ids'] = $checked;
         }
+        if ($selected = $this->selectedCells($Resolver, $args)) {
+            $click['sl'] = $selected;
+        }
         [$Resolver, $Actions] = $this->prepare($Totum, $args, false, ['data' => $this->json($click)], true);
         $Actions->mcpCheckBlocks('click', [], [$click['item'] => [$field['name']]]);
         $out = $this->changesAnswer($Resolver, $Actions, $this->withCheckedHint($field, $checked, fn() => $Actions->mcpClick()), 'Pressed: ' . $field['name'])
@@ -2155,6 +2259,31 @@ class MCPTools
                 . $this->toolGetCell($Totum, $this->windowArgs($args) + ['field' => $field['name'], 'id' => $args['id'] ?? null, 'log' => 0], true);
         }
         return $out;
+    }
+
+    /**
+     * Cells selected with the mouse in web (selectedCells.ids of the page, sent with every button as "sl"): {"field": [row ids]} — cells of rows only,
+     * the core gives them to the code as $#slPro {"row id": [fields]} (checks the visibility of the rows and the fields)
+     */
+    protected function selectedCells(MCPTableResolver $Resolver, array $args): array
+    {
+        if (!key_exists('selected_cells', $args) || $args['selected_cells'] === [] || $args['selected_cells'] === null) {
+            return [];
+        }
+        if (!is_array($args['selected_cells']) || array_is_list($args['selected_cells'])) {
+            throw new errorException('"selected_cells" must be {"field": [row ids]} — the cells of rows selected with the mouse in web');
+        }
+        $fields = $Resolver->getTable()->getVisibleFields('web');
+        $selected = [];
+        foreach ($args['selected_cells'] as $name => $ids) {
+            if (($fields[$name]['category'] ?? null) !== 'column') {
+                throw new errorException('selected_cells: ' . $name . ' is not a visible column — web selects only the cells of rows');
+            }
+            if ($ids = array_values(array_unique(array_filter(array_map('intval', (array)$ids))))) {
+                $selected[(string)$name] = $ids;
+            }
+        }
+        return $selected;
     }
 
     /**
@@ -2210,7 +2339,7 @@ class MCPTools
         $out = $this->changesAnswer($Resolver, $Actions, $this->withCheckedHint($field, $checked, fn() => $Actions->mcpInsertRowClick($insertHash, $field['name'], $checked)),
             'Pressed in the insert row: ' . $field['name']) . $this->afterClickLines($field, $checked);
         $res = $Actions->mcpInsertRow($insertHash);
-        return $out . $this->markdown($Resolver, $Actions, $res['f'])->insertRowCard($res['row'], $res['hash'], $this->windowArgs($args));
+        return $out . $this->markdown($Resolver, $Actions, $res['f'])->insertRowCard($res['row'], $res['hash'], $this->windowArgs($args), false, $res['panel'], $res['hidden']);
     }
 
     protected function insertHash(array $args): ?string
@@ -2252,7 +2381,7 @@ class MCPTools
         $reset = $this->names($args, 'reset') ?? [];
         $panelHash = $this->panelHash($args);
         $id = !empty($args['id']) ? (int)$args['id'] : null;
-        [$Resolver, $Actions] = $this->prepare($Totum, $args, true);
+        [$Resolver, $Actions] = $this->prepare($Totum, $args, true, [], !empty($args['save']));
         if ($data && ($panelHash || $id)) {
             $this->checkSystemWrite($Resolver, $Actions, $data, $panelHash ?? $id);
         }
