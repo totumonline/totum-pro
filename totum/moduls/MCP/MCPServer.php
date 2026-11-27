@@ -37,7 +37,13 @@ in "## Opened window" sections of the same answer: a table (linkToTable / linkTo
 and has the args to continue (`table`, `sess_hash`, `cycle`, crypted `filters`) - pass exactly these args in the next calls to work in the window;
 text/html/json windows show their content; a json window with a button is pressed with submit_json_window, a buttons window - submit_buttons.
 `refresh` of a window - re-read the source table when the work in the window is done.
-Rows checked with checkmarks in web are `checked_ids` of click_button (buttons marked checked-rows in get_table_schema need them).
+Rows checked with checkmarks in web are `checked_ids` of click_button (buttons marked checked-rows in get_table_schema need them),
+cells selected with the mouse - `selected_cells` {"field": [row ids]} ($#slPro of the button code). Fields marked dblclick-action (action on double click) are run with click_button.
+Blocks: #block of the table / row / cell (the cell is the most important) - like web no changes and no buttons there; a block of the table is often temporary
+(a background process): read its rows comment / table text, wait and re-read. Answers to writes show the rows whose formats were changed by the action too.
+Strict tables (header line `actual: strict`): pass `updated` (the code of the header of your last read / change) in every write.
+Tree view (header line `view: tree`): read_table gives "## Tree" (nodes, rows counts) and the rows depth-first; not loaded branches - read_table with `branch`;
+rows are added like web through the panel of a new row - insert_row with data {"tree": "<node>"}.
 Tables hidden from the tree are not in list_tables: they are opened only by buttons/links of other tables - do not open them directly.
 Files do not go through the answers: get_file saves a file to the disk of the stdio server or gives a curl link (HTTP);
 new files are {"path"} (stdio) / {"upload"} of upload_file (HTTP) / small {"name","text"|"base64"}; a file upload window - submit_file_upload.

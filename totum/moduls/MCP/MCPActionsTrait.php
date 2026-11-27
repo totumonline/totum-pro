@@ -37,12 +37,29 @@ trait MCPActionsTrait
         return parent::deCryptFilters($filtersIn);
     }
 
+    /* the calls of the tree view (mcpReadTree): the core works like the tree page of web (isPagingView('tree'), getResultTree) */
+    protected bool $mcpTreeCall = false;
+
     protected function getPageViewType(): string
     {
         if ($this->post['restoreView'] ?? false) {
             $this->creatorCommonView = true;
         }
-        return 'common';
+        return $this->mcpTreeCall ? 'tree' : 'common';
+    }
+
+    /**
+     * Tree view of web (getPageViewType 'tree'): the column tree of type tree with the PRO setting treeViewType;
+     * deleted rows (restoreView) are shown as a usual table
+     * @return string|null self | other; null — the usual view
+     */
+    public function mcpTreeViewType(): ?string
+    {
+        $tree = $this->Table->getFields()['tree'] ?? null;
+        if (!empty($this->post['restoreView']) || !$tree || $tree['category'] !== 'column' || $tree['type'] !== 'tree' || empty($tree['treeViewType'])) {
+            return null;
+        }
+        return $tree['treeViewType'] === 'self' ? 'self' : 'other';
     }
 
     protected function isAgentInterface(): bool
@@ -56,17 +73,33 @@ trait MCPActionsTrait
     }
 
     /**
-     * Optimistic lock by code of "updated" from the previous answer
+     * Strict actuality of the table (setting actual = strong, «Строгое»): like web a change is not saved
+     * if the table has changes that the user has not loaded (core checkTableUpdated with tableData.updated of the page)
      */
-    public function mcpCheckUpdated($code): void
+    public function mcpIsStrict(): bool
+    {
+        return ($this->Table->getTableRow()['actual'] ?? null) === 'strong';
+    }
+
+    /**
+     * Optimistic lock by code of "updated" from the previous answer (web sends tableData.updated with every change).
+     * Strict table: the code is required for the writes ($required) — like the page of web the agent writes only over the state it has read
+     */
+    public function mcpCheckUpdated($code, bool $required = false): void
     {
         if ($code === null || $code === '') {
+            if ($required && $this->mcpIsStrict()) {
+                throw new errorException('Table ' . $this->Table->getTableRow()['name'] . ' is in the strict mode of actuality (setting actual «strong»): '
+                    . 'like web a change is saved only over the state of the table you have read — pass "updated": the code of the header of your last read_table '
+                    . '(or of the answer to your last change). Re-read the table with read_table if you have not read it.');
+            }
             return;
         }
         $updated = json_decode($this->Table->getSavedUpdated() ?? '', true);
         if ((string)($updated['code'] ?? '') !== (string)$code) {
             throw new errorException($this->translate('Table [[%s]] was changed. Update the table to make the changes.',
-                    $this->Table->getTableRow()['title']) . ' (updated code ' . ($updated['code'] ?? '') . ')');
+                    $this->Table->getTableRow()['title'])
+                . ' (code ' . $code . ' is not actual: the table was changed after it) — re-read the table with read_table, check the data and repeat the change with "updated" = the new code of the header');
         }
     }
 
@@ -95,18 +128,127 @@ trait MCPActionsTrait
     }
 
     protected ?array $mcpTextsBefore = null;
+    protected ?array $mcpFormatsBefore = null;
 
     /**
-     * Snapshot of tabletext/tablehtml/tablecomment before an action: the answer shows them only if the action changed them
+     * Snapshot of tabletext/tablehtml/tablecomment and of the flags of the table format (#block, #blockadd…) before an action:
+     * the answer shows them only if the action changed them
      */
     public function mcpRememberTableTexts(): void
     {
-        $this->mcpTextsBefore = MCPMarkdown::tableTexts($this->mcpTableFormat());
+        $f = $this->mcpTableFormat();
+        $this->mcpTextsBefore = MCPMarkdown::tableTexts($f) + ['flags' => MCPMarkdown::tableFlags($f)];
     }
 
     public function mcpTableTextsBefore(): ?array
     {
         return $this->mcpTextsBefore;
+    }
+
+    /* rows whose formats are compared before and after an action (the first rows of the filters in the order of web) */
+    public const MCP_FORMATS_ROWS = 500;
+    /* keys of the formats that change the work with data (the usual marks of the answers) */
+    protected const MCP_FORMAT_CELL_KEYS = ['block', 'text', 'textasvalue', 'comment', 'placeholder', 'icon', 'fieldParams', 'hide'];
+    protected const MCP_FORMAT_ROW_KEYS = ['block', 'blockdelete', 'blockorder', 'blockduplicate', 'rowcomment'];
+
+    /**
+     * Like web: after every action web recalculates the formats of the rows of its page (getTableClientChangedData — columns with a format
+     * and the row format) and shows the changed ones. The agent has no page: the formats of the first rows of the filters and of the params
+     * are remembered before the action, the answer shows the rows whose formats were changed by the action even if their data did not change
+     */
+    public function mcpRememberFormats(): void
+    {
+        $this->mcpFormatsBefore = $this->mcpFormatsSnapshot(null);
+        $this->mcpParamsBefore = $this->mcpParamsValues();
+    }
+
+    protected ?array $mcpParamsBefore = null;
+
+    /**
+     * Values of params / footers: the changes of them by codes (set of a button…) are not in getChangeIds of simple tables
+     */
+    protected function mcpParamsValues(): array
+    {
+        $values = [];
+        foreach ($this->Table->getVisibleFields('web') as $name => $field) {
+            if (in_array($field['category'], ['param', 'footer'])) {
+                $cell = $this->Table->getTbl()['params'][$name] ?? [];
+                $values[$name] = json_encode([$cell['v'] ?? null, $cell['h'] ?? null, $cell['c'] ?? null], JSON_UNESCAPED_UNICODE);
+            }
+        }
+        return $values;
+    }
+
+    /**
+     * @param int[]|null $ids rows; null — the first rows of the filters
+     * @return array|null ['rows' => [id => sign], 'params' => [name => sign]]; null — the table has no formats
+     */
+    protected function mcpFormatsSnapshot(?array $ids): ?array
+    {
+        $columns = $params = [];
+        foreach ($this->Table->getVisibleFields('web') as $name => $field) {
+            if (!empty($field['format']) && $field['category'] !== 'filter') {
+                $field['category'] === 'column' ? $columns[] = $name : $params[] = $name;
+            }
+        }
+        $rowFormat = !in_array($this->Table->getTableRow()['row_format'] ?? '', ['', 'f1=:'], true);
+        if (!$columns && !$params && !$rowFormat) {
+            return null;
+        }
+        $this->Table->reCalculateFilters('web', false, false, ['params' => $this->getPermittedFilters($this->post['filters'] ?? [])]);
+        $snapshot = ['rows' => [], 'params' => []];
+        if ($columns || $rowFormat) {
+            if (is_null($ids)) {
+                $where = $this->Table->filtersParamsForLoadRows('web');
+                $ids = $where === false ? [] : array_map('intval', $this->Table->getByParams(['where' => $where, 'field' => 'id',
+                    'limit' => static::MCP_FORMATS_ROWS, 'order' => $this->Table->orderParamsForLoadRows()], 'list'));
+            }
+            if ($ids && ($loaded = $this->Table->loadFilteredRows('web', $ids))) {
+                $this->mcpResetSelectViewLists();
+                $rows = array_values(array_intersect_key($this->Table->getTbl()['rows'], array_flip($loaded)));
+                foreach ($this->mcpFormat(['rows' => $rows], 'web', $loaded, $columns)['rows'] as $row) {
+                    $sign = ['' => array_intersect_key(is_array($row['f'] ?? null) ? $row['f'] : [], array_flip(static::MCP_FORMAT_ROW_KEYS))];
+                    foreach ($columns as $name) {
+                        $sign[$name] = array_intersect_key(is_array($row[$name]['f'] ?? null) ? $row[$name]['f'] : [], array_flip(static::MCP_FORMAT_CELL_KEYS));
+                    }
+                    $snapshot['rows'][(int)$row['id']] = $sign;
+                }
+            }
+        }
+        if ($params) {
+            $formatted = $this->mcpFormat(['params' => array_intersect_key($this->Table->getTbl()['params'], array_flip($params))], 'web', [], $params);
+            foreach ($formatted['params'] ?? [] as $name => $cell) {
+                $snapshot['params'][$name] = array_intersect_key(is_array($cell['f'] ?? null) ? $cell['f'] : [], array_flip(static::MCP_FORMAT_CELL_KEYS));
+            }
+        }
+        return $snapshot;
+    }
+
+    /**
+     * Rows / params whose formats were changed by the action (compared with mcpRememberFormats)
+     * @param int[] $skipIds rows that are in the answer anyway (changed, added, deleted)
+     * @return array ['rows' => [id => [field names, '' — the row format]], 'params' => [names]]
+     */
+    protected function mcpChangedFormats(array $skipIds): array
+    {
+        $before = $this->mcpFormatsBefore;
+        if (!$before) {
+            return ['rows' => [], 'params' => []];
+        }
+        $ids = array_values(array_diff(array_keys($before['rows']), $skipIds));
+        $after = $this->mcpFormatsSnapshot($ids) ?? ['rows' => [], 'params' => []];
+        $rows = [];
+        foreach ($ids as $id) {
+            if (!key_exists($id, $after['rows'])) {
+                continue;
+            }
+            $changed = array_keys(array_filter($before['rows'][$id], fn($sign, $name) => ($after['rows'][$id][$name] ?? []) != $sign, ARRAY_FILTER_USE_BOTH));
+            if ($changed) {
+                $rows[$id] = $changed;
+            }
+        }
+        $params = array_keys(array_filter($before['params'], fn($sign, $name) => ($after['params'][$name] ?? []) != $sign, ARRAY_FILTER_USE_BOTH));
+        return ['rows' => $rows, 'params' => $params];
     }
 
     /**
@@ -137,6 +279,221 @@ trait MCPActionsTrait
         return $result;
     }
 
+    /**
+     * Tree view like the tree page of web (getTreeTopLevel / loadTreeBranches / loadTreeRows of the core): the nodes are the list of the select
+     * of the field tree (its codeSelect — roots, order), the rows are loaded by the loaded branches; the agent gets them in one answer
+     * in the order of the open tree of web (depth-first).
+     * @param string[] $branches [] — the opening of the page (top level: treeViewLoad / treeViewOpen), else — the opening of these branches
+     * @param bool $recursive with all the branches inside ("Open all" of the menu of a folder)
+     * @param int $offset / $limit rows of the answer (paged tree — rows of the branch in the database)
+     * @return array form, params, f, updated, type, paging, nodes [key => {title, parent, loaded, count}], list [key => {title, parent}],
+     *               counts [tree value => rows], rows (depth-first), allCount, offset, folderRows [node => row id] (tree_category)
+     */
+    public function mcpReadTree(array $branches, bool $recursive, int $offset, int $limit, bool $recalculate): array
+    {
+        $addFilters = $this->getPermittedFilters($this->post['filters'] ?? []);
+        if ($recalculate) {
+            $this->Table->reCalculateFromOvers(['calculate' => aTable::CALC_INTERVAL_TYPES['changed'], 'channel' => 'web', 'addFilters' => $addFilters]);
+        }
+        $this->Table->reCalculateFilters('web', true, $addFilters);
+        $result = ['form' => $this->getTableClientForm(), 'type' => $this->mcpTreeViewType()];
+        if (method_exists($this->Table, 'withoutNotLoaded')) {
+            $this->Table->withoutNotLoaded();
+        }
+        $treeField = $this->Table->getFields()['tree'];
+        $Tree = Field::init($treeField, $this->Table);
+        $Tree->clearCachedLists();
+        $val = ['v' => null];
+        $list = [];
+        foreach ($Tree->calculateSelectList($val, [], $this->Table->getTbl()) as $key => $item) {
+            if (is_array($item) && empty($item[1])) {
+                $list[(string)$key] = ['title' => static::mcpScalar($item[0] ?? $key), 'parent' => isset($item[3]) ? (string)$item[3] : null];
+            }
+        }
+        $result['list'] = $list;
+
+        $this->mcpTreeCall = true;
+        try {
+            $result['paging'] = $this->isPagingView('tree');
+            if ($result['paging'] && $recursive) {
+                throw new errorException('The tree of this table is paged by folders (pagination of the table): read one folder at a time with "branch" + offset / limit, without recursive');
+            }
+            $branches = array_values(array_unique(array_map('strval', $branches)));
+            foreach ($branches as $branch) {
+                if ($branch !== '' && !key_exists($branch, $list)) {
+                    throw new errorException('Branch ' . $branch . ' is not a node of the tree of the table (the nodes are the options of the field tree for the current filters): '
+                        . 'see the section "## Tree" of read_table without branch');
+                }
+            }
+            if (!$branches) {
+                /* getTreeTopLevel: the roots are loaded, their children are shown; treeViewLoad / treeViewOpen — everything */
+                $load = !empty($treeField['treeViewLoad']);
+                $tree = $this->getResultTree(function ($k, $v) use ($load) {
+                    if ($v[3] === null || $load) {
+                        return 'closed';
+                    } elseif (is_null($v['path'][3])) {
+                        return 'child';
+                    }
+                }, null);
+            } else {
+                /* loadTreeBranches: the branch with its rows, its children are shown; recursive — the whole branch is loaded */
+                $isInside = function ($v) use ($branches) {
+                    $path = $v;
+                    while ($path) {
+                        if (in_array((string)($path[3] ?? ''), $branches, true) && ($path[3] ?? null) !== null) {
+                            return true;
+                        }
+                        $path = $path['path'] ?? null;
+                    }
+                    return false;
+                };
+                $tree = $this->getResultTree(function ($k, $v) use ($branches, $recursive, $isInside) {
+                    if (in_array((string)$k, $branches, true)) {
+                        return 'this';
+                    } elseif ($recursive && $isInside($v)) {
+                        return 'parent';
+                    } elseif (in_array((string)($v[3] ?? ''), $branches, true) && ($v[3] ?? null) !== null) {
+                        return 'child';
+                    }
+                }, $branches);
+            }
+        } finally {
+            $this->mcpTreeCall = false;
+        }
+
+        $nodes = [];
+        foreach ($tree['tree'] ?? [] as $node) {
+            $key = (string)($node['v'] ?? '');
+            $nodes[$key] = ['title' => static::mcpScalar($node['t'] ?? $key), 'parent' => isset($node['p']) ? (string)$node['p'] : null,
+                    'loaded' => !empty($node['l']) || $key === ''] + (key_exists('count', $node) ? ['count' => (int)$node['count']] : []);
+        }
+        $result['nodes'] = $nodes;
+
+        $where = $this->Table->filtersParamsForLoadRows('web');
+        $rows = $tree['rows'] ?? [];
+        $result['allCount'] = null;
+        if ($result['paging'] && $branches) {
+            /* loadTreeRows: the rows of a folder by pages */
+            $rows = [];
+            $result['allCount'] = 0;
+            foreach ($branches as $branch) {
+                $branchWhere = $where === false ? false : [...$where, ['field' => 'tree', 'operator' => '=', 'value' => $branch]];
+                $ids = $branchWhere === false ? [] : $this->Table->getByParams(['where' => $branchWhere, 'field' => 'id', 'offset' => $offset, 'limit' => $limit,
+                    'order' => $this->Table->orderParamsForLoadRows()], 'list');
+                $result['allCount'] += $branchWhere === false ? 0 : $this->Table->countByParams($branchWhere);
+                if ($ids) {
+                    array_push($rows, ...$this->Table->getSortedFilteredRows('web', 'web', $ids)['rows']);
+                }
+            }
+        }
+        /* rows of the nodes (tree value => count) for the filters: the paged tree has the counts of the core */
+        $result['counts'] = [];
+        if (!$result['paging'] && $where !== false) {
+            foreach ($this->Table->getByParams(['where' => $where, 'field' => 'tree'], 'list') as $value) {
+                $value = is_scalar($value) ? (string)$value : '';
+                $result['counts'][$value] = ($result['counts'][$value] ?? 0) + 1;
+            }
+        }
+        $result['folderRows'] = [];
+        if ($result['type'] === 'other' && ($this->Table->getFields()['tree_category']['category'] ?? null) === 'column') {
+            foreach ($rows as $row) {
+                if (($cat = $row['tree_category']['v'] ?? null) !== null && $cat !== '') {
+                    $result['folderRows'][(string)$cat] = (int)$row['id'];
+                }
+            }
+        }
+
+        $ordered = $this->mcpTreeOrder($rows, $nodes, $result['type'], (bool)$branches);
+        $result['offset'] = $offset;
+        if ($result['paging'] && $branches) {
+            $page = $ordered;
+        } else {
+            $result['allCount'] = count($ordered);
+            $page = array_slice($ordered, $offset, $limit);
+        }
+        $pageIds = array_column($page, 'id');
+        $result['params'] = $this->addValuesAndFormatsOfParams($this->Table->getTbl()['params'], $pageIds)['params'] ?? [];
+        $result['f'] = $this->getTableFormat($pageIds);
+        unset($result['f']['order']);
+        $result['rows'] = $page;
+        $result['branches'] = $branches;
+        $result['updated'] = $this->Table->getSavedUpdated();
+        return $result;
+    }
+
+    protected static function mcpScalar(mixed $value): string
+    {
+        return is_scalar($value) ? (string)$value : json_encode($value, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Rows in the order of the open tree of web (_treeRefresh): a node, its rows, its subnodes (other — the rows of a folder in the order of the table;
+     * self — a row is the node of its children: the rows that are not nodes first, the nodes in the order of the list of the tree)
+     * @param array $nodes [key => {parent}] in the order of the list
+     * @param bool $isBranch the answer of branches: the tops are the nodes without the parent among the nodes
+     */
+    protected function mcpTreeOrder(array $rows, array $nodes, string $type, bool $isBranch): array
+    {
+        $byParent = [];
+        foreach ($rows as $row) {
+            $byParent[static::mcpScalar($row['tree']['v'] ?? '')][] = $row;
+        }
+        $subNodes = [];
+        foreach ($nodes as $key => $node) {
+            $parent = $node['parent'] !== null && key_exists($node['parent'], $nodes) ? $node['parent'] : '';
+            if ($key !== '') {
+                $subNodes[$parent][] = (string)$key;
+            }
+        }
+        $nodeOrder = array_flip(array_map('strval', array_keys($nodes)));
+        $ordered = [];
+        $done = [];
+        $put = function (array $row) use (&$ordered, &$done) {
+            if (!isset($done[$row['id']])) {
+                $done[$row['id']] = true;
+                $ordered[] = $row;
+            }
+        };
+        $emit = function (string $key, int $level) use (&$emit, &$byParent, $subNodes, $nodeOrder, $type, $put, &$done) {
+            if ($level > 100) {
+                return;
+            }
+            $rows = $byParent[$key] ?? [];
+            unset($byParent[$key]);
+            if ($type === 'self') {
+                usort($rows, fn($a, $b) => (key_exists((string)$a['id'], $nodeOrder) ? 1 + $nodeOrder[(string)$a['id']] : 0)
+                    <=> (key_exists((string)$b['id'], $nodeOrder) ? 1 + $nodeOrder[(string)$b['id']] : 0));
+                foreach ($rows as $row) {
+                    $put($row);
+                    $emit((string)$row['id'], $level + 1);
+                }
+                foreach ($subNodes[$key] ?? [] as $sub) {
+                    if (!isset($done[$sub])) {
+                        $emit($sub, $level + 1);
+                    }
+                }
+                return;
+            }
+            foreach ($rows as $row) {
+                $put($row);
+            }
+            foreach ($subNodes[$key] ?? [] as $sub) {
+                $emit($sub, $level + 1);
+            }
+        };
+        if ($isBranch && $type === 'self') {
+            foreach ($subNodes[''] ?? [] as $top) {
+                $emit($top, 1);
+            }
+        } else {
+            $emit('', 0);
+        }
+        foreach ($byParent as $rest) {
+            array_map($put, $rest);
+        }
+        return $ordered;
+    }
+
     protected function mcpOrderRows(array $rows, array &$f): array
     {
         if (!$rows || empty($f['order'])) {
@@ -158,10 +515,46 @@ trait MCPActionsTrait
     }
 
     /**
+     * Which format blocks a cell like web: the formats are merged as $.extend({}, table f, row f, cell f) — the cell is the most important,
+     * an explicit block: false of a lower level unblocks it (the table is the least important)
+     * @return string|null cell | row | table — the level whose block works; null — not blocked
+     */
+    public static function mcpBlockLevel(array $tableF, array $rowF = [], array $cellF = []): ?string
+    {
+        foreach (['cell' => $cellF, 'row' => $rowF, 'table' => $tableF] as $level => $f) {
+            if (array_key_exists('block', $f)) {
+                return empty($f['block']) ? null : $level;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The texts of the table format for an error about its block: the block of the table is often temporary
+     * (e.g. while a background process works) and the texts say what to do
+     */
+    protected function mcpTableBlockHint(array $tableF): string
+    {
+        $texts = MCPMarkdown::tableTexts($tableF);
+        return ($texts['comment'] !== '' ? "\nrows comment: " . $texts['comment'] : '')
+            . ($texts['text'] !== '' ? "\ntable text: " . $texts['text'] : '')
+            . "\nThe block is set by the format of the table and may be temporary (e.g. while a background process works): follow the texts of the table, "
+            . 'wait and re-read it with read_table before the next change.';
+    }
+
+    protected function mcpRowBlockHint(array $rowF): string
+    {
+        return !empty($rowF['rowcomment']) && is_scalar($rowF['rowcomment']) ? "\nrow comment: " . MCPMarkdown::plain((string)$rowF['rowcomment']) : '';
+    }
+
+    /**
      * Blocks from formats (setFormat block, setRowFormat block/blockdelete/blockduplicate/blockorder,
      * setTableFormat block/blockadd/blockdelete/blockduplicate/blockorder) are not checked by the core on write
      * (web UI only disables controls, a server check exists only where it is coded explicitly),
      * so the agent interface checks them on the server side before changes.
+     * Cells (edit, buttons): the hierarchy of web table → row → cell (mcpBlockLevel); rows (delete / duplicate / reorder):
+     * the flag of the table or of the row, block of the row (block: false of the row unblocks the block of the table).
+     * The action on double click of a field (CodeActionOnClick, not a button) works in web exactly on the blocked cells — it is not checked.
      *
      * @param string $action edit|add|delete|duplicate|reorder|click
      * @param array $ids rows of the action
@@ -169,45 +562,63 @@ trait MCPActionsTrait
      */
     public function mcpCheckBlocks(string $action, array $ids = [], array $cells = []): void
     {
-        $flag = ['edit' => 'block', 'add' => 'blockadd', 'delete' => 'blockdelete', 'duplicate' => 'blockduplicate', 'reorder' => 'blockorder', 'click' => null][$action];
+        $flag = ['edit' => null, 'add' => 'blockadd', 'delete' => 'blockdelete', 'duplicate' => 'blockduplicate', 'reorder' => 'blockorder', 'click' => null][$action];
         $this->Table->reCalculateFilters('web', false, false, ['params' => $this->getPermittedFilters($this->post['filters'] ?? [])]);
 
         $rowIds = array_values(array_unique(array_map('intval', array_merge($ids, array_keys(array_diff_key($cells, ['params' => 1]))))));
         $tableFormat = $this->getTableFormat($rowIds);
         if ($flag && !empty($tableFormat[$flag])) {
-            throw new errorException('The table is blocked by format (#' . $flag . '): ' . $action . ' is not allowed');
+            throw new errorException('The table is blocked by format (#' . $flag . '): ' . $action . ' is not allowed' . $this->mcpTableBlockHint($tableFormat));
         }
         if ($action === 'add') {
             return;
         }
 
         $clearName = fn($name) => explode('/', (string)$name)[0];
+        $fields = $this->Table->getFields();
+        $checked = fn($name) => $action !== 'click' || ($fields[$clearName($name)]['type'] ?? null) === 'button';
+        $cellError = function (string $name, ?int $id, string $level, array $rowF) use ($tableFormat) {
+            $where = 'Field ' . $name . ($id ? ' of row ' . $id : '');
+            return new errorException(match ($level) {
+                'cell' => $where . ' is blocked by format (#block)',
+                'row' => $where . ' is blocked by the format of the row (#block of the row)' . $this->mcpRowBlockHint($rowF),
+                default => $where . ' is blocked by the format of the table (#block of the table)' . $this->mcpTableBlockHint($tableFormat),
+            });
+        };
+        $isRowAction = in_array($action, ['delete', 'duplicate', 'reorder']);
         if ($rowIds) {
             $loaded = $this->Table->loadFilteredRows('web', $rowIds);
             $rows = array_values(array_intersect_key($this->Table->getTbl()['rows'], array_flip($loaded)));
             $fieldNames = [];
-            foreach (array_diff_key($cells, ['params' => 1]) as $fields) {
-                array_push($fieldNames, ...array_map($clearName, $fields));
+            foreach (array_diff_key($cells, ['params' => 1]) as $cellNames) {
+                array_push($fieldNames, ...array_map($clearName, array_filter($cellNames, $checked)));
             }
             $formatted = $this->mcpFormat(['rows' => $rows], 'web', $loaded, fieldNames: array_values(array_unique($fieldNames)));
             foreach ($formatted['rows'] as $row) {
-                if ($flag && $action !== 'click' && !empty($row['f'][$flag])) {
-                    throw new errorException('Row ' . $row['id'] . ' is blocked by format (#' . $flag . '): ' . $action . ' is not allowed');
+                $rowF = is_array($row['f'] ?? null) ? $row['f'] : [];
+                if ($isRowAction) {
+                    if (!empty($rowF[$flag])) {
+                        throw new errorException('Row ' . $row['id'] . ' is blocked by format (#' . $flag . '): ' . $action . ' is not allowed' . $this->mcpRowBlockHint($rowF));
+                    }
+                    if ($level = static::mcpBlockLevel($tableFormat, $rowF)) {
+                        throw new errorException('Row ' . $row['id'] . ' is blocked by the format of the ' . $level . ' (#block): ' . $action . ' is not allowed'
+                            . ($level === 'row' ? $this->mcpRowBlockHint($rowF) : $this->mcpTableBlockHint($tableFormat)));
+                    }
                 }
-                foreach ($cells[$row['id']] ?? [] as $name) {
-                    if (!empty($row[$clearName($name)]['f']['block'])) {
-                        throw new errorException('Field ' . $clearName($name) . ' of row ' . $row['id'] . ' is blocked by format (#block)');
+                foreach (array_filter($cells[$row['id']] ?? [], $checked) as $name) {
+                    $cellF = is_array($row[$clearName($name)]['f'] ?? null) ? $row[$clearName($name)]['f'] : [];
+                    if ($level = static::mcpBlockLevel($tableFormat, $rowF, $cellF)) {
+                        throw $cellError($clearName($name), (int)$row['id'], $level, $rowF);
                     }
                 }
             }
         }
-        if (!empty($cells['params'])) {
-            $names = array_values(array_unique(array_map($clearName, $cells['params'])));
+        if ($names = array_values(array_unique(array_map($clearName, array_filter($cells['params'] ?? [], $checked))))) {
             $params = $this->mcpFormat(['params' => array_intersect_key($this->Table->getTbl()['params'], array_flip($names))],
                 'web', [], fieldNames: $names)['params'] ?? [];
             foreach ($params as $name => $param) {
-                if (!empty($param['f']['block'])) {
-                    throw new errorException('Field ' . $name . ' is blocked by format (#block)');
+                if ($level = static::mcpBlockLevel($tableFormat, [], is_array($param['f'] ?? null) ? $param['f'] : [])) {
+                    throw $cellError($name, null, $level, []);
                 }
             }
         }
@@ -655,19 +1066,27 @@ trait MCPActionsTrait
         } else {
             $this->mcpCheckInsertHash($hash);
         }
-        if ($data) {
+        $tableF = $this->getTableFormat([]);
+        /* tree view: web adds rows only through the panel of a new row — the fields of the panel, blocks of the panel (table → row → cell) */
+        $asPanel = (bool)$this->mcpTreeViewType();
+        if ($data || ($asPanel && $reset)) {
             $before = $this->mcpFormatInsertRow($this->getInsertRow($hash));
-            foreach (array_keys($data) as $name) {
-                $name = explode('/', (string)$name)[0];
-                if (!empty($before[$name]['f']['block'])) {
-                    throw new errorException('Field ' . $name . ' of the insert row is blocked by format (#block)');
+            if ($asPanel) {
+                $this->mcpCheckPanelFields($before, $tableF, [...array_keys($data), ...$reset], 'panel of the new row');
+            } else {
+                foreach (array_keys($data) as $name) {
+                    $name = explode('/', (string)$name)[0];
+                    if (!empty($before[$name]['f']['block'])) {
+                        throw new errorException('Field ' . $name . ' of the insert row is blocked by format (#block)');
+                    }
                 }
             }
         }
         foreach ($reset as $name) {
             $this->getInsertRow($hash, [], [], $name);
         }
-        return ['row' => $this->mcpFormatInsertRow($this->getInsertRow($hash, $data)), 'hash' => $hash, 'f' => $this->getTableFormat([])];
+        $row = $this->mcpFormatInsertRow($this->getInsertRow($hash, $data));
+        return ['row' => $row, 'hash' => $hash, 'f' => $tableF, 'panel' => $asPanel, 'hidden' => $asPanel ? static::mcpPanelHiddenFields($row, $tableF) : []];
     }
 
     /**
@@ -716,21 +1135,55 @@ trait MCPActionsTrait
         foreach ($reset as $name) {
             $edit[$name] = ['v' => null, 'h' => false];
         }
+        $tableF = $this->getTableFormat([$id]);
         if ($edit) {
-            $before = $this->mcpFormatInsertRow($this->getEditRow($hash, ['id' => $id], []));
-            if (!empty($before['f']['block'])) {
-                throw new errorException('Row ' . $id . ' is blocked by format (#block): edit is not allowed');
-            }
-            foreach (array_keys($edit) as $name) {
-                if (!empty($before[explode('/', (string)$name)[0]]['f']['block'])) {
-                    throw new errorException('Field ' . $name . ' of row ' . $id . ' is blocked by format (#block)');
-                }
-            }
+            $this->mcpCheckPanelFields($this->mcpFormatInsertRow($this->getEditRow($hash, ['id' => $id], [])), $tableF, array_keys($edit), 'row ' . $id);
         }
-        $raw = $this->getEditRow($hash, $edit + ['id' => $id], []);
-        return ['row' => $this->mcpFormatInsertRow($raw), 'hash' => $hash, 'id' => $id, 'f' => $this->getTableFormat([$id]),
+        $row = $this->mcpFormatInsertRow($this->getEditRow($hash, $edit + ['id' => $id], []));
+        return ['row' => $row, 'hash' => $hash, 'id' => $id, 'f' => $tableF, 'hidden' => static::mcpPanelHiddenFields($row, $tableF),
             'changed' => array_values(array_diff(array_keys(TmpTables::init($this->Totum->getConfig())
                 ->getByHash(TmpTables::SERVICE_TABLES['edit_row'], $this->User, $hash)), ['id']))];
+    }
+
+    /**
+     * Fields hidden in the panel of web: format hide "panel" / "extpanel" ($.extend({}, table f, row f, cell f).hide — the panel does not show them)
+     * @param array $row formatted row of the panel
+     * @return string[] names of the hidden fields
+     */
+    public static function mcpPanelHiddenFields(array $row, array $tableF): array
+    {
+        $hidden = [];
+        foreach ($row as $name => $cell) {
+            if (!is_array($cell) || in_array($name, ['id', 'f', 'n'], true)) {
+                continue;
+            }
+            $hide = $cell['f']['hide'] ?? $row['f']['hide'] ?? $tableF['hide'] ?? null;
+            if (is_array($hide) && (!empty($hide['panel']) || !empty($hide['extpanel']))) {
+                $hidden[] = (string)$name;
+            }
+        }
+        return $hidden;
+    }
+
+    /**
+     * Fields of a panel set by the agent: like web only the fields shown in the panel, not blocked (table → row → cell)
+     * @param array $before formatted row of the panel before the change
+     */
+    protected function mcpCheckPanelFields(array $before, array $tableF, array $names, string $label): void
+    {
+        $hidden = static::mcpPanelHiddenFields($before, $tableF);
+        $rowF = is_array($before['f'] ?? null) ? $before['f'] : [];
+        foreach ($names as $name) {
+            $name = explode('/', (string)$name)[0];
+            if (in_array($name, $hidden, true)) {
+                throw new errorException('Field ' . $name . ' of the ' . $label . ' is hidden in the panel by the format (hide panel / extpanel): '
+                    . 'like web it is not set in the panel');
+            }
+            if ($level = static::mcpBlockLevel($tableF, $rowF, is_array($before[$name]['f'] ?? null) ? $before[$name]['f'] : [])) {
+                throw new errorException('Field ' . $name . ' of the ' . $label . ' is blocked by the format of the ' . $level . ' (#block)'
+                    . ($level === 'row' ? $this->mcpRowBlockHint($rowF) : ($level === 'table' ? $this->mcpTableBlockHint($tableF) : '')));
+            }
+        }
     }
 
     /**
@@ -893,27 +1346,36 @@ trait MCPActionsTrait
             ...array_keys($changedRows), ...$restored];
         $ids = array_values(array_diff(array_unique(array_map('intval', $ids)), $deleted));
 
+        $formats = $this->mcpChangedFormats([...$ids, ...$deleted]);
+        $formatIds = array_keys($formats['rows']);
         $moreIds = array_slice($ids, static::MCP_MAX_CHANGED_ROWS);
         $ids = array_slice($ids, 0, static::MCP_MAX_CHANGED_ROWS);
+        $moreFormatIds = array_slice($formatIds, max(0, static::MCP_MAX_CHANGED_ROWS - count($ids)));
+        $formatIds = array_slice($formatIds, 0, max(0, static::MCP_MAX_CHANGED_ROWS - count($ids)));
 
-        $loaded = $ids ? $this->Table->loadFilteredRows('web', $ids) : [];
+        $loaded = $ids || $formatIds ? $this->Table->loadFilteredRows('web', [...$ids, ...$formatIds]) : [];
         $rows = [];
-        foreach ($loaded as $id) {
-            if (!empty($this->Table->getTbl()['rows'][$id])) {
+        foreach ([...$ids, ...$formatIds] as $id) {
+            if (in_array($id, $loaded) && !empty($this->Table->getTbl()['rows'][$id])) {
                 $rows[] = $this->Table->getTbl()['rows'][$id];
             }
         }
 
         $paramsNames = array_merge(array_keys((array)($changeIds['changed']['params'] ?? [])), array_keys($data['modify']['params'] ?? []),
-            array_keys($data['setValuesToDefaults']['params'] ?? []));
+            array_keys($data['setValuesToDefaults']['params'] ?? []), $formats['params'],
+            $this->mcpParamsBefore === null ? [] : array_keys(array_diff_assoc($this->mcpParamsValues(), $this->mcpParamsBefore)));
         $params = array_intersect_key($this->Table->getTbl()['params'] ?? [], array_flip($paramsNames));
 
         $this->mcpResetSelectViewLists();
         $formatted = $this->mcpFormat(['rows' => $rows, 'params' => $params], 'web', $loaded);
+        $formatRows = array_values(array_filter($formatted['rows'] ?? [], fn($row) => in_array((int)$row['id'], $formatIds)));
 
         return [
             'mcpChanges' => true,
-            'rows' => $formatted['rows'] ?? [],
+            'rows' => array_values(array_filter($formatted['rows'] ?? [], fn($row) => !in_array((int)$row['id'], $formatIds))),
+            'formatRows' => $formatRows,
+            'formatChanged' => array_intersect_key($formats['rows'], array_flip($formatIds)),
+            'moreFormatIds' => $moreFormatIds,
             'params' => $formatted['params'] ?? [],
             'f' => $this->getTableFormat($loaded),
             'added' => $added,
