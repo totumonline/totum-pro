@@ -78,6 +78,15 @@ class MCPMarkdown
         return $this;
     }
 
+    /* tree view of web (MCPActionsTrait::mcpTreeViewType): self | other; null — the usual view */
+    protected ?string $treeView = null;
+
+    public function withTreeView(?string $type): static
+    {
+        $this->treeView = $type;
+        return $this;
+    }
+
     /* ======================== common helpers ======================== */
 
     public static function plain(?string $html): string
@@ -155,6 +164,12 @@ class MCPMarkdown
         }
         return $line . "\n" . $this->updatedLine($this->Table->getSavedUpdated()) . ' · table: ' . $this->tableRights() . "\n"
             . $this->orderLine() . "\n"
+            . (($tableRow['actual'] ?? null) === 'strong' && $this->isWrite
+                ? 'actual: strict — like web a change is saved only over the state of the table you have read: pass "updated" = the code of this header '
+                . '(or of the answer to your last change) in every write (edit, add_row, edit_panel with save, delete_rows, restore_rows, duplicate_rows, reorder_rows, recalc_rows); '
+                . 'the error "was changed" — re-read the table and repeat' . "\n"
+                : '')
+            . $this->treeViewLine()
             . (MCPTableResolver::isHiddenFromTree($this->Table->getTotum(), (int)$tableRow['id'])
                 ? 'hidden from the tree: the table is opened by buttons/links of other tables — work with it only in such a window (with its args), do not open it directly' . "\n"
                 : '');
@@ -292,6 +307,188 @@ class MCPMarkdown
             $out .= ($out ? '' : "\n") . $this->rowsComment($after, true);
         }
         return $out;
+    }
+
+    /**
+     * Flags of the table format that restrict the work with the table (#block, #blockadd, …)
+     * @return string[]
+     */
+    public static function tableFlags(array $f): array
+    {
+        return array_values(array_filter(static::TABLE_FORMAT_FLAGS, fn($flag) => !empty($f[$flag])));
+    }
+
+    /**
+     * For answers to writes: the flags of the table format switched on / off by the action — the block of the table is often set
+     * for the time of a background process: the texts of the table say what to do
+     * @param array $before mcpTableTextsBefore: flags, text, comment before the action (changed texts are shown by tableTextsChanges); $after — the table format after it
+     */
+    public function tableFlagsChanges(array $before, array $after): string
+    {
+        $now = static::tableFlags($after);
+        $on = array_diff($now, $before['flags'] ?? []);
+        $off = array_diff($before['flags'] ?? [], $now);
+        if (!$on && !$off) {
+            return '';
+        }
+        $texts = static::tableTexts($after);
+        $out = "\n";
+        if (in_array('block', $on)) {
+            $out .= "**table is blocked now (#block)** — changes of the table and its buttons are not possible until the format unblocks it "
+                . "(e.g. when a background process started by the action ends): follow the texts of the table, wait and re-read it with read_table before the next change\n";
+        }
+        if ($rest = array_diff($on, ['block'])) {
+            $out .= '**table format switched on: #' . implode(' #', $rest) . "** — these actions are blocked now\n";
+        }
+        if ($off) {
+            $out .= '**table format switched off: #' . implode(' #', $off) . "** — these actions are possible again\n";
+        }
+        if ($on) {
+            /* the changed texts follow in "Table text (changed)" / "rows comment (changed)" */
+            $out .= ($texts['comment'] !== '' && $texts['comment'] === ($before['comment'] ?? null) ? 'rows comment: ' . static::esc($texts['comment']) . "\n" : '')
+                . ($texts['text'] !== '' && $texts['text'] === ($before['text'] ?? null) ? 'table text: ' . $texts['text'] . "\n" : '');
+        }
+        return $out;
+    }
+
+    public const TREE_MAX_NODES = 300;
+
+    /**
+     * Nodes of the tree view (MCPActionsTrait::mcpReadTree) like the folders of the tree page of web, with the rows in them and how to open / add
+     * @param array $data result of mcpReadTree
+     * @param array $tableArgs table/cycle/sess_hash/filters for the calls
+     */
+    public function treeSection(array $data, array $tableArgs): string
+    {
+        $self = $data['type'] === 'self';
+        $list = $data['list'];
+        $nodes = $data['nodes'];
+        $counts = $data['counts'];
+        $call = fn(array $add) => json_encode($tableArgs + $add, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $children = [];
+        foreach ($list as $key => $item) {
+            $children[$item['parent'] ?? ''][] = (string)$key;
+        }
+        $subtree = [];
+        $total = function (string $key, int $level = 0) use (&$total, &$subtree, $children, $counts): int {
+            if (!key_exists($key, $subtree)) {
+                $subtree[$key] = $counts[$key] ?? 0;
+                if ($level < 100) {
+                    foreach ($children[$key] ?? [] as $child) {
+                        $subtree[$key] += $total($child, $level + 1);
+                    }
+                }
+            }
+            return $subtree[$key];
+        };
+        $path = function (string $key) use ($list): string {
+            $titles = [];
+            for ($i = 0; $key !== '' && key_exists($key, $list) && $i < 100; $i++) {
+                array_unshift($titles, $list[$key]['title']);
+                $key = (string)($list[$key]['parent'] ?? '');
+            }
+            return implode(' > ', $titles);
+        };
+        /* the nodes depth-first like the tree of web: a node, then its subnodes (in the order of the list) */
+        $subNodes = [];
+        foreach ($nodes as $key => $node) {
+            if ((string)$key !== '') {
+                $subNodes[$node['parent'] !== null && key_exists($node['parent'], $nodes) ? $node['parent'] : ''][] = (string)$key;
+            }
+        }
+        $ordered = [];
+        $walk = function (string $parent, int $level) use (&$walk, &$ordered, $subNodes) {
+            foreach ($level < 100 ? $subNodes[$parent] ?? [] : [] as $key) {
+                if (!key_exists($key, $ordered)) {
+                    $ordered[$key] = $level;
+                    $walk($key, $level + 1);
+                }
+            }
+        };
+        $walk('', 0);
+
+        $lines = [];
+        foreach ($ordered as $key => $level) {
+            $key = (string)$key;
+            $node = $nodes[$key];
+            if (count($lines) >= static::TREE_MAX_NODES) {
+                $lines[] = '- … ' . (count($nodes) - static::TREE_MAX_NODES) . ' more nodes — read them by branches';
+                break;
+            }
+            $hasChildren = !empty($children[$key]);
+            if ($data['paging']) {
+                $rows = isset($node['count']) ? ' · rows ' . $node['count'] : '';
+            } else {
+                $rows = ($self ? (($counts[$key] ?? 0) ? ' · children ' . $counts[$key] : '') : ' · rows ' . ($counts[$key] ?? 0))
+                    . ($hasChildren && $total($key) !== ($counts[$key] ?? 0) ? ' · in the branch ' . $total($key) : '');
+            }
+            $state = $data['paging']
+                ? ' · rows: read_table ' . $call(['branch' => $key])
+                : ($node['loaded'] ? ($self && !($counts[$key] ?? 0) ? '' : ' · loaded')
+                    : ($hasChildren || ($counts[$key] ?? 0) ? ' · not loaded — read_table ' . $call(['branch' => $key]) : ''));
+            $lines[] = str_repeat('  ', $level) . '- ' . static::esc($key) . ' «' . static::esc(static::plain($node['title'])) . '»' . $rows
+                . (isset($data['folderRows'][$key]) ? ' · folder row ' . $data['folderRows'][$key] : '') . $state;
+        }
+        $empty = $data['paging'] ? ($nodes['']['count'] ?? 0) : ($counts[''] ?? 0);
+        if (!$self && ($empty || key_exists('', $nodes))) {
+            array_unshift($lines, '- (no folder)' . (key_exists('', $nodes) && $nodes['']['title'] !== '' ? ' «' . static::esc($nodes['']['title']) . '»' : '')
+                . ' · rows ' . $empty . ($data['paging'] ? ' · rows: read_table ' . $call(['branch' => '']) : ''));
+        }
+
+        if ($data['branches']) {
+            $titles = array_map(fn($key) => $key === '' ? '(no folder)' : static::esc($key) . ' «' . static::esc(static::plain($path($key))) . '»', $data['branches']);
+            $out = "\n## Tree — branch " . implode(', ', $titles) . "\n";
+        } else {
+            /* rows of the tree: in its nodes (the roots of the select may cut it) and on the top level */
+            $inTree = ($counts[''] ?? 0) + array_sum(array_intersect_key($counts, $list));
+            $out = "\n## Tree (" . $data['type'] . ') — ' . count(array_diff(array_keys($nodes), [''])) . ' node(s) shown of ' . count($list)
+                . ($data['paging'] ? '' : ', ' . $inTree . ' row(s) in the tree') . "\n";
+        }
+        $out .= ($lines ? implode("\n", $lines) : '(no nodes)') . "\n";
+
+        $tree = $this->Table->getFields()['tree'] ?? [];
+        $notes = [];
+        $notes[] = $data['paging']
+            ? 'the tree is paged by folders (pagination of the table, like web): the rows of a folder — read_table with "branch" + offset / limit'
+            : 'the rows below are in the order of the open tree of web: ' . ($self ? 'a row, then its children' : 'a folder, its rows, then its subfolders')
+            . ' (the node of a row — its field tree, shown with the path); not loaded nodes (web loads them when they are opened) — read_table with "branch": "<key>"'
+            . ', recursive: true — with all the branches inside';
+        if ($this->isWrite && !empty($this->control['adding']) && !empty($this->fields['tree']['insertable'])) {
+            $noTop = !empty($tree['treeHideAddButton']) || !empty($this->tableFormat['hideadd']);
+            $notes[] = ($self
+                    ? 'add a child row like web (the button + of the row — the panel of a new row): insert_row ' . $call(['data' => ['tree' => '<row id>']])
+                    : 'add a row into a folder like web (the menu of the folder «Add a row» — the panel of a new row): insert_row ' . $call(['data' => ['tree' => '<folder key>']]))
+                . ', then add_row with its insert_hash; '
+                . ($noTop ? 'no adding on the top level (the button Add is hidden' . (!empty($tree['treeHideAddButton']) ? ': treeHideAddButton' : '') . '): a row is added only into a '
+                    . ($self ? 'row' : 'folder') : 'the top level — insert_row without tree (the button Add)');
+        }
+        if (!$self && !empty($tree['selectTable']) && empty($tree['treeBfield'])
+            && ($TreeTable = $this->Table->getTotum()->getTableRow($tree['selectTable'])) && $this->Table->getTotum()->getUser()->isTableInAccess($TreeTable['id'])) {
+            $notes[] = 'the folders are rows of ' . $tree['selectTable'] . ' (the menu of a folder in web): a new folder («Add a branch») — insert_row '
+                . json_encode(['table' => $tree['selectTable'], 'data' => [($tree['treeViewParentField'] ?? '') ?: 'tree' => '<parent folder key>']], JSON_UNESCAPED_UNICODE)
+                . '; edit a folder — edit_panel ' . json_encode(['table' => $tree['selectTable'], 'id' => '<folder key>'], JSON_UNESCAPED_UNICODE);
+        }
+        return $out . implode("\n", $notes) . "\n";
+    }
+
+    /**
+     * Tree view of web: how the rows are shown and opened
+     */
+    protected function treeViewLine(): string
+    {
+        if (!$this->treeView) {
+            return '';
+        }
+        $tree = $this->Table->getFields()['tree'] ?? [];
+        return 'view: tree (' . $this->treeView . ') — '
+            . ($this->treeView === 'self'
+                ? 'by this table: every row is a node, its children are the rows whose field tree is its id'
+                : 'by folders: the folders are the options of the field tree' . (!empty($tree['selectTable']) ? ' (rows of ' . $tree['selectTable'] . ')' : '')
+                . ', the rows of this table are in the folders by their field tree')
+            . '; read_table shows the rows in the order of the open tree and the nodes in "## Tree", '
+            . (!empty($tree['treeViewLoad']) ? 'all branches are loaded' : 'the branches inside are not loaded (like web until they are opened) — read them with "branch"')
+            . "\n";
     }
 
     /**
@@ -722,7 +919,7 @@ class MCPMarkdown
         switch ($field['type']) {
             case 'select':
             case 'tree':
-                return $this->selectValue($v, $cell['v_'] ?? null, !empty($field['multiple']));
+                return $this->selectValue($v, $cell['v_'] ?? null, !empty($field['multiple']), $field['type'] === 'tree');
             case 'checkbox':
                 return $v ? 'true' : 'false';
             case 'password':
@@ -748,7 +945,12 @@ class MCPMarkdown
         }
     }
 
-    protected function selectValue($v, $v_, bool $multiple): string
+    /**
+     * v_ of select: [title, deleted] / multiple [[title, deleted, key], …];
+     * v_ of tree (Tree::addViewValues): [title, deleted, path "Root > Parent > Title"] (treeViewTypeFull — [path, deleted]), multiple — a list of them:
+     * the tree is shown with the path of the node always (like the setting "show the path in the cell"), the key is the value itself
+     */
+    protected function selectValue($v, $v_, bool $multiple, bool $isTree = false): string
     {
         if (!is_array($v_)) {
             return static::esc($v);
@@ -765,20 +967,22 @@ class MCPMarkdown
             }
             return $str;
         };
+        $title = fn($item) => $isTree && is_scalar($item[2] ?? null) && (string)$item[2] !== '' ? $item[2] : ($item[0] ?? null);
         if ($multiple) {
             if (!is_array($v)) {
                 return static::esc($v);
             }
+            $v = array_values($v);
             $list = [];
             foreach (array_values($v_) as $i => $item) {
-                $list[] = $one($item[2] ?? $v[$i] ?? '', $item[0] ?? '', !empty($item[1]));
+                $list[] = $one($isTree ? ($v[$i] ?? '') : ($item[2] ?? $v[$i] ?? ''), $title($item) ?? '', !empty($item[1]));
             }
             return implode(', ', $list);
         }
         if (is_null($v)) {
             return static::esc($v_[0] ?? '');
         }
-        return $one($v, $v_[0] ?? $v, !empty($v_[1]));
+        return $one($v, $title($v_) ?? $v, !empty($v_[1]));
     }
 
     protected function commentsValue($v): string
@@ -1010,16 +1214,22 @@ class MCPMarkdown
      * Insert row of web (insert_row): values as calculated by the core for the current state, rights of the insert row
      * @param array $tableArgs table/cycle/sess_hash/filters for the next calls
      */
-    public function insertRowCard(array $row, string $hash, array $tableArgs, bool $isNew = false): string
+    /**
+     * @param bool $asPanel tree view: web adds rows only through the panel of a new row — the fields hidden in the panel ($hidden) are not shown
+     */
+    public function insertRowCard(array $row, string $hash, array $tableArgs, bool $isNew = false, bool $asPanel = false, array $hidden = []): string
     {
         $args = json_encode($tableArgs + ['insert_hash' => $hash], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return "\n## Insert row" . ($isNew ? ' (new)' : '') . ' · insert_hash ' . $hash . "\n"
+            . ($asPanel ? 'tree view: like web the row is added through the panel of a new row ('
+                . ($this->treeView === 'self' ? 'a child of a row — the id of the row in the field tree' : 'into a folder — its key in the field tree') . ')'
+                . ($hidden ? '; fields hidden in the panel by the format (not set): ' . implode(', ', $hidden) : '') . "\n" : '')
             . 'Not added to the table yet. Values are recalculated by the code after every change like in web. Pass `' . $args . '` to:' . "\n"
             . "- insert_row — data: set values (fields with right add), reset: return calculated values;\n"
             . "- get_select_options — options of a select for the current state of the row;\n"
             . "- click_button — buttons with right click (active in the insert row); their code may change the row;\n"
             . "- add_row — save the row to the table.\n\n"
-            . $this->card($this->fieldsByCategory('column'), $row, [], 'insert');
+            . $this->card(array_diff_key($this->fieldsByCategory('column'), array_flip($hidden)), $row, [], 'insert');
     }
 
     /**
@@ -1038,8 +1248,9 @@ class MCPMarkdown
             . "- edit_panel — data: set values (fields with right edit), reset: return calculated values, save: true — save all changes at once;\n"
             . "- get_select_options — options of a select for the current state of the panel;\n"
             . "- click_button — buttons of the row; their code sees the not saved values of the panel as #pnl.field.\n"
-            . ($fields ? 'the panel shows the fields: ' . implode(', ', $fields) . "\n" : '') . "\n"
-            . $this->card($this->fieldsByCategory('column', $fields ?: null), $row, [], 'panel', $titles);
+            . ($fields ? 'the panel shows the fields: ' . implode(', ', $fields) . "\n" : '')
+            . (!empty($panel['hidden']) ? 'fields hidden in the panel by the format (hide panel / extpanel — not set in the panel): ' . implode(', ', $panel['hidden']) . "\n" : '')
+            . "\n" . $this->card(array_diff_key($this->fieldsByCategory('column', $fields ?: null), array_flip($panel['hidden'] ?? [])), $row, [], 'panel', $titles);
     }
 
     /* ======================== cell (right-click panel) ======================== */
@@ -1283,6 +1494,11 @@ class MCPMarkdown
         if ($field['type'] === 'button' && !empty($field['openContextPanel'])) {
             $marks['context-panel'] = 'context-panel — after pressing the button web opens the context panel of its cell: the answer of click_button shows it (with its buttons)';
         }
+        if ($field['type'] !== 'button' && !empty($field['CodeActionOnClick'])) {
+            $marks['dblclick-action'] = 'dblclick-action — the field has an action code on click (CodeActionOnClick): web runs it by a double click on the cell '
+                . 'when the cell is blocked or not editable for you (with CodeActionOnClickAsUrl — by a click on the value shown as a link)'
+                . '; run it with click_button {"field": …, "id": <row>} (params / footers — without id): it works also on #block cells';
+        }
         if (str_contains(json_encode($this->Table->getFields()[$field['name']]['codeAction'] ?? '', JSON_UNESCAPED_UNICODE), '$#ids')) {
             $marks['checked-rows'] = 'checked-rows — the code of the button works with the rows checked with checkmarks in web ($#ids): pass them in checked_ids of click_button';
         }
@@ -1339,8 +1555,23 @@ class MCPMarkdown
         if (!empty($result['moreChangedIds'])) {
             $out .= "\nmore changed rows: " . implode(', ', $result['moreChangedIds']) . "\n";
         }
+        if (!empty($result['formatRows'])) {
+            $out .= "\n## Rows (formats changed, data not changed)\n"
+                . 'like web after an action: the formats of these rows were changed by it (#block, #text, comments…) — take them into account in the next changes' . "\n";
+            $changed = [];
+            foreach ($result['formatChanged'] ?? [] as $id => $names) {
+                $changed[] = $id . ': ' . implode(', ', array_map(fn($name) => $name === '' ? 'row format' : $name, $names));
+            }
+            $out .= ($changed ? 'changed formats — ' . implode('; ', $changed) . "\n" : '')
+                . (count($result['formatRows']) <= static::CHANGED_ROWS_AS_CARDS
+                    ? implode('', array_map(fn($row) => $this->rowCard($row), $result['formatRows']))
+                    : $this->rowsTable($result['formatRows']));
+        }
+        if (!empty($result['moreFormatIds'])) {
+            $out .= "\nmore rows with changed formats: " . implode(', ', $result['moreFormatIds']) . " — re-read them\n";
+        }
         if (empty($result['rows']) && empty($result['params']) && empty($result['added']) && empty($result['deleted']) && empty($result['restored'])
-            && empty($result['reordered'])) {
+            && empty($result['reordered']) && empty($result['formatRows'])) {
             $out .= "no changes in the table\n";
         }
         return $out;
